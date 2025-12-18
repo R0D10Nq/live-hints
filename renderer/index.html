@@ -25,21 +25,66 @@
         <span class="btn-icon">▶</span>
         <span class="btn-text">Старт</span>
       </button>
+      <button id="btn-pause" class="btn-secondary btn-pause hidden" data-testid="btn-pause">
+        Пауза
+      </button>
       <div class="status-container">
         <div id="status-indicator" class="status-indicator status-paused" data-testid="status-indicator"></div>
         <span id="status-text" class="status-text" data-testid="status-text">Приостановлено</span>
       </div>
     </div>
 
-    <!-- Настройки провайдера -->
-    <div class="provider-section" data-testid="provider-section">
-      <label for="llm-provider">LLM провайдер:</label>
-      <select id="llm-provider" class="provider-select" data-testid="llm-provider-select">
-        <option value="ollama" selected>Ollama (локально)</option>
-        <option value="openai">OpenAI</option>
-        <option value="gemini">Gemini</option>
-        <option value="openrouter">OpenRouter</option>
-      </select>
+    <!-- Настройки провайдера и профиля -->
+    <div class="settings-section" data-testid="settings-section">
+      <div class="settings-row">
+        <label for="llm-provider">LLM:</label>
+        <select id="llm-provider" class="provider-select" data-testid="llm-provider-select">
+          <option value="ollama" selected>Ollama (локально)</option>
+          <option value="openai">OpenAI</option>
+          <option value="gemini">Gemini</option>
+          <option value="claude">Claude (Anthropic)</option>
+          <option value="openrouter">OpenRouter</option>
+          <option value="gigachat_free">GigaChat Free (Freemium)</option>
+          <option value="gigachat_max">GigaChat Max (Paid)</option>
+          <option value="yandex_lite">Yandex Trial (Lite)</option>
+          <option value="yandex_pro">Yandex Pro (Paid)</option>
+        </select>
+      </div>
+      <div class="settings-row">
+        <label for="ai-profile">Профиль:</label>
+        <select id="ai-profile" class="profile-select" data-testid="ai-profile-select">
+          <option value="job_interview_ru" selected>Job interview (RU)</option>
+          <option value="custom">Custom</option>
+        </select>
+      </div>
+      <div id="custom-instructions-container" class="custom-instructions hidden" data-testid="custom-instructions-container">
+        <textarea id="custom-instructions" class="custom-instructions-input" data-testid="custom-instructions" 
+          placeholder="Введите пользовательские инструкции для AI..." rows="3"></textarea>
+      </div>
+      <div class="settings-row">
+        <label class="checkbox-label">
+          <input type="checkbox" id="auto-hints" data-testid="auto-hints-checkbox">
+          <span>Авто-подсказки</span>
+        </label>
+      </div>
+      <div class="settings-row">
+        <label for="opacity-slider">Прозрачность:</label>
+        <input type="range" id="opacity-slider" class="slider" data-testid="opacity-slider" 
+          min="10" max="100" value="100">
+        <span id="opacity-value" class="slider-value">100%</span>
+      </div>
+      <div class="settings-row">
+        <label for="font-transcript">Шрифт транскрипта:</label>
+        <input type="range" id="font-transcript" class="slider" data-testid="font-transcript-slider"
+          min="12" max="28" value="14">
+        <span id="font-transcript-value" class="slider-value">14px</span>
+      </div>
+      <div class="settings-row">
+        <label for="font-hints">Шрифт подсказок:</label>
+        <input type="range" id="font-hints" class="slider" data-testid="font-hints-slider"
+          min="12" max="28" value="14">
+        <span id="font-hints-value" class="slider-value">14px</span>
+      </div>
     </div>
 
     <!-- Лента транскрипта -->
@@ -52,7 +97,12 @@
 
     <!-- Лента подсказок -->
     <div class="section">
-      <h2 class="section-title">Подсказки</h2>
+      <div class="section-header">
+        <h2 class="section-title">Подсказки</h2>
+        <button id="btn-get-hint" class="btn-hint" data-testid="btn-get-hint" disabled>
+          Получить ответ
+        </button>
+      </div>
       <div id="hints-feed" class="feed hints-feed" data-testid="hints-feed">
         <p class="placeholder">Подсказки появятся здесь...</p>
       </div>

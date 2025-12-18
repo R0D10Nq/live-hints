@@ -61,9 +61,43 @@ test.describe('Live Hints E2E', () => {
         const providerSelect = window.locator('[data-testid="llm-provider-select"]');
         await expect(providerSelect).toBeVisible();
 
-        // Проверяем опции
+        // Проверяем опции (9 провайдеров)
         const options = providerSelect.locator('option');
-        await expect(options).toHaveCount(4);
+        await expect(options).toHaveCount(9);
+    });
+
+    test('должен отображать выбор AI профиля', async () => {
+        const profileSelect = window.locator('[data-testid="ai-profile-select"]');
+        await expect(profileSelect).toBeVisible();
+
+        const options = profileSelect.locator('option');
+        await expect(options).toHaveCount(2);
+    });
+
+    test('должен отображать слайдер прозрачности', async () => {
+        const opacitySlider = window.locator('[data-testid="opacity-slider"]');
+        await expect(opacitySlider).toBeVisible();
+        await expect(opacitySlider).toHaveAttribute('min', '10');
+        await expect(opacitySlider).toHaveAttribute('max', '100');
+    });
+
+    test('должен отображать слайдеры размера шрифта', async () => {
+        const fontTranscript = window.locator('[data-testid="font-transcript-slider"]');
+        const fontHints = window.locator('[data-testid="font-hints-slider"]');
+
+        await expect(fontTranscript).toBeVisible();
+        await expect(fontHints).toBeVisible();
+    });
+
+    test('должен отображать чекбокс авто-подсказок', async () => {
+        const autoHints = window.locator('[data-testid="auto-hints-checkbox"]');
+        await expect(autoHints).toBeVisible();
+    });
+
+    test('должен отображать кнопку "Получить ответ"', async () => {
+        const btnGetHint = window.locator('[data-testid="btn-get-hint"]');
+        await expect(btnGetHint).toBeVisible();
+        await expect(btnGetHint).toBeDisabled();
     });
 
     test('должен открывать модальное окно истории', async () => {
@@ -201,6 +235,41 @@ test.describe('Live Hints Integration', () => {
             window = await electronApp.firstWindow();
             await window.waitForLoadState('domcontentloaded');
         }
+    });
+
+    test('кнопка паузы должна появляться при старте', async () => {
+        const btnPause = window.locator('[data-testid="btn-pause"]');
+
+        // Изначально скрыта
+        await expect(btnPause).toBeHidden();
+    });
+
+    test('Custom профиль должен показывать поле инструкций', async () => {
+        const profileSelect = window.locator('[data-testid="ai-profile-select"]');
+        const customContainer = window.locator('[data-testid="custom-instructions-container"]');
+
+        // Изначально скрыто
+        await expect(customContainer).toBeHidden();
+
+        // Выбираем Custom
+        await profileSelect.selectOption('custom');
+        await expect(customContainer).toBeVisible();
+
+        // Возвращаем
+        await profileSelect.selectOption('job_interview_ru');
+        await expect(customContainer).toBeHidden();
+    });
+
+    test('слайдер прозрачности должен менять значение', async () => {
+        const opacitySlider = window.locator('[data-testid="opacity-slider"]');
+        const opacityValue = window.locator('#opacity-value');
+
+        // Меняем значение
+        await opacitySlider.fill('50');
+        await expect(opacityValue).toHaveText('50%');
+
+        // Возвращаем
+        await opacitySlider.fill('100');
     });
 
     test('статус должен меняться при попытке старта', async () => {
