@@ -142,4 +142,4 @@ vite.config.ts.timestamp-*
 # extensions
 .history
 
-playwright-report/
+playwright-report
