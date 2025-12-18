@@ -40,10 +40,7 @@ build/Release
 # Dependency directories
 node_modules/
 jspm_packages/
-<<<<<<< HEAD
-=======
 venv/
->>>>>>> 19b38e4 (Initial local commit)
 
 # Snowpack dependency directory (https://snowpack.dev/)
 web_modules/
@@ -141,9 +138,6 @@ dist
 # Vite logs files
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
-<<<<<<< HEAD
-=======
 
 # extensions
 .history
->>>>>>> 19b38e4 (Initial local commit)
