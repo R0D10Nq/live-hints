@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 # Live Hints
 
 Windows desktop overlay для транскрипции системного звука и генерации подсказок в реальном времени.
@@ -221,6 +220,7 @@ live-hints/
 ## Лицензия
 
 MIT
+
 =======
 # Live Hints
 
