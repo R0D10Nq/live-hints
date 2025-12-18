@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self' ws://localhost:8765 http://localhost:8766">
+  <title>Live Hints</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div id="app" data-testid="app-container">
+    <!-- Заголовок -->
+    <header class="header" data-testid="header">
+      <div class="header-drag-region"></div>
+      <h1 class="title">Live Hints</h1>
+      <div class="window-controls">
+        <button id="btn-minimize" class="window-btn" data-testid="btn-minimize" title="Свернуть">─</button>
+        <button id="btn-close" class="window-btn window-btn-close" data-testid="btn-close" title="Закрыть">✕</button>
+      </div>
+    </header>
+
+    <!-- Панель управления -->
+    <div class="controls" data-testid="controls-panel">
+      <button id="btn-toggle" class="btn-primary" data-testid="btn-toggle">
+        <span class="btn-icon">▶</span>
+        <span class="btn-text">Старт</span>
+      </button>
+      <div class="status-container">
+        <div id="status-indicator" class="status-indicator status-paused" data-testid="status-indicator"></div>
+        <span id="status-text" class="status-text" data-testid="status-text">Приостановлено</span>
+      </div>
+    </div>
+
+    <!-- Настройки провайдера -->
+    <div class="provider-section" data-testid="provider-section">
+      <label for="llm-provider">LLM провайдер:</label>
+      <select id="llm-provider" class="provider-select" data-testid="llm-provider-select">
+        <option value="ollama" selected>Ollama (локально)</option>
+        <option value="openai">OpenAI</option>
+        <option value="gemini">Gemini</option>
+        <option value="openrouter">OpenRouter</option>
+      </select>
+    </div>
+
+    <!-- Лента транскрипта -->
+    <div class="section">
+      <h2 class="section-title">Транскрипт</h2>
+      <div id="transcript-feed" class="feed transcript-feed" data-testid="transcript-feed">
+        <p class="placeholder">Транскрипт появится здесь...</p>
+      </div>
+    </div>
+
+    <!-- Лента подсказок -->
+    <div class="section">
+      <h2 class="section-title">Подсказки</h2>
+      <div id="hints-feed" class="feed hints-feed" data-testid="hints-feed">
+        <p class="placeholder">Подсказки появятся здесь...</p>
+      </div>
+    </div>
+
+    <!-- Навигация по истории -->
+    <div class="history-nav" data-testid="history-nav">
+      <button id="btn-history" class="btn-secondary" data-testid="btn-history">
+        История сессий
+      </button>
+    </div>
+
+    <!-- Модальное окно истории -->
+    <div id="history-modal" class="modal hidden" data-testid="history-modal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2>История сессий</h2>
+          <button id="btn-close-modal" class="window-btn" data-testid="btn-close-modal">✕</button>
+        </div>
+        <div id="sessions-list" class="sessions-list" data-testid="sessions-list">
+          <p class="placeholder">Нет сохранённых сессий</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Просмотр сессии -->
+    <div id="session-view-modal" class="modal hidden" data-testid="session-view-modal">
+      <div class="modal-content modal-content-large">
+        <div class="modal-header">
+          <h2 id="session-view-title">Сессия</h2>
+          <button id="btn-close-session-view" class="window-btn" data-testid="btn-close-session-view">✕</button>
+        </div>
+        <div class="session-view-content">
+          <div class="session-view-section">
+            <h3>Транскрипт</h3>
+            <div id="session-transcript" class="session-transcript" data-testid="session-transcript"></div>
+          </div>
+          <div class="session-view-section">
+            <h3>Подсказки</h3>
+            <div id="session-hints" class="session-hints" data-testid="session-hints"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Уведомление об ошибке -->
+    <div id="error-toast" class="toast hidden" data-testid="error-toast">
+      <span id="error-message"></span>
+      <button id="btn-dismiss-error" class="toast-dismiss">✕</button>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
