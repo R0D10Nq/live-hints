@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 faster-whisper>=1.0.0
 websockets>=12.0
 fastapi>=0.104.0
@@ -8,3 +9,15 @@ pyaudiowpatch>=0.2.12
 requests>=2.31.0
 pydantic>=2.5.0
 nvidia-cudnn-cu12>=9.0.0
+=======
+faster-whisper>=1.0.0
+websockets>=12.0
+fastapi>=0.104.0
+uvicorn>=0.24.0
+numpy>=1.24.0
+sounddevice>=0.4.6
+pyaudiowpatch>=0.2.12
+requests>=2.31.0
+pydantic>=2.5.0
+nvidia-cudnn-cu12>=9.0.0
+>>>>>>> 19b38e4 (Initial local commit)
