@@ -109,20 +109,63 @@ npm start
 
 - **Ollama** — полностью локальный, бесплатный, требует GPU для комфортной работы
 
-### Облачные (требуют API ключи)
+### Облачные провайдеры
 
-Установите переменные окружения:
+| Провайдер | Переменные окружения | Где получить |
+|-----------|---------------------|--------------|
+| **OpenAI** | `OPENAI_API_KEY` | platform.openai.com |
+| **Gemini** | `GEMINI_API_KEY` | aistudio.google.com |
+| **Claude (Anthropic)** | `ANTHROPIC_API_KEY` | console.anthropic.com |
+| **OpenRouter** | `OPENROUTER_API_KEY` | openrouter.ai |
 
-```bash
+### Российские провайдеры
+
+| Провайдер | Переменные окружения | Где получить |
+|-----------|---------------------|--------------|
+| **GigaChat Free** | `GIGACHAT_CLIENT_ID`, `GIGACHAT_CLIENT_SECRET` | developers.sber.ru |
+| **GigaChat Max** | `GIGACHAT_CLIENT_ID`, `GIGACHAT_CLIENT_SECRET` | developers.sber.ru |
+| **Yandex Lite** | `YANDEX_API_KEY`, `YANDEX_FOLDER_ID` | console.cloud.yandex.ru |
+| **Yandex Pro** | `YANDEX_API_KEY`, `YANDEX_FOLDER_ID` | console.cloud.yandex.ru |
+
+### Настройка переменных окружения
+
+```powershell
 # OpenAI
-set OPENAI_API_KEY=sk-...
+$env:OPENAI_API_KEY = "sk-..."
 
-# Google Gemini
-set GEMINI_API_KEY=...
+# Gemini
+$env:GEMINI_API_KEY = "..."
+
+# Claude (Anthropic)
+$env:ANTHROPIC_API_KEY = "sk-ant-..."
 
 # OpenRouter
-set OPENROUTER_API_KEY=...
+$env:OPENROUTER_API_KEY = "sk-or-..."
+
+# GigaChat (Сбер)
+$env:GIGACHAT_CLIENT_ID = "..."
+$env:GIGACHAT_CLIENT_SECRET = "..."
+
+# Yandex GPT
+$env:YANDEX_API_KEY = "..."
+$env:YANDEX_FOLDER_ID = "..."
 ```
+
+## AI Профили
+
+- **Job interview (RU)** — короткие подсказки 1-3 пункта для собеседований
+- **Custom** — пользовательские инструкции для AI
+
+## Режим работы
+
+- **Кнопка "Получить ответ"** — запрос подсказки по накопленному транскрипту
+- **Авто-подсказки** — автоматическая генерация подсказок после каждой фразы
+
+## Хоткеи
+
+- `Ctrl+Enter` — получить подсказку
+- `Ctrl+/` — показать/скрыть overlay
+- `Ctrl+Arrow` — переместить окно
 
 ## Тестирование
 

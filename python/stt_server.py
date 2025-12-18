@@ -28,9 +28,9 @@ WEBSOCKET_PORT = 8765
 SAMPLE_RATE = 16000
 
 # GPU настройки - RTX 5060 Ti 16GB
-# Приоритет моделей: small (быстрый старт) -> medium -> large-v3
-# small уже скачана, medium/large-v3 скачиваются при необходимости
-MODEL_PRIORITY = ['small', 'medium', 'large-v3']
+# Приоритет моделей: medium (баланс) -> small (быстрый) -> large-v3 (качество)
+# medium даёт лучшее качество без значительного увеличения задержки
+MODEL_PRIORITY = ['large-v3', 'medium', 'small']
 DEVICE = 'cuda'
 COMPUTE_TYPE = 'float16'
 
@@ -94,6 +94,9 @@ class StreamingTranscriber:
         # Tracking
         self.last_sound_time = time.time()
         self.is_speaking = False
+        
+        # Дедуп транскриптов
+        self.last_transcript = ''
         
         # Метрики
         self.metrics = LatencyMetrics()
@@ -262,6 +265,12 @@ class STTServer:
                     if self.transcriber.add_audio(audio):
                         text = self.transcriber.transcribe()
                         if text:
+                            # Дедуп: пропускаем повторяющиеся транскрипты
+                            if text == self.transcriber.last_transcript:
+                                logger.info(f'[STT] Дубликат пропущен: "{text[:30]}..."')
+                                continue
+                            self.transcriber.last_transcript = text
+                            
                             msg = json.dumps({
                                 'type': 'transcript',
                                 'text': text,

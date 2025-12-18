@@ -4,10 +4,17 @@
 class LiveHintsApp {
     constructor() {
         this.isRunning = false;
+        this.isPaused = false;
         this.currentSessionId = null;
         this.wsConnection = null;
         this.hintRequestPending = false;
         this.transcriptContext = [];
+        this.autoHintsEnabled = false;
+        this.currentProfile = 'job_interview_ru';
+        this.customInstructions = '';
+        this.lastContextHash = '';
+        this.lastHintText = '';
+        this.lastTranscriptText = '';
 
         this.elements = {
             btnToggle: document.getElementById('btn-toggle'),
@@ -29,7 +36,19 @@ class LiveHintsApp {
             sessionTranscript: document.getElementById('session-transcript'),
             sessionHints: document.getElementById('session-hints'),
             errorToast: document.getElementById('error-toast'),
-            errorMessage: document.getElementById('error-message')
+            errorMessage: document.getElementById('error-message'),
+            btnGetHint: document.getElementById('btn-get-hint'),
+            aiProfile: document.getElementById('ai-profile'),
+            customInstructionsContainer: document.getElementById('custom-instructions-container'),
+            customInstructions: document.getElementById('custom-instructions'),
+            autoHints: document.getElementById('auto-hints'),
+            btnPause: document.getElementById('btn-pause'),
+            opacitySlider: document.getElementById('opacity-slider'),
+            opacityValue: document.getElementById('opacity-value'),
+            fontTranscript: document.getElementById('font-transcript'),
+            fontTranscriptValue: document.getElementById('font-transcript-value'),
+            fontHints: document.getElementById('font-hints'),
+            fontHintsValue: document.getElementById('font-hints-value')
         };
 
         this.init();
@@ -65,6 +84,62 @@ class LiveHintsApp {
         this.elements.llmProvider.addEventListener('change', (e) => {
             this.saveSettings({ llmProvider: e.target.value });
         });
+
+        // Смена профиля
+        this.elements.aiProfile.addEventListener('change', (e) => {
+            this.currentProfile = e.target.value;
+            this.toggleCustomInstructions();
+            this.saveSettings({ aiProfile: e.target.value });
+        });
+
+        // Пользовательские инструкции
+        this.elements.customInstructions.addEventListener('input', (e) => {
+            this.customInstructions = e.target.value;
+            this.saveSettings({ customInstructions: e.target.value });
+        });
+
+        // Авто-подсказки
+        this.elements.autoHints.addEventListener('change', (e) => {
+            this.autoHintsEnabled = e.target.checked;
+            this.saveSettings({ autoHints: e.target.checked });
+        });
+
+        // Кнопка "Получить ответ"
+        this.elements.btnGetHint.addEventListener('click', () => {
+            this.manualRequestHint();
+        });
+
+        // Кнопка Пауза/Продолжить
+        this.elements.btnPause.addEventListener('click', () => {
+            this.togglePause();
+        });
+
+        // Прозрачность
+        this.elements.opacitySlider.addEventListener('input', (e) => {
+            const value = parseInt(e.target.value);
+            this.elements.opacityValue.textContent = `${value}%`;
+            window.electronAPI.setOpacity(value);
+            this.saveSettings({ opacity: value });
+        });
+
+        // Размер шрифта транскрипта
+        this.elements.fontTranscript.addEventListener('input', (e) => {
+            const value = parseInt(e.target.value);
+            this.elements.fontTranscriptValue.textContent = `${value}px`;
+            document.documentElement.style.setProperty('--font-transcript', `${value}px`);
+            this.saveSettings({ fontTranscript: value });
+        });
+
+        // Размер шрифта подсказок
+        this.elements.fontHints.addEventListener('input', (e) => {
+            const value = parseInt(e.target.value);
+            this.elements.fontHintsValue.textContent = `${value}px`;
+            document.documentElement.style.setProperty('--font-hints', `${value}px`);
+            this.saveSettings({ fontHints: value });
+        });
+
+        // Хоткеи
+        document.addEventListener('keydown', (e) => this.handleHotkeys(e));
 
         // История
         this.elements.btnHistory.addEventListener('click', () => {
@@ -126,6 +201,9 @@ class LiveHintsApp {
     }
 
     sendAudioToSTT(data) {
+        // Не отправляем аудио на паузе
+        if (this.isPaused) return;
+
         if (this.wsConnection && this.wsConnection.readyState === WebSocket.OPEN) {
             try {
                 // data это Buffer с бинарными PCM данными
@@ -136,12 +214,32 @@ class LiveHintsApp {
         }
     }
 
+    // Пауза/Продолжить
+    togglePause() {
+        if (!this.isRunning) return;
+
+        this.isPaused = !this.isPaused;
+
+        if (this.isPaused) {
+            this.updateStatus('paused');
+            this.elements.btnPause.textContent = 'Продолжить';
+        } else {
+            this.updateStatus('listening');
+            this.elements.btnPause.textContent = 'Пауза';
+        }
+    }
+
     async start() {
         try {
             this.updateStatus('listening');
             this.isRunning = true;
+            this.isPaused = false;
             this.updateToggleButton();
             this.clearFeeds();
+
+            // Показываем кнопку паузы
+            this.elements.btnPause.classList.remove('hidden');
+            this.elements.btnPause.textContent = 'Пауза';
 
             // Создаём новую сессию
             this.currentSessionId = this.generateSessionId();
@@ -176,8 +274,12 @@ class LiveHintsApp {
             }
 
             this.isRunning = false;
+            this.isPaused = false;
             this.updateStatus('paused');
             this.updateToggleButton();
+
+            // Скрываем кнопку паузы
+            this.elements.btnPause.classList.add('hidden');
 
         } catch (error) {
             this.showError(`Ошибка остановки: ${error.message}`);
@@ -209,8 +311,12 @@ class LiveHintsApp {
 
                             this.addTranscriptItem(data.text, new Date().toISOString(), data.latency_ms);
 
-                            // СРАЗУ запрашиваем подсказку
-                            this.requestHint(data.text);
+                            // Запрашиваем подсказку ТОЛЬКО если включены авто-подсказки
+                            if (this.autoHintsEnabled) {
+                                this.requestHint(data.text);
+                            }
+                            // Активируем кнопку "Получить ответ"
+                            this.elements.btnGetHint.disabled = false;
                         }
                     } catch (e) {
                         console.error('Ошибка парсинга сообщения:', e);
@@ -257,6 +363,13 @@ class LiveHintsApp {
             this.transcriptContext = this.transcriptContext.slice(-5);
         }
 
+        // Дедуп запросов: проверяем hash контекста
+        const contextHash = this.transcriptContext.join('|');
+        if (this.lastContextHash === contextHash) {
+            console.log('[LLM] Дубликат контекста, пропускаем');
+            return;
+        }
+
         // Защита от множественных запросов
         if (this.hintRequestPending) {
             console.log('[LLM] Запрос уже в процессе, накоплен контекст');
@@ -264,20 +377,27 @@ class LiveHintsApp {
         }
 
         this.hintRequestPending = true;
+        this.lastContextHash = contextHash;
         const startTime = performance.now();
 
-        try {
-            console.log('[LLM] Запрос подсказки...');
+        // Собираем system prompt с учётом профиля
+        const systemPrompt = this.buildSystemPrompt();
 
+        console.log(`[LLM] Запрос: profile=${this.currentProfile}, customInstructions.len=${this.customInstructions.length}`);
+        console.log(`[LLM] System prompt preview: ${systemPrompt.substring(0, 200)}...`);
+
+        try {
             const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 сек таймаут
+            const timeoutId = setTimeout(() => controller.abort(), 15000);
 
             const response = await fetch('http://localhost:8766/hint', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     text: transcriptText,
-                    context: this.transcriptContext
+                    context: this.transcriptContext,
+                    system_prompt: systemPrompt,
+                    profile: this.currentProfile
                 }),
                 signal: controller.signal
             });
@@ -338,10 +458,22 @@ class LiveHintsApp {
     }
 
     addTranscriptItem(text, timestamp, latencyMs = null) {
+        // Дедуп транскриптов
+        if (text === this.lastTranscriptText) {
+            console.log('[STT] Дубликат транскрипта, пропускаем');
+            return;
+        }
+        this.lastTranscriptText = text;
         this.addFeedItem(this.elements.transcriptFeed, text, timestamp, latencyMs);
     }
 
     addHintItem(text, timestamp, latencyMs = null) {
+        // Дедуп подсказок
+        if (text === this.lastHintText) {
+            console.log('[LLM] Дубликат подсказки, пропускаем');
+            return;
+        }
+        this.lastHintText = text;
         this.addFeedItem(this.elements.hintsFeed, text, timestamp, latencyMs);
     }
 
@@ -486,12 +618,101 @@ class LiveHintsApp {
         });
     }
 
+    // Хоткеи
+    handleHotkeys(e) {
+        // Ctrl+/ - показать/скрыть overlay
+        if (e.ctrlKey && e.key === '/') {
+            e.preventDefault();
+            window.electronAPI.toggleVisibility?.();
+        }
+        // Ctrl+Arrow - перемещение окна
+        if (e.ctrlKey && e.key.startsWith('Arrow')) {
+            e.preventDefault();
+            const direction = e.key.replace('Arrow', '').toLowerCase();
+            window.electronAPI.moveWindow?.(direction);
+        }
+        // Ctrl+Enter - получить подсказку
+        if (e.ctrlKey && e.key === 'Enter' && this.isRunning) {
+            e.preventDefault();
+            this.manualRequestHint();
+        }
+    }
+
+    // Переключение видимости кастомных инструкций
+    toggleCustomInstructions() {
+        if (this.currentProfile === 'custom') {
+            this.elements.customInstructionsContainer.classList.remove('hidden');
+        } else {
+            this.elements.customInstructionsContainer.classList.add('hidden');
+        }
+    }
+
+    // Сборка system prompt с учётом профиля
+    buildSystemPrompt() {
+        const profiles = {
+            job_interview_ru: 'Ты помощник на собеседовании. Давай краткие, полезные подсказки по техническим вопросам. Отвечай на русском, кратко и по делу.',
+            custom: this.customInstructions || 'Ты ассистент. Дай краткий ответ по контексту разговора.'
+        };
+
+        const basePrompt = profiles[this.currentProfile] || profiles.job_interview_ru;
+
+        // Для custom профиля добавляем инструкции пользователя
+        if (this.currentProfile === 'custom' && this.customInstructions) {
+            return this.customInstructions;
+        }
+
+        return basePrompt;
+    }
+
+    // Ручной запрос подсказки по кнопке
+    async manualRequestHint() {
+        if (!this.isRunning || this.transcriptContext.length === 0) {
+            this.showError('Нет транскрипта для анализа. Дождитесь речи.');
+            return;
+        }
+
+        // Берём весь накопленный контекст
+        const fullContext = this.transcriptContext.join(' ');
+        await this.requestHint(fullContext);
+    }
+
     // Настройки
     loadSettings() {
         try {
             const settings = JSON.parse(localStorage.getItem('live-hints-settings')) || {};
             if (settings.llmProvider) {
                 this.elements.llmProvider.value = settings.llmProvider;
+            }
+            if (settings.aiProfile) {
+                this.currentProfile = settings.aiProfile;
+                this.elements.aiProfile.value = settings.aiProfile;
+                this.toggleCustomInstructions();
+            }
+            if (settings.customInstructions) {
+                this.customInstructions = settings.customInstructions;
+                this.elements.customInstructions.value = settings.customInstructions;
+            }
+            if (settings.autoHints !== undefined) {
+                this.autoHintsEnabled = settings.autoHints;
+                this.elements.autoHints.checked = settings.autoHints;
+            }
+            // Прозрачность
+            if (settings.opacity !== undefined) {
+                this.elements.opacitySlider.value = settings.opacity;
+                this.elements.opacityValue.textContent = `${settings.opacity}%`;
+                window.electronAPI.setOpacity(settings.opacity);
+            }
+            // Размер шрифта транскрипта
+            if (settings.fontTranscript !== undefined) {
+                this.elements.fontTranscript.value = settings.fontTranscript;
+                this.elements.fontTranscriptValue.textContent = `${settings.fontTranscript}px`;
+                document.documentElement.style.setProperty('--font-transcript', `${settings.fontTranscript}px`);
+            }
+            // Размер шрифта подсказок
+            if (settings.fontHints !== undefined) {
+                this.elements.fontHints.value = settings.fontHints;
+                this.elements.fontHintsValue.textContent = `${settings.fontHints}px`;
+                document.documentElement.style.setProperty('--font-hints', `${settings.fontHints}px`);
             }
         } catch {
             // Игнорируем ошибки

@@ -82,6 +82,8 @@ class HintRequest(BaseModel):
     text: str
     context: Optional[list] = None
     stream: bool = False
+    system_prompt: Optional[str] = None
+    profile: Optional[str] = None
 
 
 class HintResponse(BaseModel):
@@ -104,12 +106,16 @@ class OllamaClient:
         except:
             return False
     
-    def generate(self, text: str, context: list = None) -> str:
+    def generate(self, text: str, context: list = None, system_prompt: str = None) -> str:
         """Синхронная генерация подсказки"""
         self.metrics.reset()
         self.metrics.request_started()
         
-        messages = [{'role': 'system', 'content': SYSTEM_PROMPT}]
+        # Используем переданный system_prompt или дефолтный
+        prompt = system_prompt if system_prompt else SYSTEM_PROMPT
+        logger.info(f'[LLM] System prompt: {prompt[:100]}...')
+        
+        messages = [{'role': 'system', 'content': prompt}]
         
         # Добавляем контекст (последние 3 сообщения)
         if context:
@@ -127,7 +133,7 @@ class OllamaClient:
                     'stream': False,
                     'options': {
                         'temperature': 0.3,
-                        'num_predict': 100,  # Короткие ответы
+                        'num_predict': 500,  # Увеличено для полных ответов
                         'top_p': 0.9
                     }
                 },
@@ -175,7 +181,7 @@ class OllamaClient:
                     'stream': True,
                     'options': {
                         'temperature': 0.3,
-                        'num_predict': 100,
+                        'num_predict': 500,
                         'top_p': 0.9
                     }
                 },
@@ -225,7 +231,8 @@ async def generate_hint(request: HintRequest):
     if not request.text or len(request.text.strip()) < 5:
         raise HTTPException(400, 'Текст слишком короткий')
     
-    hint = ollama.generate(request.text, request.context)
+    logger.info(f'[API] profile={request.profile}, system_prompt_len={len(request.system_prompt or "")}')
+    hint = ollama.generate(request.text, request.context, request.system_prompt)
     stats = ollama.metrics.get_stats()
     
     return HintResponse(

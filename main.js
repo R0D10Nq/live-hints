@@ -130,6 +130,43 @@ function setupIPC() {
         }
         return { success: true };
     });
+
+    // Прозрачность окна
+    ipcMain.handle('window:set-opacity', (event, opacity) => {
+        if (mainWindow) {
+            const value = Math.max(0.1, Math.min(1, opacity / 100));
+            mainWindow.setOpacity(value);
+        }
+    });
+
+    // Перемещение окна
+    ipcMain.handle('window:move', (event, direction) => {
+        if (!mainWindow) return;
+        const [x, y] = mainWindow.getPosition();
+        const step = 20;
+        switch (direction) {
+            case 'up': mainWindow.setPosition(x, y - step); break;
+            case 'down': mainWindow.setPosition(x, y + step); break;
+            case 'left': mainWindow.setPosition(x - step, y); break;
+            case 'right': mainWindow.setPosition(x + step, y); break;
+        }
+    });
+
+    // Показать/скрыть окно
+    ipcMain.handle('window:toggle-visibility', () => {
+        if (!mainWindow) return;
+        if (mainWindow.isVisible()) {
+            mainWindow.hide();
+        } else {
+            mainWindow.show();
+        }
+    });
+
+    // Получить позицию окна (для e2e тестов)
+    ipcMain.handle('window:get-position', () => {
+        if (!mainWindow) return null;
+        return mainWindow.getPosition();
+    });
 }
 
 app.whenReady().then(() => {

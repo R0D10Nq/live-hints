@@ -1,4 +1,4 @@
-# --- UTF-8 для корректного вывода кириллицы ---
+﻿# --- UTF-8 для корректного вывода кириллицы ---
 [Console]::InputEncoding = [System.Text.UTF8Encoding]::new()
 [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new()
 $OutputEncoding = [Console]::OutputEncoding

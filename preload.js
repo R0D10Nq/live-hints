@@ -38,5 +38,17 @@ contextBridge.exposeInMainWorld('electronAPI', {
     // Удаление слушателей
     removeAllListeners: (channel) => {
         ipcRenderer.removeAllListeners(channel);
-    }
+    },
+
+    // Прозрачность окна
+    setOpacity: (opacity) => ipcRenderer.invoke('window:set-opacity', opacity),
+
+    // Перемещение окна
+    moveWindow: (direction) => ipcRenderer.invoke('window:move', direction),
+
+    // Показать/скрыть окно
+    toggleVisibility: () => ipcRenderer.invoke('window:toggle-visibility'),
+
+    // Получить позицию окна
+    getWindowPosition: () => ipcRenderer.invoke('window:get-position')
 });
