@@ -22,10 +22,10 @@ class LiveHintsApp {
         this.focusMode = false;
 
         // Настройки контекста и LLM
-        this.contextWindowSize = 10;  // 5..20
-        this.maxContextChars = 3000;  // 2000..6000
-        this.maxTokens = 200;         // 50..500
-        this.temperature = 0.3;       // 0.0..1.0
+        this.contextWindowSize = 20;  // 5..20
+        this.maxContextChars = 6000;  // 2000..6000
+        this.maxTokens = 500;         // 50..500
+        this.temperature = 0.75;       // 0.0..1.0
         this.debugMode = false;
 
         // Метрики runtime

@@ -1,6 +1,10 @@
 /**
  * HintPipeline - Оркестратор пайплайна подсказок
  * Управляет потоком данных: Аудио -> STT -> LLM -> UI
+ * 
+ * ВАЖНО: В текущей архитектуре этот модуль используется только в тестах.
+ * В runtime запросы к LLM делаются напрямую из renderer/app.js.
+ * Для совместимости поддерживает options.systemPrompt и options.profile.
  */
 
 const EventEmitter = require('events');
@@ -224,7 +228,9 @@ class HintPipeline extends EventEmitter {
                 body: JSON.stringify({
                     text: fullText,
                     provider: this.options.llmProvider,
-                    context: this.transcriptBuffer.slice(-10) // Последние 10 фрагментов
+                    context: this.transcriptBuffer.slice(-10), // Последние 10 фрагментов
+                    system_prompt: this.options.systemPrompt || null,
+                    profile: this.options.profile || 'job_interview_ru'
                 })
             });
 

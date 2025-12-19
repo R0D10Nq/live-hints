@@ -34,7 +34,7 @@ pip install -r python/requirements.txt
 
 # 2. Установите Ollama и модель
 # Скачайте с https://ollama.ai/, затем:
-ollama pull qwen2.5:7b
+ollama pull model_name
 
 # 3. Запустите серверы (3 терминала)
 # Терминал 1:
