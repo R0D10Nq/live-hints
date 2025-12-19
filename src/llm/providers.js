@@ -45,7 +45,7 @@ class OllamaProvider extends BaseLLMProvider {
     constructor(config = {}) {
         super(config);
         this.baseUrl = config.baseUrl || 'http://localhost:11434';
-        this.model = config.model || 'qwen2.5:7b';
+        this.model = config.model || 'deepseek-r1:8b';
     }
 
     async generateHint(text, context = []) {

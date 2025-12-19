@@ -34,8 +34,8 @@ HTTP_PORT = 8766
 OLLAMA_URL = os.getenv('OLLAMA_URL', 'http://localhost:11434')
 # Realtime профиль: qwen2.5:7b - быстрая и качественная
 # Quality профиль: qwen2.5:14b - медленнее но лучше
-# ставлю gpt-oss:20b заебал этот квен
-DEFAULT_MODEL = os.getenv('OLLAMA_MODEL', 'gpt-oss:20b')
+# ставлю deepseek-r1:8b заебал этот квен
+DEFAULT_MODEL = os.getenv('OLLAMA_MODEL', 'deepseek-r1:8b')
 
 # Системный промпт - КОРОТКИЙ для скорости
 SYSTEM_PROMPT = """Ты ассистент. Дай 1-2 коротких ответа по контексту разговора. Отвечай кратко, по делу, на русском."""

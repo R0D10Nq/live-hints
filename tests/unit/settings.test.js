@@ -353,15 +353,199 @@ describe('buildSystemPrompt', () => {
     it('custom профиль без инструкций использует дефолт', () => {
         const customInstructions = '';
         const currentProfile = 'custom';
-        const defaultPrompt = 'Ты ассистент.';
+        const defaultPrompt = 'Ты ассистент. Дай краткий ответ по контексту разговора на русском.';
 
-        let result;
-        if (currentProfile === 'custom' && customInstructions) {
-            result = customInstructions;
-        } else {
-            result = defaultPrompt;
+        // Эмуляция buildSystemPrompt
+        const buildSystemPrompt = (profile, instructions) => {
+            const MAX_PROMPT_LENGTH = 4000;
+            const DEFAULT_FALLBACK = 'Ты ассистент. Дай краткий ответ по контексту разговора на русском.';
+
+            if (profile === 'custom') {
+                const trimmed = (instructions || '').trim();
+                if (trimmed.length > 0) {
+                    return trimmed.length > MAX_PROMPT_LENGTH
+                        ? trimmed.substring(0, MAX_PROMPT_LENGTH)
+                        : trimmed;
+                }
+                return DEFAULT_FALLBACK;
+            }
+            return 'Ты помощник на собеседовании.';
+        };
+
+        expect(buildSystemPrompt(currentProfile, customInstructions)).toBe(defaultPrompt);
+    });
+
+    it('custom профиль с пробелами использует fallback', () => {
+        const buildSystemPrompt = (profile, instructions) => {
+            const DEFAULT_FALLBACK = 'Ты ассистент. Дай краткий ответ по контексту разговора на русском.';
+            if (profile === 'custom') {
+                const trimmed = (instructions || '').trim();
+                return trimmed.length > 0 ? trimmed : DEFAULT_FALLBACK;
+            }
+            return 'default';
+        };
+
+        expect(buildSystemPrompt('custom', '   ')).toBe('Ты ассистент. Дай краткий ответ по контексту разговора на русском.');
+        expect(buildSystemPrompt('custom', '\n\t')).toBe('Ты ассистент. Дай краткий ответ по контексту разговора на русском.');
+    });
+
+    it('custom профиль обрезает длинные инструкции', () => {
+        const MAX_PROMPT_LENGTH = 4000;
+        const longInstructions = 'A'.repeat(5000);
+
+        const buildSystemPrompt = (profile, instructions) => {
+            if (profile === 'custom') {
+                const trimmed = (instructions || '').trim();
+                if (trimmed.length > 0) {
+                    return trimmed.length > MAX_PROMPT_LENGTH
+                        ? trimmed.substring(0, MAX_PROMPT_LENGTH)
+                        : trimmed;
+                }
+            }
+            return 'default';
+        };
+
+        const result = buildSystemPrompt('custom', longInstructions);
+        expect(result.length).toBe(MAX_PROMPT_LENGTH);
+        expect(result).toBe('A'.repeat(4000));
+    });
+});
+
+describe('Контекстное окно и maxContextChars', () => {
+    // Эмуляция buildContext из app.js
+    const buildContext = (items, contextWindowSize, maxContextChars) => {
+        const sliced = items.slice(-contextWindowSize);
+        let totalChars = 0;
+        const result = [];
+
+        for (let i = sliced.length - 1; i >= 0; i--) {
+            const item = sliced[i];
+            if (totalChars + item.length <= maxContextChars) {
+                result.unshift(item);
+                totalChars += item.length;
+            } else {
+                break;
+            }
         }
+        return result;
+    };
 
-        expect(result).toBe(defaultPrompt);
+    it('должен ограничивать по размеру окна', () => {
+        const items = ['a', 'b', 'c', 'd', 'e', 'f', 'g'];
+        const result = buildContext(items, 5, 10000);
+        expect(result).toEqual(['c', 'd', 'e', 'f', 'g']);
+    });
+
+    it('должен ограничивать по maxContextChars', () => {
+        const items = ['aaaaa', 'bbbbb', 'ccccc', 'ddddd'];
+        const result = buildContext(items, 10, 12);
+        // С конца: ddddd(5) + ccccc(5) = 10, добавляем bbbbb => 15 > 12, стоп
+        expect(result).toEqual(['ccccc', 'ddddd']);
+    });
+
+    it('должен сохранять последние реплики при обрезке', () => {
+        const items = ['длинная фраза номер один', 'короткая', 'последняя'];
+        const result = buildContext(items, 10, 20);
+        // последняя(9) + короткая(8) = 17, добавляем длинную => 17+24 > 20, стоп
+        expect(result).toEqual(['короткая', 'последняя']);
+    });
+
+    it('должен возвращать пустой массив если ничего не влезает', () => {
+        const items = ['очень длинная строка'];
+        const result = buildContext(items, 10, 5);
+        expect(result).toEqual([]);
+    });
+});
+
+describe('Настройки maxTokens и temperature', () => {
+    // Эмуляция saveSettings/loadSettings логики
+    const saveSettings = (storage, newSettings) => {
+        const settings = storage['live-hints-settings']
+            ? JSON.parse(storage['live-hints-settings'])
+            : {};
+        Object.assign(settings, newSettings);
+        storage['live-hints-settings'] = JSON.stringify(settings);
+    };
+
+    const loadSettings = (storage) => {
+        return storage['live-hints-settings']
+            ? JSON.parse(storage['live-hints-settings'])
+            : {};
+    };
+
+    it('maxTokens должен сохраняться', () => {
+        const storage = {};
+        saveSettings(storage, { maxTokens: 300 });
+        const loaded = loadSettings(storage);
+        expect(loaded.maxTokens).toBe(300);
+    });
+
+    it('temperature должен сохраняться', () => {
+        const storage = {};
+        saveSettings(storage, { temperature: 0.7 });
+        const loaded = loadSettings(storage);
+        expect(loaded.temperature).toBe(0.7);
+    });
+
+    it('настройки должны применяться при формировании body fetch', () => {
+        const maxTokens = 250;
+        const temperature = 0.5;
+
+        const body = JSON.stringify({
+            text: 'тест',
+            context: [],
+            system_prompt: 'промпт',
+            profile: 'custom',
+            max_tokens: maxTokens,
+            temperature: temperature
+        });
+
+        const parsed = JSON.parse(body);
+        expect(parsed.max_tokens).toBe(250);
+        expect(parsed.temperature).toBe(0.5);
+    });
+
+    it('contextWindowSize должен сохраняться', () => {
+        const storage = {};
+        saveSettings(storage, { contextWindowSize: 15 });
+        const loaded = loadSettings(storage);
+        expect(loaded.contextWindowSize).toBe(15);
+    });
+
+    it('maxContextChars должен сохраняться', () => {
+        const storage = {};
+        saveSettings(storage, { maxContextChars: 4000 });
+        const loaded = loadSettings(storage);
+        expect(loaded.maxContextChars).toBe(4000);
+    });
+});
+
+describe('formatLatency', () => {
+    const formatLatency = (latencyMs) => {
+        if (latencyMs == null || latencyMs === undefined) return '';
+        const seconds = latencyMs / 1000;
+        return `${seconds.toFixed(1)}s`;
+    };
+
+    it('должен форматировать миллисекунды в секунды', () => {
+        expect(formatLatency(1000)).toBe('1.0s');
+        expect(formatLatency(1500)).toBe('1.5s');
+        expect(formatLatency(2500)).toBe('2.5s');
+    });
+
+    it('должен показывать десятые для значений < 1s', () => {
+        expect(formatLatency(500)).toBe('0.5s');
+        expect(formatLatency(100)).toBe('0.1s');
+        expect(formatLatency(50)).toBe('0.1s'); // округление
+    });
+
+    it('должен возвращать пустую строку для null/undefined', () => {
+        expect(formatLatency(null)).toBe('');
+        expect(formatLatency(undefined)).toBe('');
+    });
+
+    it('должен корректно форматировать большие значения', () => {
+        expect(formatLatency(10000)).toBe('10.0s');
+        expect(formatLatency(15500)).toBe('15.5s');
     });
 });
