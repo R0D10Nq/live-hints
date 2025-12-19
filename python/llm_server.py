@@ -34,7 +34,8 @@ HTTP_PORT = 8766
 OLLAMA_URL = os.getenv('OLLAMA_URL', 'http://localhost:11434')
 # Realtime профиль: qwen2.5:7b - быстрая и качественная
 # Quality профиль: qwen2.5:14b - медленнее но лучше
-DEFAULT_MODEL = os.getenv('OLLAMA_MODEL', 'qwen2.5:7b')
+# ставлю gpt-oss:20b заебал этот квен
+DEFAULT_MODEL = os.getenv('OLLAMA_MODEL', 'gpt-oss:20b')
 
 # Системный промпт - КОРОТКИЙ для скорости
 SYSTEM_PROMPT = """Ты ассистент. Дай 1-2 коротких ответа по контексту разговора. Отвечай кратко, по делу, на русском."""
@@ -84,6 +85,8 @@ class HintRequest(BaseModel):
     stream: bool = False
     system_prompt: Optional[str] = None
     profile: Optional[str] = None
+    max_tokens: Optional[int] = 200  # 50..500
+    temperature: Optional[float] = 0.3  # 0.0..1.0
 
 
 class HintResponse(BaseModel):
@@ -106,14 +109,20 @@ class OllamaClient:
         except:
             return False
     
-    def generate(self, text: str, context: list = None, system_prompt: str = None) -> str:
+    def generate(self, text: str, context: list = None, system_prompt: str = None, 
+                 max_tokens: int = 200, temperature: float = 0.3) -> str:
         """Синхронная генерация подсказки"""
         self.metrics.reset()
         self.metrics.request_started()
         
+        # Валидация параметров
+        max_tokens = max(50, min(500, max_tokens or 200))
+        temperature = max(0.0, min(1.0, temperature or 0.3))
+        
         # Используем переданный system_prompt или дефолтный
         prompt = system_prompt if system_prompt else SYSTEM_PROMPT
         logger.info(f'[LLM] System prompt: {prompt[:100]}...')
+        logger.info(f'[LLM] max_tokens={max_tokens}, temperature={temperature}')
         
         messages = [{'role': 'system', 'content': prompt}]
         
@@ -132,8 +141,8 @@ class OllamaClient:
                     'messages': messages,
                     'stream': False,
                     'options': {
-                        'temperature': 0.3,
-                        'num_predict': 500,  # Увеличено для полных ответов
+                        'temperature': temperature,
+                        'num_predict': max_tokens,
                         'top_p': 0.9
                     }
                 },
@@ -145,9 +154,69 @@ class OllamaClient:
             
             if resp.status_code == 200:
                 data = resp.json()
-                hint = data.get('message', {}).get('content', '')
+                
+                # ===== DEBUG PHASE 1: RAW RESPONSE =====
+                logger.info(f'[DEBUG-RAW] Ollama response keys: {list(data.keys())}')
+                logger.info(f'[DEBUG-RAW] Full response: {str(data)[:800]}')
+                
+                # Проверяем все возможные поля
+                message_obj = data.get('message', {})
+                logger.info(f'[DEBUG-RAW] message object: {message_obj}')
+                
+                # Ollama /api/chat возвращает {"message": {"role": "assistant", "content": "..."}}
+                # Некоторые модели (thinking models) возвращают content пустым, а текст в thinking
+                hint = ''
+                if isinstance(message_obj, dict):
+                    hint = message_obj.get('content', '')
+                    logger.info(f'[DEBUG-EXTRACT] From message.content: len={len(hint)}, value="{hint[:200]}"')
+                    
+                    # Если content пустой, пробуем взять из thinking (для thinking models)
+                    if not hint and 'thinking' in message_obj:
+                        thinking_text = message_obj.get('thinking', '')
+                        logger.info(f'[DEBUG-EXTRACT] Found thinking field, len={len(thinking_text)}')
+                        # Извлекаем финальный ответ из thinking (обычно после "So we can say:" или в конце)
+                        if thinking_text:
+                            # Пробуем найти цитату с ответом
+                            import re
+                            # Ищем паттерны типа: "Привет! Чем могу помочь?"
+                            quotes = re.findall(r'"([^"]{5,})"', thinking_text)
+                            if quotes:
+                                # Берём последнюю цитату (обычно это финальный ответ)
+                                hint = quotes[-1]
+                                logger.info(f'[DEBUG-EXTRACT] Extracted from thinking quotes: "{hint[:100]}"')
+                            else:
+                                # Если цитат нет, берём последние 2 предложения из thinking
+                                sentences = [s.strip() for s in thinking_text.replace('\n', ' ').split('.') if s.strip()]
+                                if sentences:
+                                    hint = '. '.join(sentences[-2:]) + '.'
+                                    logger.info(f'[DEBUG-EXTRACT] Extracted last sentences from thinking: "{hint[:100]}"')
+                
+                # Альтернативные поля
+                if not hint:
+                    hint = data.get('response', '')
+                    if hint:
+                        logger.info(f'[DEBUG-EXTRACT] From response field: len={len(hint)}')
+                if not hint:
+                    hint = data.get('content', '')
+                    if hint:
+                        logger.info(f'[DEBUG-EXTRACT] From content field: len={len(hint)}')
+                if not hint and 'choices' in data:
+                    choices = data.get('choices', [])
+                    if choices:
+                        hint = choices[0].get('message', {}).get('content', '')
+                        if hint:
+                            logger.info(f'[DEBUG-EXTRACT] From choices[0].message.content: len={len(hint)}')
+                
                 stats = self.metrics.get_stats()
-                logger.info(f'[LLM] Подсказка за {stats["total_ms"]}ms: {hint[:50]}...')
+                
+                # ===== DEBUG PHASE 2: FINAL HINT =====
+                logger.info(f'[DEBUG-HINT] Final hint: len={len(hint)}, stripped_len={len(hint.strip())}')
+                logger.info(f'[DEBUG-HINT] Content: "{hint[:300]}"')
+                logger.info(f'[LLM] Подсказка за {stats["total_ms"]}ms, len={len(hint)}')
+                
+                if not hint.strip():
+                    logger.warning(f'[DEBUG-WARN] hint пустой! raw_keys={list(data.keys())}, message_obj={message_obj}')
+                
                 return hint
             else:
                 logger.error(f'[LLM] Ollama ошибка: {resp.status_code}')
@@ -159,12 +228,22 @@ class OllamaClient:
             logger.error(f'[LLM] Ошибка: {e}')
             return f'Ошибка: {e}'
     
-    async def generate_stream(self, text: str, context: list = None) -> AsyncGenerator[str, None]:
+    async def generate_stream(self, text: str, context: list = None, system_prompt: str = None,
+                              max_tokens: int = 200, temperature: float = 0.3) -> AsyncGenerator[str, None]:
         """Streaming генерация подсказки"""
         self.metrics.reset()
         self.metrics.request_started()
         
-        messages = [{'role': 'system', 'content': SYSTEM_PROMPT}]
+        # Валидация параметров
+        max_tokens = max(50, min(500, max_tokens or 200))
+        temperature = max(0.0, min(1.0, temperature or 0.3))
+        
+        # Используем переданный system_prompt или дефолтный
+        prompt = system_prompt if system_prompt else SYSTEM_PROMPT
+        logger.info(f'[LLM Stream] System prompt: {prompt[:100]}...')
+        logger.info(f'[LLM Stream] max_tokens={max_tokens}, temperature={temperature}')
+        
+        messages = [{'role': 'system', 'content': prompt}]
         
         if context:
             for ctx in context[-3:]:
@@ -180,8 +259,8 @@ class OllamaClient:
                     'messages': messages,
                     'stream': True,
                     'options': {
-                        'temperature': 0.3,
-                        'num_predict': 500,
+                        'temperature': temperature,
+                        'num_predict': max_tokens,
                         'top_p': 0.9
                     }
                 },
@@ -217,11 +296,13 @@ ollama = OllamaClient()
 # ========== ENDPOINTS ==========
 @app.get('/health')
 async def health():
+    """Проверка здоровья сервера"""
     available = ollama._check_available()
     return {
         'status': 'ok' if available else 'ollama_unavailable',
         'model': ollama.model,
-        'ollama_url': ollama.base_url
+        'ollama_url': ollama.base_url,
+        'last_error': None
     }
 
 
@@ -231,9 +312,29 @@ async def generate_hint(request: HintRequest):
     if not request.text or len(request.text.strip()) < 5:
         raise HTTPException(400, 'Текст слишком короткий')
     
-    logger.info(f'[API] profile={request.profile}, system_prompt_len={len(request.system_prompt or "")}')
-    hint = ollama.generate(request.text, request.context, request.system_prompt)
+    logger.info(f'[API] profile={request.profile}, system_prompt_len={len(request.system_prompt or "")}, max_tokens={request.max_tokens}, temperature={request.temperature}')
+    hint = ollama.generate(
+        request.text, 
+        request.context, 
+        request.system_prompt,
+        request.max_tokens,
+        request.temperature
+    )
     stats = ollama.metrics.get_stats()
+    
+    # ===== DEBUG PHASE 3: API RESPONSE =====
+    logger.info(f'[DEBUG-API] Preparing response: hint_len={len(hint)}, hint_type={type(hint).__name__}')
+    logger.info(f'[DEBUG-API] hint value: "{hint[:300] if hint else "<NONE>"}"')
+    
+    response_dict = {
+        'hint': hint,
+        'latency_ms': stats['total_ms'],
+        'ttft_ms': stats['ttft_ms']
+    }
+    logger.info(f'[DEBUG-API] JSON payload: {response_dict}')
+    
+    if not hint or not hint.strip():
+        logger.warning(f'[DEBUG-WARN] Returning empty hint! profile={request.profile}, text_len={len(request.text)}')
     
     return HintResponse(
         hint=hint,
@@ -248,8 +349,16 @@ async def generate_hint_stream(request: HintRequest):
     if not request.text or len(request.text.strip()) < 5:
         raise HTTPException(400, 'Текст слишком короткий')
     
+    logger.info(f'[API Stream] profile={request.profile}, system_prompt_len={len(request.system_prompt or "")}, max_tokens={request.max_tokens}, temperature={request.temperature}')
+    
     async def stream():
-        async for chunk in ollama.generate_stream(request.text, request.context):
+        async for chunk in ollama.generate_stream(
+            request.text, 
+            request.context, 
+            request.system_prompt,
+            request.max_tokens,
+            request.temperature
+        ):
             yield f"data: {json.dumps({'chunk': chunk}, ensure_ascii=False)}\n\n"
         
         stats = ollama.metrics.get_stats()

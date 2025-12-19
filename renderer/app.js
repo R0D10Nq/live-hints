@@ -15,6 +15,30 @@ class LiveHintsApp {
         this.lastContextHash = '';
         this.lastHintText = '';
         this.lastTranscriptText = '';
+        this.pinnedHintText = '';
+
+        // UI режимы
+        this.compactMode = false;
+        this.focusMode = false;
+
+        // Настройки контекста и LLM
+        this.contextWindowSize = 10;  // 5..20
+        this.maxContextChars = 3000;  // 2000..6000
+        this.maxTokens = 200;         // 50..500
+        this.temperature = 0.3;       // 0.0..1.0
+        this.debugMode = false;
+
+        // Метрики runtime
+        this.metrics = {
+            t_audio_in: null,
+            t_transcript_last: null,
+            t_hint_request_start: null,
+            t_hint_response: null,
+            t_hint_done: null,
+            stt_latency_ms: null,
+            llm_client_latency_ms: null,
+            llm_server_latency_ms: null
+        };
 
         this.elements = {
             btnToggle: document.getElementById('btn-toggle'),
@@ -48,7 +72,32 @@ class LiveHintsApp {
             fontTranscript: document.getElementById('font-transcript'),
             fontTranscriptValue: document.getElementById('font-transcript-value'),
             fontHints: document.getElementById('font-hints'),
-            fontHintsValue: document.getElementById('font-hints-value')
+            fontHintsValue: document.getElementById('font-hints-value'),
+            // Новые элементы для этапа 2/3
+            contextWindowSize: document.getElementById('context-window-size'),
+            contextWindowSizeValue: document.getElementById('context-window-size-value'),
+            maxContextChars: document.getElementById('max-context-chars'),
+            maxContextCharsValue: document.getElementById('max-context-chars-value'),
+            maxTokens: document.getElementById('max-tokens'),
+            maxTokensValue: document.getElementById('max-tokens-value'),
+            temperature: document.getElementById('temperature'),
+            temperatureValue: document.getElementById('temperature-value'),
+            debugMode: document.getElementById('debug-mode'),
+            btnHealthCheck: document.getElementById('btn-health-check'),
+            metricsPanel: document.getElementById('metrics-panel'),
+            metricsSttLatency: document.getElementById('metrics-stt-latency'),
+            metricsLlmLatency: document.getElementById('metrics-llm-latency'),
+            // Новые элементы UI/UX
+            btnCompactToggle: document.getElementById('btn-compact-toggle'),
+            btnFocusToggle: document.getElementById('btn-focus-toggle'),
+            btnSettingsToggle: document.getElementById('btn-settings-toggle'),
+            settingsDrawer: document.getElementById('settings-drawer'),
+            btnExitFocus: document.getElementById('btn-exit-focus'),
+            btnPinHint: document.getElementById('btn-pin-hint'),
+            btnCopyLast: document.getElementById('btn-copy-last'),
+            btnClearHints: document.getElementById('btn-clear-hints'),
+            pinnedHintContainer: document.getElementById('pinned-hint-container'),
+            pinnedHintText: document.getElementById('pinned-hint-text')
         };
 
         this.init();
@@ -86,17 +135,21 @@ class LiveHintsApp {
         });
 
         // Смена профиля
-        this.elements.aiProfile.addEventListener('change', (e) => {
-            this.currentProfile = e.target.value;
-            this.toggleCustomInstructions();
-            this.saveSettings({ aiProfile: e.target.value });
-        });
+        if (this.elements.aiProfile) {
+            this.elements.aiProfile.addEventListener('change', (e) => {
+                this.currentProfile = e.target.value;
+                this.toggleCustomInstructions();
+                this.saveSettings({ aiProfile: e.target.value });
+            });
+        }
 
         // Пользовательские инструкции
-        this.elements.customInstructions.addEventListener('input', (e) => {
-            this.customInstructions = e.target.value;
-            this.saveSettings({ customInstructions: e.target.value });
-        });
+        if (this.elements.customInstructions) {
+            this.elements.customInstructions.addEventListener('input', (e) => {
+                this.customInstructions = e.target.value;
+                this.saveSettings({ customInstructions: e.target.value });
+            });
+        }
 
         // Авто-подсказки
         this.elements.autoHints.addEventListener('change', (e) => {
@@ -137,6 +190,122 @@ class LiveHintsApp {
             document.documentElement.style.setProperty('--font-hints', `${value}px`);
             this.saveSettings({ fontHints: value });
         });
+
+        // Расширенные настройки: контекст и LLM
+        if (this.elements.contextWindowSize) {
+            this.elements.contextWindowSize.addEventListener('input', (e) => {
+                const value = parseInt(e.target.value);
+                this.contextWindowSize = value;
+                if (this.elements.contextWindowSizeValue) {
+                    this.elements.contextWindowSizeValue.textContent = value;
+                }
+                this.saveSettings({ contextWindowSize: value });
+            });
+        }
+
+        if (this.elements.maxContextChars) {
+            this.elements.maxContextChars.addEventListener('input', (e) => {
+                const value = parseInt(e.target.value);
+                this.maxContextChars = value;
+                if (this.elements.maxContextCharsValue) {
+                    this.elements.maxContextCharsValue.textContent = value;
+                }
+                this.saveSettings({ maxContextChars: value });
+            });
+        }
+
+        if (this.elements.maxTokens) {
+            this.elements.maxTokens.addEventListener('input', (e) => {
+                const value = parseInt(e.target.value);
+                this.maxTokens = value;
+                if (this.elements.maxTokensValue) {
+                    this.elements.maxTokensValue.textContent = value;
+                }
+                this.saveSettings({ maxTokens: value });
+            });
+        }
+
+        if (this.elements.temperature) {
+            this.elements.temperature.addEventListener('input', (e) => {
+                const value = parseInt(e.target.value) / 10; // 0-10 -> 0.0-1.0
+                this.temperature = value;
+                if (this.elements.temperatureValue) {
+                    this.elements.temperatureValue.textContent = value.toFixed(1);
+                }
+                this.saveSettings({ temperature: value });
+            });
+        }
+
+        if (this.elements.debugMode) {
+            this.elements.debugMode.addEventListener('change', (e) => {
+                this.debugMode = e.target.checked;
+                this.toggleMetricsPanel();
+                this.saveSettings({ debugMode: e.target.checked });
+            });
+        }
+
+        if (this.elements.btnHealthCheck) {
+            this.elements.btnHealthCheck.addEventListener('click', () => {
+                this.checkHealth();
+            });
+        }
+
+        // Settings drawer toggle
+        if (this.elements.btnSettingsToggle) {
+            this.elements.btnSettingsToggle.addEventListener('click', () => {
+                this.toggleSettingsDrawer();
+            });
+        }
+
+        // Compact mode toggle
+        if (this.elements.btnCompactToggle) {
+            this.elements.btnCompactToggle.addEventListener('click', () => {
+                this.toggleCompactMode();
+            });
+        }
+
+        // Focus mode toggle
+        if (this.elements.btnFocusToggle) {
+            this.elements.btnFocusToggle.addEventListener('click', () => {
+                this.toggleFocusMode();
+            });
+        }
+
+        // Exit focus mode
+        if (this.elements.btnExitFocus) {
+            this.elements.btnExitFocus.addEventListener('click', () => {
+                this.toggleFocusMode();
+            });
+        }
+
+        // Pin hint
+        if (this.elements.btnPinHint) {
+            this.elements.btnPinHint.addEventListener('click', () => {
+                this.pinLastHint();
+            });
+        }
+
+        // Copy last hint
+        if (this.elements.btnCopyLast) {
+            this.elements.btnCopyLast.addEventListener('click', () => {
+                this.copyLastHint();
+            });
+        }
+
+        // Clear hints
+        if (this.elements.btnClearHints) {
+            this.elements.btnClearHints.addEventListener('click', () => {
+                this.clearHints();
+            });
+        }
+
+        // Clear transcript
+        const btnClearTranscript = document.getElementById('btn-clear-transcript');
+        if (btnClearTranscript) {
+            btnClearTranscript.addEventListener('click', () => {
+                this.clearTranscript();
+            });
+        }
 
         // Хоткеи
         document.addEventListener('keydown', (e) => this.handleHotkeys(e));
@@ -222,10 +391,14 @@ class LiveHintsApp {
 
         if (this.isPaused) {
             this.updateStatus('paused');
-            this.elements.btnPause.textContent = 'Продолжить';
+            if (this.elements.btnPause) {
+                this.elements.btnPause.textContent = 'Продолжить';
+            }
         } else {
             this.updateStatus('listening');
-            this.elements.btnPause.textContent = 'Пауза';
+            if (this.elements.btnPause) {
+                this.elements.btnPause.textContent = 'Пауза';
+            }
         }
     }
 
@@ -238,8 +411,10 @@ class LiveHintsApp {
             this.clearFeeds();
 
             // Показываем кнопку паузы
-            this.elements.btnPause.classList.remove('hidden');
-            this.elements.btnPause.textContent = 'Пауза';
+            if (this.elements.btnPause) {
+                this.elements.btnPause.classList.remove('hidden');
+                this.elements.btnPause.textContent = 'Пауза';
+            }
 
             // Создаём новую сессию
             this.currentSessionId = this.generateSessionId();
@@ -357,63 +532,109 @@ class LiveHintsApp {
     }
 
     async requestHint(transcriptText) {
-        // Накапливаем контекст ВСЕГДА
+        // Накапливаем контекст с учётом окна
         this.transcriptContext.push(transcriptText);
-        if (this.transcriptContext.length > 5) {
-            this.transcriptContext = this.transcriptContext.slice(-5);
+        if (this.transcriptContext.length > this.contextWindowSize) {
+            this.transcriptContext = this.transcriptContext.slice(-this.contextWindowSize);
         }
 
+        // Формируем контекст с ограничением по символам
+        const context = this.buildContext();
+
         // Дедуп запросов: проверяем hash контекста
-        const contextHash = this.transcriptContext.join('|');
+        const contextHash = context.join('|');
         if (this.lastContextHash === contextHash) {
-            console.log('[LLM] Дубликат контекста, пропускаем');
+            if (this.debugMode) console.log('[LLM] Дубликат контекста, пропускаем');
             return;
         }
 
         // Защита от множественных запросов
         if (this.hintRequestPending) {
-            console.log('[LLM] Запрос уже в процессе, накоплен контекст');
+            if (this.debugMode) console.log('[LLM] Запрос уже в процессе, накоплен контекст');
             return;
         }
 
         this.hintRequestPending = true;
         this.lastContextHash = contextHash;
-        const startTime = performance.now();
+        this.metrics.t_hint_request_start = performance.now();
+        const startTime = this.metrics.t_hint_request_start;
 
         // Собираем system prompt с учётом профиля
         const systemPrompt = this.buildSystemPrompt();
 
-        console.log(`[LLM] Запрос: profile=${this.currentProfile}, customInstructions.len=${this.customInstructions.length}`);
-        console.log(`[LLM] System prompt preview: ${systemPrompt.substring(0, 200)}...`);
+        // Диагностика: логируем текущие настройки и prompt
+        const savedSettings = JSON.parse(localStorage.getItem('live-hints-settings') || '{}');
+        console.log(`[LLM] Запрос: profile=${this.currentProfile}, savedProfile=${savedSettings.aiProfile || 'не задан'}`);
+        console.log(`[LLM] customInstructions.len=${(this.customInstructions || '').length}, system_prompt.len=${systemPrompt.length}`);
+        console.log(`[LLM] System prompt preview: ${systemPrompt.substring(0, 120)}...`);
+
+        // Debug: расширенная диагностика
+        if (this.debugMode) {
+            console.log(`[LLM Debug] context_len=${context.length}, maxTokens=${this.maxTokens}, temperature=${this.temperature}`);
+        }
 
         try {
             const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 15000);
+            const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 сек для больших моделей
 
             const response = await fetch('http://localhost:8766/hint', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     text: transcriptText,
-                    context: this.transcriptContext,
+                    context: context,
                     system_prompt: systemPrompt,
-                    profile: this.currentProfile
+                    profile: this.currentProfile,
+                    max_tokens: this.maxTokens,
+                    temperature: this.temperature
                 }),
                 signal: controller.signal
             });
 
             clearTimeout(timeoutId);
+            this.metrics.t_hint_response = performance.now();
 
             if (response.ok) {
                 const data = await response.json();
-                const clientLatency = Math.round(performance.now() - startTime);
+                this.metrics.t_hint_done = performance.now();
+                const clientLatency = Math.round(this.metrics.t_hint_done - startTime);
 
-                if (data.hint && data.hint.length > 5) {
-                    console.log(`[LLM] Подсказка за ${clientLatency}ms (server: ${data.latency_ms}ms)`);
-                    this.addHintItem(data.hint, new Date().toISOString(), data.latency_ms);
+                // ===== DEBUG: Full response analysis =====
+                console.log('[DEBUG-UI] Full response object:', data);
+                console.log('[DEBUG-UI] Response analysis:', {
+                    keys: Object.keys(data),
+                    hint_exists: 'hint' in data,
+                    hint_type: typeof data.hint,
+                    hint_value: data.hint,
+                    hint_length: data.hint?.length,
+                    hint_trimmed_length: data.hint?.trim?.()?.length,
+                    latency_ms: data.latency_ms,
+                    ttft_ms: data.ttft_ms
+                });
+
+                // Обновляем метрики (поддержка обоих форматов latency_ms и latencyMs)
+                const serverLatency = data.latency_ms ?? data.latencyMs ?? null;
+                this.metrics.llm_client_latency_ms = clientLatency;
+                this.metrics.llm_server_latency_ms = serverLatency;
+                this.updateMetricsPanel();
+
+                // Проверка hint с детальным логированием
+                const hintValue = data.hint;
+                const hintTrimmed = hintValue?.trim?.() || '';
+                console.log(`[DEBUG-UI] Hint check: raw="${hintValue}", trimmed="${hintTrimmed}", len=${hintTrimmed.length}`);
+
+                if (hintTrimmed.length > 0) {
+                    console.log(`[LLM] Подсказка за ${this.formatLatency(clientLatency)} (server: ${this.formatLatency(serverLatency)})`);
+                    this.addHintItem(hintTrimmed, new Date().toISOString(), serverLatency);
+                } else {
+                    // Подсказка пустая - уведомляем пользователя
+                    console.warn('[DEBUG-UI] EMPTY HINT! Full data:', JSON.stringify(data));
+                    this.showToast('LLM вернул пустой ответ', 'warning');
                 }
             } else {
-                console.error('[LLM] Ошибка:', response.status);
+                const errorText = await response.text().catch(() => 'Не удалось прочитать ответ');
+                console.error(`[LLM] Ошибка ${response.status}: ${errorText.substring(0, 300)}`);
+                this.showError(`LLM ошибка ${response.status}`);
             }
         } catch (error) {
             if (error.name === 'AbortError') {
@@ -435,26 +656,39 @@ class LiveHintsApp {
 
         const config = statusMap[status] || statusMap.paused;
 
-        this.elements.statusIndicator.className = `status-indicator ${config.class}`;
-        this.elements.statusText.textContent = config.text;
+        if (this.elements.statusIndicator) {
+            this.elements.statusIndicator.className = `status-indicator ${config.class}`;
+        }
+        if (this.elements.statusText) {
+            this.elements.statusText.textContent = config.text;
+        }
     }
 
     updateToggleButton() {
         const btn = this.elements.btnToggle;
+        if (!btn) return;
+
+        const icon = btn.querySelector('.btn-icon');
+        const text = btn.querySelector('.btn-text');
+
         if (this.isRunning) {
             btn.classList.add('active');
-            btn.querySelector('.btn-icon').textContent = '⏹';
-            btn.querySelector('.btn-text').textContent = 'Стоп';
+            if (icon) icon.textContent = '⏹';
+            if (text) text.textContent = 'Стоп';
         } else {
             btn.classList.remove('active');
-            btn.querySelector('.btn-icon').textContent = '▶';
-            btn.querySelector('.btn-text').textContent = 'Старт';
+            if (icon) icon.textContent = '▶';
+            if (text) text.textContent = 'Старт';
         }
     }
 
     clearFeeds() {
-        this.elements.transcriptFeed.innerHTML = '';
-        this.elements.hintsFeed.innerHTML = '';
+        if (this.elements.transcriptFeed) {
+            this.elements.transcriptFeed.innerHTML = '';
+        }
+        if (this.elements.hintsFeed) {
+            this.elements.hintsFeed.innerHTML = '';
+        }
     }
 
     addTranscriptItem(text, timestamp, latencyMs = null) {
@@ -487,8 +721,8 @@ class LiveHintsApp {
         const item = document.createElement('div');
         item.className = 'feed-item';
 
-        // Показываем latency если есть
-        const latencyBadge = latencyMs ? `<span class="latency-badge">${latencyMs}ms</span>` : '';
+        // Показываем latency если есть (в секундах)
+        const latencyBadge = latencyMs ? `<span class="latency-badge">${this.formatLatency(latencyMs)}</span>` : '';
 
         item.innerHTML = `
       <div class="feed-item-time">${this.formatTime(timestamp)}${latencyBadge}</div>
@@ -506,6 +740,13 @@ class LiveHintsApp {
             minute: '2-digit',
             second: '2-digit'
         });
+    }
+
+    // Форматирование latency в секундах
+    formatLatency(latencyMs) {
+        if (latencyMs == null || latencyMs === undefined) return '';
+        const seconds = latencyMs / 1000;
+        return `${seconds.toFixed(1)}s`;
     }
 
     escapeHtml(text) {
@@ -640,6 +881,8 @@ class LiveHintsApp {
 
     // Переключение видимости кастомных инструкций
     toggleCustomInstructions() {
+        if (!this.elements.customInstructionsContainer) return;
+
         if (this.currentProfile === 'custom') {
             this.elements.customInstructionsContainer.classList.remove('hidden');
         } else {
@@ -647,21 +890,225 @@ class LiveHintsApp {
         }
     }
 
-    // Сборка system prompt с учётом профиля
-    buildSystemPrompt() {
-        const profiles = {
-            job_interview_ru: 'Ты помощник на собеседовании. Давай краткие, полезные подсказки по техническим вопросам. Отвечай на русском, кратко и по делу.',
-            custom: this.customInstructions || 'Ты ассистент. Дай краткий ответ по контексту разговора.'
-        };
+    // Построение контекста с ограничением по символам
+    buildContext() {
+        const items = this.transcriptContext.slice(-this.contextWindowSize);
+        let totalChars = 0;
+        const result = [];
 
-        const basePrompt = profiles[this.currentProfile] || profiles.job_interview_ru;
-
-        // Для custom профиля добавляем инструкции пользователя
-        if (this.currentProfile === 'custom' && this.customInstructions) {
-            return this.customInstructions;
+        // Идём с конца, сохраняя последние реплики
+        for (let i = items.length - 1; i >= 0; i--) {
+            const item = items[i];
+            if (totalChars + item.length <= this.maxContextChars) {
+                result.unshift(item);
+                totalChars += item.length;
+            } else {
+                break;
+            }
         }
 
-        return basePrompt;
+        return result;
+    }
+
+    // Переключение панели метрик
+    toggleMetricsPanel() {
+        if (!this.elements.metricsPanel) return;
+
+        if (this.debugMode) {
+            this.elements.metricsPanel.classList.remove('hidden');
+            document.body.classList.add('debug-mode');
+        } else {
+            this.elements.metricsPanel.classList.add('hidden');
+            document.body.classList.remove('debug-mode');
+        }
+    }
+
+    // Переключение Settings drawer
+    toggleSettingsDrawer() {
+        if (!this.elements.settingsDrawer) return;
+
+        const isOpen = this.elements.settingsDrawer.classList.toggle('open');
+        if (this.elements.btnSettingsToggle) {
+            this.elements.btnSettingsToggle.classList.toggle('active', isOpen);
+        }
+    }
+
+    // Переключение Compact mode
+    toggleCompactMode() {
+        this.compactMode = !this.compactMode;
+        document.body.classList.toggle('compact-mode', this.compactMode);
+
+        if (this.elements.btnCompactToggle) {
+            this.elements.btnCompactToggle.classList.toggle('active', this.compactMode);
+        }
+
+        this.saveSettings({ compactMode: this.compactMode });
+    }
+
+    // Переключение Focus mode
+    toggleFocusMode() {
+        this.focusMode = !this.focusMode;
+        document.body.classList.toggle('focus-mode', this.focusMode);
+
+        if (this.elements.btnFocusToggle) {
+            this.elements.btnFocusToggle.classList.toggle('active', this.focusMode);
+        }
+
+        this.saveSettings({ focusMode: this.focusMode });
+    }
+
+    // Закрепить последнюю подсказку
+    pinLastHint() {
+        if (!this.lastHintText) {
+            this.showToast('Нет подсказки для закрепления', 'info');
+            return;
+        }
+
+        this.pinnedHintText = this.lastHintText;
+
+        if (this.elements.pinnedHintText) {
+            this.elements.pinnedHintText.textContent = this.pinnedHintText;
+        }
+        if (this.elements.pinnedHintContainer) {
+            this.elements.pinnedHintContainer.classList.remove('hidden');
+        }
+
+        this.showToast('Подсказка закреплена', 'success');
+    }
+
+    // Открепить подсказку
+    unpinHint() {
+        this.pinnedHintText = '';
+        if (this.elements.pinnedHintContainer) {
+            this.elements.pinnedHintContainer.classList.add('hidden');
+        }
+    }
+
+    // Копировать последнюю подсказку в буфер
+    async copyLastHint() {
+        const textToCopy = this.pinnedHintText || this.lastHintText;
+
+        if (!textToCopy) {
+            this.showToast('Нет подсказки для копирования', 'info');
+            return;
+        }
+
+        try {
+            await navigator.clipboard.writeText(textToCopy);
+            this.showToast('Скопировано в буфер', 'success');
+        } catch (error) {
+            console.error('Ошибка копирования:', error);
+            this.showToast('Ошибка копирования', 'error');
+        }
+    }
+
+    // Очистить hints
+    clearHints() {
+        if (this.elements.hintsFeed) {
+            this.elements.hintsFeed.innerHTML = '<p class="placeholder">Подсказки появятся здесь...</p>';
+        }
+        this.lastHintText = '';
+        this.unpinHint();
+    }
+
+    // Очистить transcript
+    clearTranscript() {
+        if (this.elements.transcriptFeed) {
+            this.elements.transcriptFeed.innerHTML = '<p class="placeholder">Ожидание речи...</p>';
+        }
+        this.transcriptContext = [];
+        this.lastTranscriptText = '';
+        this.lastContextHash = '';
+    }
+
+    // Обновление панели метрик
+    updateMetricsPanel() {
+        if (!this.debugMode) return;
+
+        if (this.elements.metricsSttLatency) {
+            this.elements.metricsSttLatency.textContent = this.metrics.stt_latency_ms ?? '-';
+        }
+        if (this.elements.metricsLlmLatency) {
+            const serverMs = this.metrics.llm_server_latency_ms ?? '-';
+            this.elements.metricsLlmLatency.textContent = serverMs;
+        }
+    }
+
+    // Проверка здоровья LLM сервера
+    async checkHealth() {
+        try {
+            const response = await fetch('http://localhost:8766/health', {
+                method: 'GET',
+                timeout: 5000
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                const msg = `LLM: ${data.status}, модель: ${data.model}`;
+                this.showToast(msg, 'success');
+                console.log('[Health]', data);
+            } else {
+                this.showError('LLM сервер недоступен');
+            }
+        } catch (error) {
+            this.showError(`LLM сервер не отвечает: ${error.message}`);
+        }
+    }
+
+    // Показ toast сообщения
+    showToast(message, type = 'info') {
+        // Используем существующий errorToast для простоты
+        if (this.elements.errorMessage) {
+            this.elements.errorMessage.textContent = message;
+        }
+        if (this.elements.errorToast) {
+            this.elements.errorToast.classList.remove('hidden');
+            this.elements.errorToast.style.background = type === 'success' ? 'var(--accent-success)' : '';
+            setTimeout(() => {
+                this.elements.errorToast.classList.add('hidden');
+                this.elements.errorToast.style.background = '';
+            }, 3000);
+        }
+    }
+
+    // Сборка system prompt с учётом профиля
+    buildSystemPrompt() {
+        const MAX_PROMPT_LENGTH = 4000;
+        const DEFAULT_FALLBACK = 'Ты ассистент. Дай краткий ответ по контексту разговора на русском.';
+
+        const profiles = {
+            job_interview_ru: `Ты помощник на собеседовании. Давай краткие, полезные подсказки по техническим вопросам. Отвечай на русском, кратко и по делу.
+
+Ассистент должен отвечать от имени кандидата, придерживаясь единого потока речи; избегать точек между предложениями, когда это возможно. Максимальное разделение — абзацами при смене мысли; преимущественно использовать запятые и переносы строк для выделения тем, имитируя живую речь.
+
+- Все ответы формулируются на русском языке
+- Англицизмы запрещены
+- Допускается только разговорный стиль; избегать шаблонных и штампованных фраз
+- Проявлять живость, непринужденность, использовать обороты, характерные для устной речи
+- Не разрешается дословное повторение одной и той же фразы в похожих ответах
+
+Структура ответа:
+- Первая мысль — краткая вводная
+- Далее описывать логику или шаги через запятую, всё в едином потоке
+- Итоговая фраза
+
+Запрещено упоминать «как ИИ» или «как модель». Не придумывать вымышленных деталей.`
+        };
+
+        // Для custom профиля: нормализуем и валидируем инструкции
+        if (this.currentProfile === 'custom') {
+            const trimmed = (this.customInstructions || '').trim();
+            if (trimmed.length > 0) {
+                // Ограничиваем длину
+                return trimmed.length > MAX_PROMPT_LENGTH
+                    ? trimmed.substring(0, MAX_PROMPT_LENGTH)
+                    : trimmed;
+            }
+            // Пустые инструкции — используем fallback
+            return DEFAULT_FALLBACK;
+        }
+
+        return profiles[this.currentProfile] || profiles.job_interview_ru;
     }
 
     // Ручной запрос подсказки по кнопке
@@ -690,7 +1137,9 @@ class LiveHintsApp {
             }
             if (settings.customInstructions) {
                 this.customInstructions = settings.customInstructions;
-                this.elements.customInstructions.value = settings.customInstructions;
+                if (this.elements.customInstructions) {
+                    this.elements.customInstructions.value = settings.customInstructions;
+                }
             }
             if (settings.autoHints !== undefined) {
                 this.autoHintsEnabled = settings.autoHints;
@@ -713,6 +1162,65 @@ class LiveHintsApp {
                 this.elements.fontHints.value = settings.fontHints;
                 this.elements.fontHintsValue.textContent = `${settings.fontHints}px`;
                 document.documentElement.style.setProperty('--font-hints', `${settings.fontHints}px`);
+            }
+            // Расширенные настройки контекста и LLM
+            if (settings.contextWindowSize !== undefined) {
+                this.contextWindowSize = settings.contextWindowSize;
+                if (this.elements.contextWindowSize) {
+                    this.elements.contextWindowSize.value = settings.contextWindowSize;
+                }
+                if (this.elements.contextWindowSizeValue) {
+                    this.elements.contextWindowSizeValue.textContent = settings.contextWindowSize;
+                }
+            }
+            if (settings.maxContextChars !== undefined) {
+                this.maxContextChars = settings.maxContextChars;
+                if (this.elements.maxContextChars) {
+                    this.elements.maxContextChars.value = settings.maxContextChars;
+                }
+                if (this.elements.maxContextCharsValue) {
+                    this.elements.maxContextCharsValue.textContent = settings.maxContextChars;
+                }
+            }
+            if (settings.maxTokens !== undefined) {
+                this.maxTokens = settings.maxTokens;
+                if (this.elements.maxTokens) {
+                    this.elements.maxTokens.value = settings.maxTokens;
+                }
+                if (this.elements.maxTokensValue) {
+                    this.elements.maxTokensValue.textContent = settings.maxTokens;
+                }
+            }
+            if (settings.temperature !== undefined) {
+                this.temperature = settings.temperature;
+                if (this.elements.temperature) {
+                    this.elements.temperature.value = Math.round(settings.temperature * 10);
+                }
+                if (this.elements.temperatureValue) {
+                    this.elements.temperatureValue.textContent = settings.temperature.toFixed(1);
+                }
+            }
+            if (settings.debugMode !== undefined) {
+                this.debugMode = settings.debugMode;
+                if (this.elements.debugMode) {
+                    this.elements.debugMode.checked = settings.debugMode;
+                }
+                this.toggleMetricsPanel();
+            }
+            // UI режимы
+            if (settings.compactMode) {
+                this.compactMode = true;
+                document.body.classList.add('compact-mode');
+                if (this.elements.btnCompactToggle) {
+                    this.elements.btnCompactToggle.classList.add('active');
+                }
+            }
+            if (settings.focusMode) {
+                this.focusMode = true;
+                document.body.classList.add('focus-mode');
+                if (this.elements.btnFocusToggle) {
+                    this.elements.btnFocusToggle.classList.add('active');
+                }
             }
         } catch {
             // Игнорируем ошибки
