@@ -1,0 +1,61 @@
+"""
+Тесты для классификации вопросов
+"""
+import sys
+import os
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', 'python'))
+
+from classification import classify_question, build_contextual_prompt
+
+
+def test_classify_experience_question():
+    """Тест классификации вопросов про опыт"""
+    assert classify_question('Расскажите о вашем опыте работы с Django') == 'experience'
+    assert classify_question('Какой был ваш последний проект?') == 'experience'
+    assert classify_question('Как вы работали в команде?') == 'experience'
+    assert classify_question('Опишите ситуацию когда вы решили сложную задачу') == 'experience'
+
+
+def test_classify_technical_question():
+    """Тест классификации технических вопросов"""
+    assert classify_question('Что такое декоратор?') == 'technical'
+    assert classify_question('Как работает генератор?') == 'technical'
+    assert classify_question('Объясни разницу между list и tuple') == 'technical'
+    assert classify_question('Какой принцип работы алгоритма быстрой сортировки?') == 'technical'
+
+
+def test_classify_general_question():
+    """Тест классификации общих вопросов"""
+    assert classify_question('Привет!') == 'general'
+    assert classify_question('Спасибо') == 'general'
+    assert classify_question('Понятно') == 'general'
+
+
+def test_build_contextual_prompt_experience():
+    """Тест построения промпта для вопросов про опыт"""
+    context = 'Python разработчик, 3 года опыта'
+    
+    prompt = build_contextual_prompt('experience', context)
+    assert 'опыт кандидата' in prompt.lower()
+    assert context in prompt
+    assert 'проект' in prompt
+    assert 'технологии' in prompt
+
+
+def test_build_contextual_prompt_technical():
+    """Тест построения промпта для технических вопросов"""
+    context = 'Python разработчик, 3 года опыта'
+    
+    prompt = build_contextual_prompt('technical', context)
+    assert 'технический вопрос' in prompt.lower()
+    assert 'резюме' not in prompt.lower() or 'без отсылок' in prompt.lower()
+    assert 'определение' in prompt or 'краткое' in prompt
+
+
+def test_build_contextual_prompt_general():
+    """Тест построения промпта для общих вопросов"""
+    context = 'Python разработчик, 3 года опыта'
+    
+    prompt = build_contextual_prompt('general', context)
+    assert context in prompt
+    assert 'ассистент' in prompt.lower()

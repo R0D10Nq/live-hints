@@ -16,6 +16,9 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
+from prompts import get_system_prompt, get_few_shot_examples
+from classification import classify_question, build_contextual_prompt
+from cache import HintCache
 import uvicorn
 
 # Настройка логирования
@@ -34,11 +37,62 @@ HTTP_PORT = 8766
 OLLAMA_URL = os.getenv('OLLAMA_URL', 'http://localhost:11434')
 # Realtime профиль: qwen2.5:7b - быстрая и качественная
 # Quality профиль: qwen2.5:14b - медленнее но лучше
-# ставлю deepseek-r1:8b заебал этот квен
-DEFAULT_MODEL = os.getenv('OLLAMA_MODEL', 'deepseek-r1:8b')
+DEFAULT_MODEL = os.getenv('OLLAMA_MODEL', 'phi4:latest')
 
-# Системный промпт - КОРОТКИЙ для скорости
-SYSTEM_PROMPT = """Ты ассистент. Дай 1-2 коротких ответа по контексту разговора. Отвечай кратко, по делу, на русском."""
+# функция загрузки контекста
+def load_user_context() -> str:
+    """
+    Загружает контекст пользователя из файла
+    Создай файл: python/user_context.txt
+    """
+    context_path = os.path.join(os.path.dirname(__file__), 'user_context.txt')
+    try:
+        if os.path.exists(context_path):
+            with open(context_path, 'r', encoding='utf-8') as f:
+                return f.read().strip()
+    except Exception as e:
+        logger.warning(f'Не удалось загрузить user_context.txt: {e}')
+    return ''
+
+USER_CONTEXT = load_user_context()
+logger.info(f'[CONTEXT] Загружен контекст: {len(USER_CONTEXT)} символов')
+
+
+# ========== ПОСТРОЕНИЕ MESSAGES ==========
+def build_messages(system_prompt: str, context: list, text: str, few_shot: list = None) -> list:
+    """
+    Строит массив messages для LLM с few-shot примерами и акцентом на текущем вопросе
+    """
+    messages = [{'role': 'system', 'content': system_prompt}]
+    
+    # Few-shot примеры
+    if few_shot:
+        for example in few_shot:
+            messages.append({'role': 'user', 'content': example['user']})
+            messages.append({'role': 'assistant', 'content': example['assistant']})
+    
+    # История контекста (последние 5)
+    if context:
+        for ctx in context[-5:]:
+            messages.append({'role': 'user', 'content': ctx})
+    
+    # ТЕКУЩИЙ ВОПРОС с акцентом
+    messages.append({
+        'role': 'user',
+        'content': (
+            f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n'
+            f'⚠️ ТЕКУЩИЙ ВОПРОС (ответь ТОЛЬКО на него):\n'
+            f'{text}\n'
+            f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━'
+        )
+    })
+    
+    return messages
+
+
+# Глобальный инстанс кэша
+hint_cache = HintCache(maxsize=20)
+
 
 # ========== МЕТРИКИ ==========
 class HintMetrics:
@@ -83,10 +137,9 @@ class HintRequest(BaseModel):
     text: str
     context: Optional[list] = None
     stream: bool = False
-    system_prompt: Optional[str] = None
-    profile: Optional[str] = None
-    max_tokens: Optional[int] = 200  # 50..500
-    temperature: Optional[float] = 0.3  # 0.0..1.0
+    profile: str = 'interview'
+    max_tokens: Optional[int] = 500  # 50..500
+    temperature: Optional[float] = 0.8  # 0.0..1.0
 
 
 class HintResponse(BaseModel):
@@ -110,28 +163,38 @@ class OllamaClient:
             return False
     
     def generate(self, text: str, context: list = None, system_prompt: str = None, 
-                 max_tokens: int = 200, temperature: float = 0.3) -> str:
-        """Синхронная генерация подсказки"""
+                 profile: str = 'interview', max_tokens: int = 500, temperature: float = 0.8) -> str:
+        """Синхронная генерация подсказки с классификацией и few-shot"""
         self.metrics.reset()
         self.metrics.request_started()
         
+        # Проверка кэша
+        cached = hint_cache.get(text, context or [])
+        if cached:
+            self.metrics.first_token()
+            self.metrics.done()
+            return cached
+        
         # Валидация параметров
-        max_tokens = max(50, min(500, max_tokens or 200))
-        temperature = max(0.0, min(1.0, temperature or 0.3))
+        max_tokens = max(50, min(500, max_tokens or 500))
+        temperature = max(0.0, min(1.0, temperature or 0.8))
         
-        # Используем переданный system_prompt или дефолтный
-        prompt = system_prompt if system_prompt else SYSTEM_PROMPT
-        logger.info(f'[LLM] System prompt: {prompt[:100]}...')
+        # Классификация вопроса
+        question_type = classify_question(text)
+        logger.info(f'[CLASSIFY] Type: {question_type}')
+        
+        # Динамический промпт в зависимости от типа
+        system_prompt = build_contextual_prompt(question_type, USER_CONTEXT)
+        
+        # Few-shot примеры
+        few_shot = get_few_shot_examples(profile)
+        
+        # Построение messages
+        messages = build_messages(system_prompt, context or [], text, few_shot)
+        
+        logger.info(f'[LLM] Type: {question_type}, messages: {len(messages)}')
+        logger.info(f'[LLM] System prompt length: {len(system_prompt)} chars')
         logger.info(f'[LLM] max_tokens={max_tokens}, temperature={temperature}')
-        
-        messages = [{'role': 'system', 'content': prompt}]
-        
-        # Добавляем контекст (последние 3 сообщения)
-        if context:
-            for ctx in context[-3:]:
-                messages.append({'role': 'user', 'content': ctx})
-        
-        messages.append({'role': 'user', 'content': f'Разговор: {text}\n\nПодсказка:'})
         
         try:
             resp = requests.post(
@@ -156,24 +219,24 @@ class OllamaClient:
                 data = resp.json()
                 
                 # ===== DEBUG PHASE 1: RAW RESPONSE =====
-                logger.info(f'[DEBUG-RAW] Ollama response keys: {list(data.keys())}')
-                logger.info(f'[DEBUG-RAW] Full response: {str(data)[:800]}')
+                logger.debug(f'[DEBUG-RAW] Ollama response keys: {list(data.keys())}')
+                logger.debug(f'[DEBUG-RAW] Full response: {str(data)[:800]}')
                 
                 # Проверяем все возможные поля
                 message_obj = data.get('message', {})
-                logger.info(f'[DEBUG-RAW] message object: {message_obj}')
+                logger.debug(f'[DEBUG-RAW] message object: {message_obj}')
                 
                 # Ollama /api/chat возвращает {"message": {"role": "assistant", "content": "..."}}
                 # Некоторые модели (thinking models) возвращают content пустым, а текст в thinking
                 hint = ''
                 if isinstance(message_obj, dict):
                     hint = message_obj.get('content', '')
-                    logger.info(f'[DEBUG-EXTRACT] From message.content: len={len(hint)}, value="{hint[:200]}"')
+                    logger.debug(f'[DEBUG-EXTRACT] From message.content: len={len(hint)}, value="{hint[:200]}"')
                     
                     # Если content пустой, пробуем взять из thinking (для thinking models)
                     if not hint and 'thinking' in message_obj:
                         thinking_text = message_obj.get('thinking', '')
-                        logger.info(f'[DEBUG-EXTRACT] Found thinking field, len={len(thinking_text)}')
+                        logger.debug(f'[DEBUG-EXTRACT] Found thinking field, len={len(thinking_text)}')
                         # Извлекаем финальный ответ из thinking (обычно после "So we can say:" или в конце)
                         if thinking_text:
                             # Пробуем найти цитату с ответом
@@ -183,39 +246,43 @@ class OllamaClient:
                             if quotes:
                                 # Берём последнюю цитату (обычно это финальный ответ)
                                 hint = quotes[-1]
-                                logger.info(f'[DEBUG-EXTRACT] Extracted from thinking quotes: "{hint[:100]}"')
+                                logger.debug(f'[DEBUG-EXTRACT] Extracted from thinking quotes: "{hint[:100]}"')
                             else:
                                 # Если цитат нет, берём последние 2 предложения из thinking
                                 sentences = [s.strip() for s in thinking_text.replace('\n', ' ').split('.') if s.strip()]
                                 if sentences:
                                     hint = '. '.join(sentences[-2:]) + '.'
-                                    logger.info(f'[DEBUG-EXTRACT] Extracted last sentences from thinking: "{hint[:100]}"')
+                                    logger.debug(f'[DEBUG-EXTRACT] Extracted last sentences from thinking: "{hint[:100]}"')
                 
                 # Альтернативные поля
                 if not hint:
                     hint = data.get('response', '')
                     if hint:
-                        logger.info(f'[DEBUG-EXTRACT] From response field: len={len(hint)}')
+                        logger.debug(f'[DEBUG-EXTRACT] From response field: len={len(hint)}')
                 if not hint:
                     hint = data.get('content', '')
                     if hint:
-                        logger.info(f'[DEBUG-EXTRACT] From content field: len={len(hint)}')
+                        logger.debug(f'[DEBUG-EXTRACT] From content field: len={len(hint)}')
                 if not hint and 'choices' in data:
                     choices = data.get('choices', [])
                     if choices:
                         hint = choices[0].get('message', {}).get('content', '')
                         if hint:
-                            logger.info(f'[DEBUG-EXTRACT] From choices[0].message.content: len={len(hint)}')
+                            logger.debug(f'[DEBUG-EXTRACT] From choices[0].message.content: len={len(hint)}')
                 
                 stats = self.metrics.get_stats()
                 
                 # ===== DEBUG PHASE 2: FINAL HINT =====
-                logger.info(f'[DEBUG-HINT] Final hint: len={len(hint)}, stripped_len={len(hint.strip())}')
-                logger.info(f'[DEBUG-HINT] Content: "{hint[:300]}"')
+                logger.debug(f'[DEBUG-HINT] Final hint: len={len(hint)}, stripped_len={len(hint.strip())}')
+                logger.debug(f'[DEBUG-HINT] Content: "{hint[:300]}"')
                 logger.info(f'[LLM] Подсказка за {stats["total_ms"]}ms, len={len(hint)}')
                 
                 if not hint.strip():
                     logger.warning(f'[DEBUG-WARN] hint пустой! raw_keys={list(data.keys())}, message_obj={message_obj}')
+                
+                # Сохраняем в кэш
+                if hint.strip():
+                    hint_cache.set(text, context or [], hint)
                 
                 return hint
             else:
@@ -228,28 +295,39 @@ class OllamaClient:
             logger.error(f'[LLM] Ошибка: {e}')
             return f'Ошибка: {e}'
     
-    async def generate_stream(self, text: str, context: list = None, system_prompt: str = None,
-                              max_tokens: int = 200, temperature: float = 0.3) -> AsyncGenerator[str, None]:
-        """Streaming генерация подсказки"""
+    async def generate_stream(self, text: str, context: list = None, profile: str = 'interview',
+                              max_tokens: int = 500, temperature: float = 0.8) -> AsyncGenerator[str, None]:
+        """Streaming генерация подсказки с классификацией"""
         self.metrics.reset()
         self.metrics.request_started()
         
+        # Проверка кэша (для streaming возвращаем целиком если есть)
+        cached = hint_cache.get(text, context or [])
+        if cached:
+            self.metrics.first_token()
+            self.metrics.done()
+            yield cached
+            return
+        
         # Валидация параметров
-        max_tokens = max(50, min(500, max_tokens or 200))
-        temperature = max(0.0, min(1.0, temperature or 0.3))
+        max_tokens = max(50, min(500, max_tokens or 500))
+        temperature = max(0.0, min(1.0, temperature or 0.8))
         
-        # Используем переданный system_prompt или дефолтный
-        prompt = system_prompt if system_prompt else SYSTEM_PROMPT
-        logger.info(f'[LLM Stream] System prompt: {prompt[:100]}...')
+        # Классификация
+        question_type = classify_question(text)
+        logger.info(f'[CLASSIFY Stream] Type: {question_type}')
+        
+        # Динамический промпт
+        system_prompt = build_contextual_prompt(question_type, USER_CONTEXT)
+        
+        # Few-shot
+        few_shot = get_few_shot_examples(profile)
+        
+        # Построение messages
+        messages = build_messages(system_prompt, context or [], text, few_shot)
+        
+        logger.info(f'[LLM Stream] Type: {question_type}, messages: {len(messages)}')
         logger.info(f'[LLM Stream] max_tokens={max_tokens}, temperature={temperature}')
-        
-        messages = [{'role': 'system', 'content': prompt}]
-        
-        if context:
-            for ctx in context[-3:]:
-                messages.append({'role': 'user', 'content': ctx})
-        
-        messages.append({'role': 'user', 'content': f'Разговор: {text}\n\nПодсказка:'})
         
         try:
             resp = requests.post(
@@ -269,6 +347,7 @@ class OllamaClient:
             )
             
             if resp.status_code == 200:
+                accumulated_hint = ''
                 for line in resp.iter_lines():
                     if line:
                         try:
@@ -276,9 +355,13 @@ class OllamaClient:
                             content = data.get('message', {}).get('content', '')
                             if content:
                                 self.metrics.first_token()
+                                accumulated_hint += content
                                 yield content
                             if data.get('done'):
                                 self.metrics.done()
+                                # Сохраняем в кэш
+                                if accumulated_hint.strip():
+                                    hint_cache.set(text, context or [], accumulated_hint)
                                 break
                         except json.JSONDecodeError:
                             pass
@@ -312,26 +395,26 @@ async def generate_hint(request: HintRequest):
     if not request.text or len(request.text.strip()) < 5:
         raise HTTPException(400, 'Текст слишком короткий')
     
-    logger.info(f'[API] profile={request.profile}, system_prompt_len={len(request.system_prompt or "")}, max_tokens={request.max_tokens}, temperature={request.temperature}')
+    logger.info(f'[API] profile={request.profile}, max_tokens={request.max_tokens}, temperature={request.temperature}')
     hint = ollama.generate(
         request.text, 
         request.context, 
-        request.system_prompt,
+        request.profile,
         request.max_tokens,
         request.temperature
     )
     stats = ollama.metrics.get_stats()
     
     # ===== DEBUG PHASE 3: API RESPONSE =====
-    logger.info(f'[DEBUG-API] Preparing response: hint_len={len(hint)}, hint_type={type(hint).__name__}')
-    logger.info(f'[DEBUG-API] hint value: "{hint[:300] if hint else "<NONE>"}"')
+    logger.debug(f'[DEBUG-API] Preparing response: hint_len={len(hint)}, hint_type={type(hint).__name__}')
+    logger.debug(f'[DEBUG-API] hint value: "{hint[:300] if hint else "<NONE>"}"')
     
     response_dict = {
         'hint': hint,
         'latency_ms': stats['total_ms'],
         'ttft_ms': stats['ttft_ms']
     }
-    logger.info(f'[DEBUG-API] JSON payload: {response_dict}')
+    logger.debug(f'[DEBUG-API] JSON payload: {response_dict}')
     
     if not hint or not hint.strip():
         logger.warning(f'[DEBUG-WARN] Returning empty hint! profile={request.profile}, text_len={len(request.text)}')
@@ -345,24 +428,33 @@ async def generate_hint(request: HintRequest):
 
 @app.post('/hint/stream')
 async def generate_hint_stream(request: HintRequest):
-    """Streaming генерация подсказки"""
+    """Streaming генерация подсказки с классификацией и few-shot"""
     if not request.text or len(request.text.strip()) < 5:
         raise HTTPException(400, 'Текст слишком короткий')
     
-    logger.info(f'[API Stream] profile={request.profile}, system_prompt_len={len(request.system_prompt or "")}, max_tokens={request.max_tokens}, temperature={request.temperature}')
+    logger.info(f'[API Stream] profile={request.profile}, max_tokens={request.max_tokens}, temperature={request.temperature}')
+    
+    # Проверка кэша
+    cached = hint_cache.get(request.text, request.context or [])
     
     async def stream():
-        async for chunk in ollama.generate_stream(
-            request.text, 
-            request.context, 
-            request.system_prompt,
-            request.max_tokens,
-            request.temperature
-        ):
-            yield f"data: {json.dumps({'chunk': chunk}, ensure_ascii=False)}\n\n"
-        
-        stats = ollama.metrics.get_stats()
-        yield f"data: {json.dumps({'done': True, 'latency_ms': stats['total_ms'], 'ttft_ms': stats['ttft_ms']}, ensure_ascii=False)}\n\n"
+        if cached:
+            # Возвращаем из кэша целиком
+            yield f"data: {json.dumps({'chunk': cached, 'cached': True}, ensure_ascii=False)}\n\n"
+            yield f"data: {json.dumps({'done': True, 'cached': True, 'latency_ms': 0, 'ttft_ms': 0}, ensure_ascii=False)}\n\n"
+        else:
+            # Streaming генерация
+            async for chunk in ollama.generate_stream(
+                request.text, 
+                request.context,
+                request.profile,
+                request.max_tokens,
+                request.temperature
+            ):
+                yield f"data: {json.dumps({'chunk': chunk}, ensure_ascii=False)}\n\n"
+            
+            stats = ollama.metrics.get_stats()
+            yield f"data: {json.dumps({'done': True, 'latency_ms': stats['total_ms'], 'ttft_ms': stats['ttft_ms']}, ensure_ascii=False)}\n\n"
     
     return StreamingResponse(stream(), media_type='text/event-stream')
 

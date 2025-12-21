@@ -25,7 +25,7 @@ class LiveHintsApp {
         this.contextWindowSize = 20;  // 5..20
         this.maxContextChars = 6000;  // 2000..6000
         this.maxTokens = 500;         // 50..500
-        this.temperature = 0.75;       // 0.0..1.0
+        this.temperature = 0.8;       // 0.0..1.0
         this.debugMode = false;
 
         // Метрики runtime
@@ -583,8 +583,7 @@ class LiveHintsApp {
                 body: JSON.stringify({
                     text: transcriptText,
                     context: context,
-                    system_prompt: systemPrompt,
-                    profile: this.currentProfile,
+                    profile: 'interview',
                     max_tokens: this.maxTokens,
                     temperature: this.temperature
                 }),
@@ -771,8 +770,8 @@ class LiveHintsApp {
         const sessions = this.getSessions();
         sessions.unshift(session);
 
-        // Храним максимум 50 сессий
-        if (sessions.length > 50) {
+        // Храним максимум 999 сессий
+        if (sessions.length > 999) {
             sessions.pop();
         }
 
