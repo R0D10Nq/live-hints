@@ -32,11 +32,11 @@ MODEL_PRIORITY = ['distil-large-v3', 'large-v3', 'medium', 'small']
 DEVICE = 'cuda'
 COMPUTE_TYPE = 'float16'
 
-# Streaming параметры - УПРОЩЕНО
-MIN_CHUNK_SECONDS = 0.5   # Минимальный чанк для транскрипции
-MAX_BUFFER_SECONDS = 8.0  # Максимальный буфер (увеличил до 8 сек)
+# Streaming параметры - оптимизировано для низкой латентности
+MIN_CHUNK_SECONDS = 0.3   # Минимальный чанк для транскрипции (было 0.5)
+MAX_BUFFER_SECONDS = 5.0  # Максимальный буфер (было 8 сек)
 SILENCE_THRESHOLD = 0.01  # RMS порог тишины
-SILENCE_TRIGGER_SEC = 1.5 # Пауза для запуска транскрипции (1.5 сек)
+SILENCE_TRIGGER_SEC = 1.0 # Пауза для запуска транскрипции (было 1.5 сек)
 
 # Стоп-фразы которые нужно фильтровать
 BANNED_PHRASES = [

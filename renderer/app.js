@@ -559,25 +559,19 @@ class LiveHintsApp {
         this.metrics.t_hint_request_start = performance.now();
         const startTime = this.metrics.t_hint_request_start;
 
-        // Собираем system prompt с учётом профиля
-        const systemPrompt = this.buildSystemPrompt();
+        // Показываем spinner/индикатор загрузки
+        this.showHintLoading();
 
-        // Диагностика: логируем текущие настройки и prompt
-        const savedSettings = JSON.parse(localStorage.getItem('live-hints-settings') || '{}');
-        console.log(`[LLM] Запрос: profile=${this.currentProfile}, savedProfile=${savedSettings.aiProfile || 'не задан'}`);
-        console.log(`[LLM] customInstructions.len=${(this.customInstructions || '').length}, system_prompt.len=${systemPrompt.length}`);
-        console.log(`[LLM] System prompt preview: ${systemPrompt.substring(0, 120)}...`);
-
-        // Debug: расширенная диагностика
         if (this.debugMode) {
-            console.log(`[LLM Debug] context_len=${context.length}, maxTokens=${this.maxTokens}, temperature=${this.temperature}`);
+            console.log(`[LLM] Streaming запрос: maxTokens=${this.maxTokens}, temperature=${this.temperature}`);
         }
 
         try {
             const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 сек для больших моделей
+            const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 сек для streaming
 
-            const response = await fetch('http://localhost:8766/hint', {
+            // Используем streaming endpoint
+            const response = await fetch('http://localhost:8766/hint/stream', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -590,59 +584,182 @@ class LiveHintsApp {
                 signal: controller.signal
             });
 
-            clearTimeout(timeoutId);
-            this.metrics.t_hint_response = performance.now();
-
-            if (response.ok) {
-                const data = await response.json();
-                this.metrics.t_hint_done = performance.now();
-                const clientLatency = Math.round(this.metrics.t_hint_done - startTime);
-
-                // ===== DEBUG: Full response analysis =====
-                console.log('[DEBUG-UI] Full response object:', data);
-                console.log('[DEBUG-UI] Response analysis:', {
-                    keys: Object.keys(data),
-                    hint_exists: 'hint' in data,
-                    hint_type: typeof data.hint,
-                    hint_value: data.hint,
-                    hint_length: data.hint?.length,
-                    hint_trimmed_length: data.hint?.trim?.()?.length,
-                    latency_ms: data.latency_ms,
-                    ttft_ms: data.ttft_ms
-                });
-
-                // Обновляем метрики (поддержка обоих форматов latency_ms и latencyMs)
-                const serverLatency = data.latency_ms ?? data.latencyMs ?? null;
-                this.metrics.llm_client_latency_ms = clientLatency;
-                this.metrics.llm_server_latency_ms = serverLatency;
-                this.updateMetricsPanel();
-
-                // Проверка hint с детальным логированием
-                const hintValue = data.hint;
-                const hintTrimmed = hintValue?.trim?.() || '';
-                console.log(`[DEBUG-UI] Hint check: raw="${hintValue}", trimmed="${hintTrimmed}", len=${hintTrimmed.length}`);
-
-                if (hintTrimmed.length > 0) {
-                    console.log(`[LLM] Подсказка за ${this.formatLatency(clientLatency)} (server: ${this.formatLatency(serverLatency)})`);
-                    this.addHintItem(hintTrimmed, new Date().toISOString(), serverLatency);
-                } else {
-                    // Подсказка пустая - уведомляем пользователя
-                    console.warn('[DEBUG-UI] EMPTY HINT! Full data:', JSON.stringify(data));
-                    this.showToast('LLM вернул пустой ответ', 'warning');
-                }
-            } else {
+            if (!response.ok) {
+                clearTimeout(timeoutId);
                 const errorText = await response.text().catch(() => 'Не удалось прочитать ответ');
                 console.error(`[LLM] Ошибка ${response.status}: ${errorText.substring(0, 300)}`);
                 this.showError(`LLM ошибка ${response.status}`);
+                this.hideHintLoading();
+                return;
             }
+
+            // Streaming: читаем SSE чанки
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
+            let accumulatedHint = '';
+            let hintElement = null;
+            let isFirstChunk = true;
+
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+
+                const chunk = decoder.decode(value, { stream: true });
+                const lines = chunk.split('\n');
+
+                for (const line of lines) {
+                    if (!line.startsWith('data: ')) continue;
+
+                    try {
+                        const data = JSON.parse(line.slice(6));
+
+                        if (data.chunk) {
+                            if (isFirstChunk) {
+                                // Первый токен - записываем TTFT
+                                this.metrics.t_hint_response = performance.now();
+                                const ttft = Math.round(this.metrics.t_hint_response - startTime);
+                                if (this.debugMode) console.log(`[LLM] TTFT: ${ttft}ms`);
+
+                                // Скрываем spinner, создаём элемент для подсказки
+                                this.hideHintLoading();
+                                hintElement = this.createStreamingHintElement();
+                                isFirstChunk = false;
+                            }
+
+                            accumulatedHint += data.chunk;
+                            if (hintElement) {
+                                this.updateStreamingHint(hintElement, accumulatedHint);
+                            }
+                        }
+
+                        if (data.done) {
+                            clearTimeout(timeoutId);
+                            this.metrics.t_hint_done = performance.now();
+                            const totalLatency = Math.round(this.metrics.t_hint_done - startTime);
+
+                            // Обновляем метрики
+                            this.metrics.llm_client_latency_ms = totalLatency;
+                            this.metrics.llm_server_latency_ms = data.latency_ms || null;
+                            this.updateMetricsPanel();
+
+                            if (this.debugMode) {
+                                console.log(`[LLM] Streaming завершён: total=${totalLatency}ms, server=${data.latency_ms}ms`);
+                            }
+
+                            // Финализируем подсказку
+                            if (hintElement && accumulatedHint.trim()) {
+                                this.finalizeStreamingHint(hintElement, accumulatedHint, data.latency_ms);
+                                this.lastHintText = accumulatedHint.trim();
+                            } else if (!accumulatedHint.trim()) {
+                                this.hideHintLoading();
+                                this.showToast('LLM вернул пустой ответ', 'warning');
+                            }
+                        }
+                    } catch (parseError) {
+                        if (this.debugMode) console.warn('[LLM] SSE parse error:', parseError);
+                    }
+                }
+            }
+
         } catch (error) {
-            if (error.name === 'AbortError') {
-                console.error('[LLM] Таймаут');
-            } else {
-                console.error('Ошибка получения подсказки:', error);
-            }
+            this.hideHintLoading();
+            const errorMessage = this.getReadableError(error);
+            console.error('[LLM] Ошибка:', errorMessage);
+            this.showError(errorMessage);
         } finally {
             this.hintRequestPending = false;
+        }
+    }
+
+    // Преобразование ошибок в понятные русские сообщения
+    getReadableError(error) {
+        if (error.name === 'AbortError') {
+            return 'Таймаут запроса к LLM (60 сек)';
+        }
+        if (error.message?.includes('fetch') || error.message?.includes('Failed to fetch')) {
+            return 'LLM сервер недоступен (http://localhost:8766)';
+        }
+        if (error.message?.includes('NetworkError') || error.message?.includes('network')) {
+            return 'Ошибка сети. Проверьте подключение.';
+        }
+        if (error.message?.includes('ECONNREFUSED')) {
+            return 'LLM сервер не запущен. Запустите: python python/llm_server.py';
+        }
+        return `Ошибка: ${error.message || 'Неизвестная ошибка'}`;
+    }
+
+    // Показать индикатор загрузки подсказки
+    showHintLoading() {
+        const feed = this.elements.hintsFeed;
+        if (!feed) return;
+
+        // Удаляем placeholder
+        const placeholder = feed.querySelector('.placeholder');
+        if (placeholder) placeholder.remove();
+
+        // Удаляем предыдущий loader если есть
+        const existingLoader = feed.querySelector('.hint-loading');
+        if (existingLoader) existingLoader.remove();
+
+        const loader = document.createElement('div');
+        loader.className = 'feed-item hint-loading';
+        loader.innerHTML = `
+            <div class="feed-item-time">${this.formatTime(new Date().toISOString())}</div>
+            <div class="feed-item-text loading-text">Генерация подсказки...</div>
+        `;
+        feed.appendChild(loader);
+        feed.scrollTop = feed.scrollHeight;
+    }
+
+    // Скрыть индикатор загрузки
+    hideHintLoading() {
+        const feed = this.elements.hintsFeed;
+        if (!feed) return;
+        const loader = feed.querySelector('.hint-loading');
+        if (loader) loader.remove();
+    }
+
+    // Создать элемент для streaming подсказки
+    createStreamingHintElement() {
+        const feed = this.elements.hintsFeed;
+        if (!feed) return null;
+
+        const item = document.createElement('div');
+        item.className = 'feed-item streaming-hint';
+        item.innerHTML = `
+            <div class="feed-item-time">${this.formatTime(new Date().toISOString())}</div>
+            <div class="feed-item-text"></div>
+        `;
+        feed.appendChild(item);
+        feed.scrollTop = feed.scrollHeight;
+        return item;
+    }
+
+    // Обновить streaming подсказку
+    updateStreamingHint(element, text) {
+        if (!element) return;
+        const textEl = element.querySelector('.feed-item-text');
+        if (textEl) {
+            // Используем markdown рендеринг для подсказок
+            textEl.innerHTML = this.renderMarkdown(text);
+        }
+        // Scroll to bottom
+        const feed = this.elements.hintsFeed;
+        if (feed) feed.scrollTop = feed.scrollHeight;
+    }
+
+    // Финализировать streaming подсказку
+    finalizeStreamingHint(element, text, latencyMs) {
+        if (!element) return;
+        element.classList.remove('streaming-hint');
+
+        // Добавляем badge с латентностью
+        const timeEl = element.querySelector('.feed-item-time');
+        if (timeEl && latencyMs) {
+            const badge = document.createElement('span');
+            badge.className = 'latency-badge';
+            badge.textContent = this.formatLatency(latencyMs);
+            timeEl.appendChild(badge);
         }
     }
 
@@ -723,9 +840,13 @@ class LiveHintsApp {
         // Показываем latency если есть (в секундах)
         const latencyBadge = latencyMs ? `<span class="latency-badge">${this.formatLatency(latencyMs)}</span>` : '';
 
+        // Markdown рендеринг только для hints feed
+        const isHintsFeed = feed === this.elements.hintsFeed;
+        const renderedText = isHintsFeed ? this.renderMarkdown(text) : this.escapeHtml(text);
+
         item.innerHTML = `
       <div class="feed-item-time">${this.formatTime(timestamp)}${latencyBadge}</div>
-      <div class="feed-item-text">${this.escapeHtml(text)}</div>
+      <div class="feed-item-text">${renderedText}</div>
     `;
 
         feed.appendChild(item);
@@ -752,6 +873,40 @@ class LiveHintsApp {
         const div = document.createElement('div');
         div.textContent = text;
         return div.innerHTML;
+    }
+
+    // Простой markdown парсер для подсказок
+    renderMarkdown(text) {
+        if (!text) return '';
+
+        let html = this.escapeHtml(text);
+
+        // Жирный текст: **text** или __text__
+        html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+        html = html.replace(/__(.+?)__/g, '<strong>$1</strong>');
+
+        // Курсив: *text* или _text_
+        html = html.replace(/\*(.+?)\*/g, '<em>$1</em>');
+        html = html.replace(/_(.+?)_/g, '<em>$1</em>');
+
+        // Инлайн код: `code`
+        html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
+
+        // Списки: - item или * item
+        html = html.replace(/^[-*]\s+(.+)$/gm, '<li>$1</li>');
+        html = html.replace(/(<li>.*<\/li>\n?)+/g, '<ul>$&</ul>');
+
+        // Нумерованные списки: 1. item
+        html = html.replace(/^\d+\.\s+(.+)$/gm, '<li>$1</li>');
+
+        // Переносы строк
+        html = html.replace(/\n/g, '<br>');
+
+        // Убираем лишние <br> внутри списков
+        html = html.replace(/<\/li><br>/g, '</li>');
+        html = html.replace(/<br><li>/g, '<li>');
+
+        return html;
     }
 
     generateSessionId() {
