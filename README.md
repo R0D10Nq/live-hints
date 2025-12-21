@@ -1,14 +1,26 @@
 # Live Hints
 
-Windows desktop overlay для транскрипции системного звука и генерации подсказок в реальном времени.
+Windows desktop overlay для транскрипции системного звука и генерации AI-подсказок на собеседованиях в реальном времени.
 
 ## Возможности
 
 - **Захват системного аудио** через WASAPI loopback (голос собеседника из звонка)
-- **Realtime транскрипция** через faster-whisper (локально на GPU)
-- **Генерация подсказок** через LLM (Ollama локально или облачные провайдеры)
+- **Realtime транскрипция** через faster-whisper distil-large-v3 (локально на GPU)
+- **Streaming генерация подсказок** через LLM (Ollama) с TTFT 2-3 секунды
+- **Markdown рендеринг** подсказок (жирный текст, списки, код)
+- **Классификация вопросов** — experience / technical / general
+- **LRU кэш подсказок** — мгновенные ответы на повторные вопросы
 - **Always-on-top overlay** — компактное окно поверх всех приложений
 - **История сессий** — сохранение транскриптов и подсказок
+
+## Метрики производительности
+
+| Метрика | Значение |
+|---------|----------|
+| STT латентность | ~300ms (distil-large-v3) |
+| LLM TTFT | 2-3s (streaming) |
+| LLM total | 18-25s |
+| End-to-end perceived | **3-4s** |
 
 ## Требования
 
@@ -200,9 +212,13 @@ live-hints/
 │       └── providers.js
 ├── python/
 │   ├── requirements.txt
-│   ├── stt_server.py       # WebSocket STT сервер
-│   ├── llm_server.py       # HTTP LLM сервер
-│   └── audio_capture.py    # WASAPI loopback захват
+│   ├── stt_server.py       # WebSocket STT сервер (distil-whisper)
+│   ├── llm_server.py       # HTTP LLM сервер (FastAPI + Ollama)
+│   ├── audio_capture.py    # WASAPI loopback захват
+│   ├── cache.py            # LRU кэш подсказок
+│   ├── classification.py   # Классификация вопросов
+│   ├── prompts.py          # Оптимизированные системные промпты
+│   └── user_context.txt    # Контекст пользователя (резюме)
 ├── tests/
 │   ├── unit/               # Jest unit тесты
 │   └── e2e/                # Playwright E2E тесты

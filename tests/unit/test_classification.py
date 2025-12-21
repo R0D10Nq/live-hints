@@ -36,10 +36,10 @@ def test_build_contextual_prompt_experience():
     context = 'Python разработчик, 3 года опыта'
     
     prompt = build_contextual_prompt('experience', context)
-    assert 'опыт кандидата' in prompt.lower()
+    assert 'резюме' in prompt.lower()
     assert context in prompt
-    assert 'проект' in prompt
-    assert 'технологии' in prompt
+    assert 'проект' in prompt.lower()
+    assert 'технологии' in prompt.lower()
 
 
 def test_build_contextual_prompt_technical():
@@ -47,9 +47,10 @@ def test_build_contextual_prompt_technical():
     context = 'Python разработчик, 3 года опыта'
     
     prompt = build_contextual_prompt('technical', context)
-    assert 'технический вопрос' in prompt.lower()
-    assert 'резюме' not in prompt.lower() or 'без отсылок' in prompt.lower()
-    assert 'определение' in prompt or 'краткое' in prompt
+    assert 'технический' in prompt.lower()
+    # Technical промпт НЕ должен содержать резюме пользователя
+    assert context not in prompt
+    assert 'определение' in prompt.lower()
 
 
 def test_build_contextual_prompt_general():
@@ -59,3 +60,20 @@ def test_build_contextual_prompt_general():
     prompt = build_contextual_prompt('general', context)
     assert context in prompt
     assert 'ассистент' in prompt.lower()
+
+
+def test_build_contextual_prompt_short():
+    """Тест что промпты короткие (оптимизация латентности)"""
+    context = 'X' * 2000  # Длинный контекст
+    
+    # Technical должен быть коротким (без контекста)
+    tech_prompt = build_contextual_prompt('technical', context)
+    assert len(tech_prompt) < 300
+    
+    # Experience должен обрезать контекст до 500
+    exp_prompt = build_contextual_prompt('experience', context)
+    assert len(exp_prompt) < 700
+    
+    # General должен обрезать контекст до 300
+    gen_prompt = build_contextual_prompt('general', context)
+    assert len(gen_prompt) < 500

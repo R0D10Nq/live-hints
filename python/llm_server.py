@@ -218,25 +218,21 @@ class OllamaClient:
             if resp.status_code == 200:
                 data = resp.json()
                 
-                # ===== DEBUG PHASE 1: RAW RESPONSE =====
-                logger.debug(f'[DEBUG-RAW] Ollama response keys: {list(data.keys())}')
-                logger.debug(f'[DEBUG-RAW] Full response: {str(data)[:800]}')
-                
                 # Проверяем все возможные поля
                 message_obj = data.get('message', {})
-                logger.debug(f'[DEBUG-RAW] message object: {message_obj}')
+                logger.debug(f'[DEBUG-RAW] message keys: {list(message_obj.keys()) if isinstance(message_obj, dict) else type(message_obj)}')
                 
                 # Ollama /api/chat возвращает {"message": {"role": "assistant", "content": "..."}}
                 # Некоторые модели (thinking models) возвращают content пустым, а текст в thinking
                 hint = ''
                 if isinstance(message_obj, dict):
                     hint = message_obj.get('content', '')
-                    logger.debug(f'[DEBUG-EXTRACT] From message.content: len={len(hint)}, value="{hint[:200]}"')
+                    logger.debug(f'[DEBUG-EXTRACT] content len={len(hint)}')
                     
                     # Если content пустой, пробуем взять из thinking (для thinking models)
                     if not hint and 'thinking' in message_obj:
                         thinking_text = message_obj.get('thinking', '')
-                        logger.debug(f'[DEBUG-EXTRACT] Found thinking field, len={len(thinking_text)}')
+                        logger.debug(f'[DEBUG-EXTRACT] thinking field len={len(thinking_text)}')
                         # Извлекаем финальный ответ из thinking (обычно после "So we can say:" или в конце)
                         if thinking_text:
                             # Пробуем найти цитату с ответом
@@ -272,9 +268,6 @@ class OllamaClient:
                 
                 stats = self.metrics.get_stats()
                 
-                # ===== DEBUG PHASE 2: FINAL HINT =====
-                logger.debug(f'[DEBUG-HINT] Final hint: len={len(hint)}, stripped_len={len(hint.strip())}')
-                logger.debug(f'[DEBUG-HINT] Content: "{hint[:300]}"')
                 logger.info(f'[LLM] Подсказка за {stats["total_ms"]}ms, len={len(hint)}')
                 
                 if not hint.strip():
@@ -397,11 +390,11 @@ async def generate_hint(request: HintRequest):
     
     logger.info(f'[API] profile={request.profile}, max_tokens={request.max_tokens}, temperature={request.temperature}')
     hint = ollama.generate(
-        request.text, 
-        request.context, 
-        request.profile,
-        request.max_tokens,
-        request.temperature
+        text=request.text, 
+        context=request.context, 
+        profile=request.profile,
+        max_tokens=request.max_tokens,
+        temperature=request.temperature
     )
     stats = ollama.metrics.get_stats()
     
