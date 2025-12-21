@@ -45,7 +45,7 @@ class OllamaProvider extends BaseLLMProvider {
     constructor(config = {}) {
         super(config);
         this.baseUrl = config.baseUrl || 'http://localhost:11434';
-        this.model = config.model || 'deepseek-r1:8b';
+        this.model = config.model || 'phi4:latest';
     }
 
     async generateHint(text, context = []) {
@@ -58,7 +58,7 @@ class OllamaProvider extends BaseLLMProvider {
                     messages: this.buildMessages(text, context),
                     stream: false,
                     options: {
-                        temperature: 0.7,
+                        temperature: 0.8,
                         num_predict: 100
                     }
                 })
@@ -105,7 +105,7 @@ class OpenAIProvider extends BaseLLMProvider {
                 model: this.model,
                 messages: this.buildMessages(text, context),
                 max_tokens: 150,
-                temperature: 0.7
+                temperature: 0.8
             })
         });
 
@@ -147,7 +147,7 @@ class GeminiProvider extends BaseLLMProvider {
                     contents: [{ parts: [{ text: prompt }] }],
                     generationConfig: {
                         maxOutputTokens: 150,
-                        temperature: 0.7
+                        temperature: 0.8
                     }
                 })
             }
@@ -189,7 +189,7 @@ class OpenRouterProvider extends BaseLLMProvider {
                 model: this.model,
                 messages: this.buildMessages(text, context),
                 max_tokens: 150,
-                temperature: 0.7
+                temperature: 0.8
             })
         });
 
@@ -472,8 +472,8 @@ const AI_PROFILES = {
         name: 'Custom',
         description: 'Пользовательские инструкции',
         systemPrompt: '',
-        maxTokens: 150,
-        temperature: 0.7
+        maxTokens: 500,
+        temperature: 0.8
     }
 };
 

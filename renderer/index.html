@@ -12,7 +12,7 @@
   <!-- Focus Mode Hover Trigger -->
   <div class="hover-trigger"></div>
   <div class="header-popover">
-    <button id="btn-exit-focus" class="btn-secondary btn-small">Exit Focus</button>
+    <button id="btn-exit-focus" class="btn-secondary btn-small">Выход из фокуса</button>
   </div>
 
   <div id="app" data-testid="app-container">
@@ -69,7 +69,7 @@
         <!-- Main Settings Group -->
         <div class="settings-group">
           <div class="settings-row">
-            <label class="settings-label" for="llm-provider">LLM Provider</label>
+            <label class="settings-label" for="llm-provider">Провайдер LLM</label>
             <select id="llm-provider" class="provider-select" data-testid="llm-provider-select">
               <option value="ollama" selected>Ollama (Local)</option>
               <option value="openai">OpenAI</option>
@@ -84,36 +84,36 @@
           </div>
           
           <div class="settings-row">
-            <label class="settings-label" for="ai-profile">Profile</label>
+            <label class="settings-label" for="ai-profile">Профиль</label>
             <select id="ai-profile" class="profile-select" data-testid="ai-profile-select">
-              <option value="job_interview_ru" selected>Job Interview (RU)</option>
-              <option value="custom">Custom</option>
+              <option value="job_interview_ru" selected>Собеседование (RU)</option>
+              <option value="custom">Свой</option>
             </select>
           </div>
 
           <div id="custom-instructions-container" class="custom-instructions hidden" data-testid="custom-instructions-container">
             <textarea id="custom-instructions" class="custom-instructions-input" data-testid="custom-instructions-textarea" 
-              placeholder="System prompt..." rows="3"></textarea>
+              placeholder="Системный промпт..." rows="3"></textarea>
           </div>
         </div>
 
         <!-- Appearance Group -->
         <div class="settings-group">
           <div class="settings-row">
-            <label class="settings-label">Opacity</label>
+            <label class="settings-label">Прозрачность</label>
             <input type="range" id="opacity-slider" data-testid="opacity-slider" min="10" max="100" value="100">
             <span id="opacity-value">100%</span>
           </div>
           
           <div class="settings-row">
-            <label class="settings-label">Font Size</label>
+            <label class="settings-label">Размер шрифта подсказок</label>
             <input type="range" id="font-hints" data-testid="font-hints-slider" min="12" max="24" value="14">
             <span id="font-hints-value">14px</span>
           </div>
 
           <div class="settings-row">
             <label class="settings-label">
-              <input type="checkbox" id="auto-hints" data-testid="auto-hints-checkbox"> Auto-hints
+              <input type="checkbox" id="auto-hints" data-testid="auto-hints-checkbox"> Авто-подсказки
             </label>
           </div>
         </div>
@@ -121,30 +121,30 @@
         <!-- Advanced Group -->
         <div class="settings-group">
           <div class="settings-row">
-             <label class="settings-label">Context: <span id="context-window-size-value">10</span></label>
-             <input type="range" id="context-window-size" data-testid="context-window-size" min="5" max="20" value="10">
+             <label class="settings-label">Размер окна контекста: <span id="context-window-size-value">10</span></label>
+             <input type="range" id="context-window-size" data-testid="context-window-size" min="5" max="20" value="20">
           </div>
 
           <div class="settings-row">
-             <label class="settings-label">Max Tokens: <span id="max-tokens-value">200</span></label>
-             <input type="range" id="max-tokens" data-testid="max-tokens" min="50" max="500" step="50" value="200">
+             <label class="settings-label">Максимальное количество токенов: <span id="max-tokens-value">200</span></label>
+             <input type="range" id="max-tokens" data-testid="max-tokens" min="50" max="500" step="50" value="500">
           </div>
 
           <div class="settings-row">
-             <label class="settings-label">Temp: <span id="temperature-value">0.3</span></label>
-             <input type="range" id="temperature" data-testid="temperature" min="0" max="10" value="3">
+             <label class="settings-label">Температура: <span id="temperature-value">0.8</span></label>
+             <input type="range" id="temperature" data-testid="temperature" min="0" max="10" value="8">
           </div>
 
           <div class="settings-row">
              <label class="settings-label">
-               <input type="checkbox" id="debug-mode" data-testid="debug-mode"> Debug
+               <input type="checkbox" id="debug-mode" data-testid="debug-mode" checked> Debug
              </label>
-             <button id="btn-health-check" class="btn-secondary" style="padding: 2px 8px; font-size: 11px;" data-testid="btn-health-check">Check</button>
+             <button id="btn-health-check" class="btn-secondary" style="padding: 2px 8px; font-size: 11px;" data-testid="btn-health-check">Здоровье</button>
           </div>
           
           <!-- Hidden sliders preserved for logic compatibility but effectively replaced or hidden if needed -->
           <input type="range" id="font-transcript" class="hidden" data-testid="font-transcript-slider" min="12" max="28" value="14">
-          <input type="range" id="max-context-chars" class="hidden" data-testid="max-context-chars" min="2000" max="6000" step="500" value="3000">
+          <input type="range" id="max-context-chars" class="hidden" data-testid="max-context-chars" min="2000" max="6000" step="500" value="6000">
         </div>
       </div>
     </div>
@@ -154,7 +154,7 @@
       <!-- Transcript Feed -->
       <div class="section" style="flex: 0.35; min-height: 80px;">
         <div class="section-header">
-          <span class="section-title">TRANSCRIPT</span>
+          <span class="section-title">ТРАНСКРИПТ</span>
           <div class="section-actions">
             <button id="btn-clear-transcript" class="window-btn" title="Очистить" data-testid="btn-clear-transcript">✕</button>
           </div>
@@ -172,7 +172,7 @@
             <button id="btn-pin-hint" class="window-btn" title="Закрепить" data-testid="btn-pin-hint">📌</button>
             <button id="btn-copy-last" class="window-btn" title="Копировать" data-testid="btn-copy-last">📋</button>
             <button id="btn-clear-hints" class="window-btn" title="Очистить" data-testid="btn-clear-hints">✕</button>
-            <button id="btn-get-hint" class="btn-hint" data-testid="btn-get-hint" disabled>Hint</button>
+            <button id="btn-get-hint" class="btn-hint" data-testid="btn-get-hint" disabled>Получить подсказку</button>
           </div>
         </div>
         <!-- Pinned Hint Area -->
@@ -199,7 +199,7 @@
     <div id="history-modal" class="modal-overlay hidden" data-testid="history-modal">
       <div class="modal-card">
         <div class="modal-header">
-          <h2>History</h2>
+          <h2>История</h2>
           <button id="btn-close-modal" class="window-btn" data-testid="btn-close-modal">✕</button>
         </div>
         <div id="sessions-list" class="modal-body sessions-list" data-testid="sessions-list"></div>
@@ -209,16 +209,16 @@
     <div id="session-view-modal" class="modal-overlay hidden" data-testid="session-view-modal">
       <div class="modal-card modal-content-large">
         <div class="modal-header">
-          <h2 id="session-view-title">Session</h2>
+          <h2 id="session-view-title">Сессия</h2>
           <button id="btn-close-session-view" class="window-btn" data-testid="btn-close-session-view">✕</button>
         </div>
         <div class="modal-body">
           <div class="session-view-section">
-            <h3>Transcript</h3>
+            <h3>Транскрипт</h3>
             <div id="session-transcript" class="session-transcript" data-testid="session-transcript"></div>
           </div>
           <div class="session-view-section" style="margin-top: 16px;">
-            <h3>Hints</h3>
+            <h3>Подсказки</h3>
             <div id="session-hints" class="session-hints" data-testid="session-hints"></div>
           </div>
         </div>
