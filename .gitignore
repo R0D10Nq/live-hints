@@ -143,5 +143,11 @@ vite.config.ts.timestamp-*
 .history
 
 playwright-report
-playwright-report/
-playwright-report/*
+
+# Windsurf
+.windsurf
+
+.benchmarks
+
+.pytest_cache
+

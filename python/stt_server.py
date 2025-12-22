@@ -13,6 +13,7 @@ from typing import Optional
 import numpy as np
 import websockets
 from faster_whisper import WhisperModel
+from metrics import log_stt_transcription, log_error
 
 # Настройка логирования
 logging.basicConfig(
@@ -25,10 +26,11 @@ logger = logging.getLogger('STT')
 # ========== КОНФИГУРАЦИЯ ==========
 WEBSOCKET_HOST = 'localhost'
 WEBSOCKET_PORT = 8765
+WEBSOCKET_PORT_MIC = 8764  # Порт для микрофона
 SAMPLE_RATE = 16000
 
 # GPU настройки - RTX 5060 Ti 16GB
-MODEL_PRIORITY = ['distil-large-v3', 'large-v3', 'medium', 'small']
+MODEL_PRIORITY = ['whisper-large-v3-russian', 'large-v3', 'medium', 'small']  # distil-large-v3 только для английского
 DEVICE = 'cuda'
 COMPUTE_TYPE = 'float16'
 
@@ -212,7 +214,6 @@ class StreamingTranscriber:
                 condition_on_previous_text=False,  # ВАЖНО: отключает контекст предыдущего текста
                 no_speech_threshold=0.6,  # Порог "нет речи" — увеличил
                 compression_ratio_threshold=2.4,  # Порог сжатия — стандарт
-                logprob_threshold=-1.0,  # Порог вероятности
                 initial_prompt=None,  # Без начального промпта
             )
             
@@ -228,6 +229,9 @@ class StreamingTranscriber:
             # ФИЛЬТРУЕМ ЗАПРЕЩЁННЫЕ ФРАЗЫ
             result = filter_banned_phrases(result)
             
+            # Сохраняем длительность до очистки
+            audio_duration = self.total_samples / SAMPLE_RATE if self.total_samples > 0 else 0
+            
             # Очищаем буфер
             self.audio_buffer = []
             self.total_samples = 0
@@ -237,6 +241,15 @@ class StreamingTranscriber:
             if result:
                 stats = self.metrics.get_stats()
                 logger.info(f'[STT] "{result}" (latency: {stats["latency_ms"]}ms, transcribe: {stats["transcribe_time_ms"]}ms)')
+                
+                # Логируем метрику
+                log_stt_transcription(
+                    text=result,
+                    latency_ms=stats["latency_ms"],
+                    audio_duration_sec=audio_duration,
+                    model=self.model_name if hasattr(self, 'model_name') else 'large-v3'
+                )
+                
                 self.metrics.reset()
                 return result
             
@@ -244,6 +257,7 @@ class StreamingTranscriber:
             
         except Exception as e:
             logger.error(f'[STT] Ошибка: {e}')
+            log_error('stt', 'transcription_error', str(e))
             self.audio_buffer = []
             self.total_samples = 0
             return None
@@ -316,21 +330,83 @@ class STTServer:
             logger.info(f'[WS] Клиент отключён ({len(self.clients)})')
     
     async def start(self):
-        logger.info(f'[SERVER] Запуск ws://{WEBSOCKET_HOST}:{WEBSOCKET_PORT}')
+        logger.info(f'[SERVER] Запуск ws://{WEBSOCKET_HOST}:{WEBSOCKET_PORT} (система)')
+        logger.info(f'[SERVER] Запуск ws://{WEBSOCKET_HOST}:{WEBSOCKET_PORT_MIC} (микрофон)')
         logger.info(f'[SERVER] Пауза для транскрипции: {SILENCE_TRIGGER_SEC}s')
-        logger.info(f'[SERVER] Фильтр фраз: {BANNED_PHRASES}')
         
         self.init_model()
         model_name = getattr(self.transcriber, 'model_name', 'unknown')
         logger.info(f'[SERVER] Модель {model_name} готова, ожидание клиентов...')
         
+        # Запускаем оба сервера параллельно
         async with websockets.serve(
-            self.handle_client,
+            lambda ws: self.handle_client(ws, source='interviewer'),
             WEBSOCKET_HOST,
             WEBSOCKET_PORT,
             max_size=10 * 1024 * 1024
         ):
-            await asyncio.Future()
+            async with websockets.serve(
+                lambda ws: self.handle_client(ws, source='candidate'),
+                WEBSOCKET_HOST,
+                WEBSOCKET_PORT_MIC,
+                max_size=10 * 1024 * 1024
+            ):
+                await asyncio.Future()
+
+    async def handle_client(self, websocket, path=None, source='interviewer'):
+        """Обработчик с указанием источника аудио"""
+        if self.transcriber is None:
+            self.init_model()
+        
+        self.clients.add(websocket)
+        
+        # Для микрофона создаём отдельный транскрибер
+        if source == 'candidate':
+            transcriber = StreamingTranscriber()
+            transcriber.model = self.transcriber.model  # Переиспользуем модель
+        else:
+            transcriber = self.transcriber
+            transcriber.clear()
+        
+        logger.info(f'[WS] Клиент подключен: {source} ({len(self.clients)})')
+        
+        chunk_count = 0
+        
+        try:
+            async for message in websocket:
+                if isinstance(message, bytes):
+                    audio = np.frombuffer(message, dtype=np.float32)
+                    chunk_count += 1
+                    
+                    if chunk_count % 100 == 0:
+                        buf_sec = transcriber.total_samples / SAMPLE_RATE
+                        logger.info(f'[WS:{source}] chunks={chunk_count}, buffer={buf_sec:.1f}s')
+                    
+                    if transcriber.add_audio(audio):
+                        text = transcriber.transcribe()
+                        if text:
+                            msg = json.dumps({
+                                'type': 'transcript',
+                                'text': text,
+                                'source': source,
+                                'timestamp': time.time(),
+                                'latency_ms': transcriber.metrics.get_latency_ms()
+                            }, ensure_ascii=False)
+                            await websocket.send(msg)
+                
+                elif isinstance(message, str):
+                    try:
+                        cmd = json.loads(message)
+                        if cmd.get('command') == 'clear':
+                            transcriber.clear()
+                    except json.JSONDecodeError:
+                        pass
+        
+        except websockets.exceptions.ConnectionClosed:
+            pass
+        finally:
+            self.clients.discard(websocket)
+            logger.info(f'[WS:{source}] Клиент отключён ({len(self.clients)})')
 
 
 async def main():

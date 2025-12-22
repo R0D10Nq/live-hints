@@ -12,6 +12,7 @@ import time
 from typing import Optional, AsyncGenerator
 
 import requests
+import httpx
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
@@ -19,6 +20,9 @@ from pydantic import BaseModel
 from prompts import get_system_prompt, get_few_shot_examples
 from classification import classify_question, build_contextual_prompt
 from cache import HintCache
+from metrics import log_llm_request, log_llm_response, log_cache_hit, log_error
+from semantic_cache import get_semantic_cache
+from advanced_rag import get_advanced_rag
 import uvicorn
 
 # Настройка логирования
@@ -37,7 +41,7 @@ HTTP_PORT = 8766
 OLLAMA_URL = os.getenv('OLLAMA_URL', 'http://localhost:11434')
 # Realtime профиль: qwen2.5:7b - быстрая и качественная
 # Quality профиль: qwen2.5:14b - медленнее но лучше
-DEFAULT_MODEL = os.getenv('OLLAMA_MODEL', 'phi4:latest')
+DEFAULT_MODEL = os.getenv('OLLAMA_MODEL', 'ministral-3:8b')
 
 # функция загрузки контекста
 def load_user_context() -> str:
@@ -81,7 +85,7 @@ def build_messages(system_prompt: str, context: list, text: str, few_shot: list 
         'role': 'user',
         'content': (
             f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n'
-            f'⚠️ ТЕКУЩИЙ ВОПРОС (ответь ТОЛЬКО на него):\n'
+            f'ТЕКУЩИЙ ВОПРОС (ответь ТОЛЬКО на него):\n'
             f'{text}\n'
             f'━━━━━━━━━━━━━━━━━━━━━━━━━━━━━'
         )
@@ -193,8 +197,8 @@ class OllamaClient:
         messages = build_messages(system_prompt, context or [], text, few_shot)
         
         logger.info(f'[LLM] Type: {question_type}, messages: {len(messages)}')
-        logger.info(f'[LLM] System prompt length: {len(system_prompt)} chars')
-        logger.info(f'[LLM] max_tokens={max_tokens}, temperature={temperature}')
+        logger.debug(f'[LLM] System prompt length: {len(system_prompt)} chars')
+        logger.debug(f'[LLM] max_tokens={max_tokens}, temperature={temperature}')
         
         try:
             resp = requests.post(
@@ -289,17 +293,29 @@ class OllamaClient:
             return f'Ошибка: {e}'
     
     async def generate_stream(self, text: str, context: list = None, profile: str = 'interview',
-                              max_tokens: int = 500, temperature: float = 0.8) -> AsyncGenerator[str, None]:
-        """Streaming генерация подсказки с классификацией"""
+                              max_tokens: int = 500, temperature: float = 0.8):
+        """Async streaming генерация подсказки с httpx"""
         self.metrics.reset()
         self.metrics.request_started()
+        self._last_question_type = 'general'
         
-        # Проверка кэша (для streaming возвращаем целиком если есть)
-        cached = hint_cache.get(text, context or [])
+        # Проверка semantic cache (похожие вопросы)
+        semantic_cache = get_semantic_cache()
+        cached, similarity = semantic_cache.get(text, context or [])
         if cached:
             self.metrics.first_token()
             self.metrics.done()
+            self._last_similarity = similarity
+            logger.info(f'[SemanticCache] HIT: similarity={similarity:.3f}')
             yield cached
+            return
+        
+        # Fallback на обычный кэш
+        cached_lru = hint_cache.get(text, context or [])
+        if cached_lru:
+            self.metrics.first_token()
+            self.metrics.done()
+            yield cached_lru
             return
         
         # Валидация параметров
@@ -308,61 +324,95 @@ class OllamaClient:
         
         # Классификация
         question_type = classify_question(text)
+        self._last_question_type = question_type
         logger.info(f'[CLASSIFY Stream] Type: {question_type}')
         
-        # Динамический промпт
-        system_prompt = build_contextual_prompt(question_type, USER_CONTEXT)
+        # Логируем запрос
+        log_llm_request(text, len(context or []), question_type, profile)
+        
+        # Advanced RAG: улучшаем промпт с semantic search и adaptive context
+        rag = get_advanced_rag()
+        base_prompt = build_contextual_prompt(question_type, USER_CONTEXT)
+        system_prompt = rag.build_enhanced_prompt(text, context or [], question_type, base_prompt)
+        
+        # Адаптивный контекст - меньше для простых вопросов, больше для сложных
+        adaptive_context = rag.get_adaptive_context(context or [], text)
         
         # Few-shot
         few_shot = get_few_shot_examples(profile)
         
-        # Построение messages
-        messages = build_messages(system_prompt, context or [], text, few_shot)
+        # Построение messages с адаптивным контекстом
+        messages = build_messages(system_prompt, adaptive_context, text, few_shot)
         
         logger.info(f'[LLM Stream] Type: {question_type}, messages: {len(messages)}')
-        logger.info(f'[LLM Stream] max_tokens={max_tokens}, temperature={temperature}')
+        logger.debug(f'[LLM Stream] max_tokens={max_tokens}, temperature={temperature}')
+        
+        accumulated_hint = ''
         
         try:
-            resp = requests.post(
-                f'{self.base_url}/api/chat',
-                json={
-                    'model': self.model,
-                    'messages': messages,
-                    'stream': True,
-                    'options': {
-                        'temperature': temperature,
-                        'num_predict': max_tokens,
-                        'top_p': 0.9
+            async with httpx.AsyncClient(timeout=60.0) as client:
+                async with client.stream(
+                    'POST',
+                    f'{self.base_url}/api/chat',
+                    json={
+                        'model': self.model,
+                        'messages': messages,
+                        'stream': True,
+                        'options': {
+                            'temperature': temperature,
+                            'num_predict': max_tokens,
+                            'top_p': 0.9
+                        }
                     }
-                },
-                stream=True,
-                timeout=30
-            )
-            
-            if resp.status_code == 200:
-                accumulated_hint = ''
-                for line in resp.iter_lines():
-                    if line:
-                        try:
-                            data = json.loads(line)
-                            content = data.get('message', {}).get('content', '')
-                            if content:
-                                self.metrics.first_token()
-                                accumulated_hint += content
-                                yield content
-                            if data.get('done'):
-                                self.metrics.done()
-                                # Сохраняем в кэш
-                                if accumulated_hint.strip():
-                                    hint_cache.set(text, context or [], accumulated_hint)
-                                break
-                        except json.JSONDecodeError:
-                            pass
-            else:
-                yield f'Ошибка: {resp.status_code}'
-                
+                ) as resp:
+                    if resp.status_code == 200:
+                        async for line in resp.aiter_lines():
+                            if line:
+                                try:
+                                    data = json.loads(line)
+                                    content = data.get('message', {}).get('content', '')
+                                    if content:
+                                        self.metrics.first_token()
+                                        accumulated_hint += content
+                                        yield content
+                                    if data.get('done'):
+                                        self.metrics.done()
+                                        # Сохраняем в оба кэша
+                                        if accumulated_hint.strip():
+                                            hint_cache.set(text, context or [], accumulated_hint)
+                                            semantic_cache.set(text, context or [], accumulated_hint)
+                                            # Memory consolidation - извлекаем важные факты
+                                            rag.consolidate_memory(text, accumulated_hint, question_type)
+                                            logger.info(f'[CACHE] SET: {text[:50]}...')
+                                        # Логируем ответ
+                                        stats = self.metrics.get_stats()
+                                        log_llm_response(
+                                            stats['ttft_ms'], 
+                                            stats['total_ms'], 
+                                            len(accumulated_hint),
+                                            cached=False,
+                                            question_type=question_type
+                                        )
+                                        break
+                                except json.JSONDecodeError:
+                                    pass
+                    else:
+                        error_msg = f'Ollama ошибка: {resp.status_code}'
+                        log_error('llm', 'ollama_error', error_msg)
+                        yield error_msg
+                        
+        except httpx.ConnectError:
+            error_msg = 'Ollama не запущен. Запустите: ollama serve'
+            log_error('llm', 'connection_error', error_msg)
+            yield error_msg
+        except httpx.TimeoutException:
+            error_msg = 'Таймаут запроса к Ollama (60 сек)'
+            log_error('llm', 'timeout', error_msg)
+            yield error_msg
         except Exception as e:
-            yield f'Ошибка: {e}'
+            error_msg = f'Ошибка: {e}'
+            log_error('llm', 'unknown', str(e))
+            yield error_msg
 
 
 # Глобальный клиент
@@ -430,11 +480,18 @@ async def generate_hint_stream(request: HintRequest):
     # Проверка кэша
     cached = hint_cache.get(request.text, request.context or [])
     
+    # Классификация для badges
+    question_type = classify_question(request.text)
+    
     async def stream():
         if cached:
-            # Возвращаем из кэша целиком
-            yield f"data: {json.dumps({'chunk': cached, 'cached': True}, ensure_ascii=False)}\n\n"
-            yield f"data: {json.dumps({'done': True, 'cached': True, 'latency_ms': 0, 'ttft_ms': 0}, ensure_ascii=False)}\n\n"
+            # Логируем cache hit
+            log_cache_hit(request.text)
+            log_llm_response(0, 0, len(cached), cached=True, question_type=question_type)
+            
+            # Возвращаем из кэша целиком с типом вопроса
+            yield f"data: {json.dumps({'chunk': cached, 'cached': True, 'question_type': question_type}, ensure_ascii=False)}\n\n"
+            yield f"data: {json.dumps({'done': True, 'cached': True, 'question_type': question_type, 'latency_ms': 0, 'ttft_ms': 0}, ensure_ascii=False)}\n\n"
         else:
             # Streaming генерация
             async for chunk in ollama.generate_stream(
@@ -447,22 +504,33 @@ async def generate_hint_stream(request: HintRequest):
                 yield f"data: {json.dumps({'chunk': chunk}, ensure_ascii=False)}\n\n"
             
             stats = ollama.metrics.get_stats()
-            yield f"data: {json.dumps({'done': True, 'latency_ms': stats['total_ms'], 'ttft_ms': stats['ttft_ms']}, ensure_ascii=False)}\n\n"
+            q_type = getattr(ollama, '_last_question_type', question_type)
+            yield f"data: {json.dumps({'done': True, 'question_type': q_type, 'latency_ms': stats['total_ms'], 'ttft_ms': stats['ttft_ms']}, ensure_ascii=False)}\n\n"
     
     return StreamingResponse(stream(), media_type='text/event-stream')
 
 
 @app.get('/models')
 async def list_models():
-    """Список доступных моделей"""
+    """Список доступных моделей с детальной информацией"""
     try:
         resp = requests.get(f'{ollama.base_url}/api/tags', timeout=5)
         if resp.status_code == 200:
             data = resp.json()
-            models = [m['name'] for m in data.get('models', [])]
+            models = []
+            for m in data.get('models', []):
+                size_gb = m.get('size', 0) / (1024 ** 3)
+                models.append({
+                    'name': m['name'],
+                    'size': f'{size_gb:.1f}GB',
+                    'size_bytes': m.get('size', 0),
+                    'modified': m.get('modified_at', ''),
+                    'family': m.get('details', {}).get('family', 'unknown'),
+                    'parameters': m.get('details', {}).get('parameter_size', 'unknown')
+                })
             return {'models': models, 'current': ollama.model}
-    except:
-        pass
+    except Exception as e:
+        logger.error(f'[Models] Ошибка: {e}')
     return {'models': [], 'current': ollama.model, 'error': 'Ollama недоступен'}
 
 
@@ -472,6 +540,114 @@ async def set_model(model_name: str):
     ollama.model = model_name
     logger.info(f'[LLM] Модель изменена на: {model_name}')
     return {'model': model_name}
+
+
+# Профили моделей для быстрого переключения
+MODEL_PROFILES = {
+    'fast': {'model': 'gemma2:2b', 'temperature': 0.5, 'max_tokens': 200, 'description': 'Быстрые короткие ответы'},
+    'balanced': {'model': 'ministral-3:8b', 'temperature': 0.7, 'max_tokens': 400, 'description': 'Баланс скорости и качества'},
+    'accurate': {'model': 'phi4:latest', 'temperature': 0.8, 'max_tokens': 600, 'description': 'Точные развёрнутые ответы'},
+    'code': {'model': 'qwen2.5-coder:7b', 'temperature': 0.3, 'max_tokens': 500, 'description': 'Специализация на коде'}
+}
+
+
+@app.get('/model/profiles')
+async def get_model_profiles():
+    """Получить предустановленные профили моделей"""
+    return {'profiles': MODEL_PROFILES, 'current': ollama.model}
+
+
+@app.post('/model/profile/{profile_name}')
+async def set_model_profile(profile_name: str):
+    """Применить профиль модели"""
+    if profile_name not in MODEL_PROFILES:
+        raise HTTPException(404, f'Профиль {profile_name} не найден')
+    
+    profile = MODEL_PROFILES[profile_name]
+    ollama.model = profile['model']
+    logger.info(f'[LLM] Профиль {profile_name}: модель={profile["model"]}')
+    return {'profile': profile_name, 'settings': profile}
+
+
+# ========== AUDIO DEVICES API ==========
+
+@app.get('/audio/devices')
+async def get_audio_devices():
+    """Получить список аудио устройств"""
+    devices = {'input': [], 'output': []}
+    
+    try:
+        import pyaudiowpatch as pyaudio
+        p = pyaudio.PyAudio()
+        
+        for i in range(p.get_device_count()):
+            info = p.get_device_info_by_index(i)
+            device = {
+                'index': i,
+                'name': info['name'],
+                'sampleRate': int(info['defaultSampleRate']),
+                'isLoopback': info.get('isLoopbackDevice', False)
+            }
+            
+            if info['maxInputChannels'] > 0:
+                devices['input'].append(device)
+            if info['maxOutputChannels'] > 0:
+                devices['output'].append(device)
+        
+        p.terminate()
+    except ImportError:
+        try:
+            import sounddevice as sd
+            for i, dev in enumerate(sd.query_devices()):
+                device = {
+                    'index': i,
+                    'name': dev['name'],
+                    'sampleRate': int(dev['default_samplerate']),
+                    'isLoopback': 'loopback' in dev['name'].lower()
+                }
+                if dev['max_input_channels'] > 0:
+                    devices['input'].append(device)
+                if dev['max_output_channels'] > 0:
+                    devices['output'].append(device)
+        except:
+            pass
+    except Exception as e:
+        logger.error(f'Ошибка получения устройств: {e}')
+    
+    return devices
+
+
+# ========== VISION AI API ==========
+
+@app.post('/vision/analyze')
+async def analyze_image(request: dict):
+    """Анализ изображения с помощью Vision AI"""
+    image_base64 = request.get('image')
+    prompt = request.get('prompt', 'Опиши что на изображении')
+    
+    if not image_base64:
+        raise HTTPException(400, 'Изображение не предоставлено')
+    
+    try:
+        async with httpx.AsyncClient(timeout=60.0) as client:
+            resp = await client.post(
+                f'{ollama.base_url}/api/generate',
+                json={
+                    'model': 'llava:7b',  # Vision модель
+                    'prompt': prompt,
+                    'images': [image_base64],
+                    'stream': False
+                }
+            )
+            
+            if resp.status_code == 200:
+                data = resp.json()
+                return {'analysis': data.get('response', '')}
+            else:
+                return {'error': f'Ошибка: {resp.status_code}'}
+    except Exception as e:
+        logger.error(f'Vision AI ошибка: {e}')
+        return {'error': str(e)}
 
 
 # ========== MAIN ==========

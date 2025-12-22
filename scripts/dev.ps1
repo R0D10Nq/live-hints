@@ -81,8 +81,8 @@ if (-not $ollama) {
     Write-Host "ОШИБКА: Ollama не установлен. Скачайте с https://ollama.ai/" -ForegroundColor Red
 }
 else {
-    Write-Host "Загрузка модели phi4:latest (быстрая, качественная)..." -ForegroundColor Yellow
-    ollama pull phi4:latest
+    Write-Host "Загрузка модели ministral-3:8b (быстрая, качественная)..." -ForegroundColor Yellow
+    ollama pull ministral-3:8b
     Write-Host "Модель загружена!" -ForegroundColor Green
 }
 

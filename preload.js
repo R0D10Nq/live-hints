@@ -50,5 +50,29 @@ contextBridge.exposeInMainWorld('electronAPI', {
     toggleVisibility: () => ipcRenderer.invoke('window:toggle-visibility'),
 
     // Получить позицию окна
-    getWindowPosition: () => ipcRenderer.invoke('window:get-position')
+    getWindowPosition: () => ipcRenderer.invoke('window:get-position'),
+
+    // ===== STEALTH MODE =====
+    stealthToggle: () => ipcRenderer.invoke('stealth:toggle'),
+    stealthStatus: () => ipcRenderer.invoke('stealth:status'),
+    stealthSetMode: (mode) => ipcRenderer.invoke('stealth:set-mode', mode),
+    stealthSetStrategy: (strategy) => ipcRenderer.invoke('stealth:set-strategy', strategy),
+    stealthGetStrategy: () => ipcRenderer.invoke('stealth:get-strategy'),
+    stealthShowToast: (text) => ipcRenderer.invoke('stealth:show-toast', text),
+    stealthHasSecondMonitor: () => ipcRenderer.invoke('stealth:has-second-monitor'),
+    stealthStartMonitoring: () => ipcRenderer.invoke('stealth:start-monitoring'),
+    stealthStopMonitoring: () => ipcRenderer.invoke('stealth:stop-monitoring'),
+
+    // Stealth события
+    onStealthActivated: (callback) => ipcRenderer.on('stealth:activated', callback),
+    onStealthDeactivated: (callback) => ipcRenderer.on('stealth:deactivated', callback),
+    onStealthAutoActivated: (callback) => ipcRenderer.on('stealth:auto-activated', callback),
+
+    // ===== MULTI-MONITOR =====
+    getDisplays: () => ipcRenderer.invoke('window:get-displays'),
+    moveToSecondary: () => ipcRenderer.invoke('window:move-to-secondary'),
+    moveToDisplay: (displayId) => ipcRenderer.invoke('window:move-to-display', displayId),
+
+    // ===== VISION AI =====
+    captureScreen: () => ipcRenderer.invoke('vision:capture-screen')
 });

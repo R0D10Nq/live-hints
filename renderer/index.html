@@ -26,8 +26,8 @@
       
       <!-- Window Controls -->
       <div class="window-controls">
-        <button id="btn-minimize" class="window-btn" data-testid="btn-minimize" title="Свернуть">─</button>
-        <button id="btn-close" class="window-btn window-btn-close" data-testid="btn-close" title="Закрыть">✕</button>
+        <button id="btn-minimize" class="window-btn" data-testid="btn-minimize" title="Свернуть" aria-label="Свернуть окно">─</button>
+        <button id="btn-close" class="window-btn window-btn-close" data-testid="btn-close" title="Закрыть" aria-label="Закрыть приложение">✕</button>
       </div>
     </header>
 
@@ -44,21 +44,21 @@
       
       <div class="controls-divider"></div>
       
-      <button id="btn-settings-toggle" class="btn-secondary btn-icon-only" data-testid="btn-settings-toggle" title="Настройки">
+      <button id="btn-settings-toggle" class="btn-secondary btn-icon-only" data-testid="btn-settings-toggle" title="Настройки" aria-label="Открыть настройки">
         ⚙
       </button>
 
-      <button id="btn-compact-toggle" class="btn-secondary btn-icon-only" data-testid="btn-compact-toggle" title="Компактный режим">
+      <button id="btn-compact-toggle" class="btn-secondary btn-icon-only" data-testid="btn-compact-toggle" title="Компактный режим" aria-label="Переключить компактный режим">
         ▤
       </button>
 
-      <button id="btn-focus-toggle" class="btn-secondary btn-icon-only" data-testid="btn-focus-toggle" title="Фокус режим">
+      <button id="btn-focus-toggle" class="btn-secondary btn-icon-only" data-testid="btn-focus-toggle" title="Фокус режим" aria-label="Переключить фокус режим">
         ◎
       </button>
 
       <div class="controls-divider"></div>
 
-      <button id="btn-history" class="btn-secondary btn-icon-only" data-testid="btn-history" title="История">
+      <button id="btn-history" class="btn-secondary btn-icon-only" data-testid="btn-history" title="История" aria-label="Открыть историю сессий">
         ☰
       </button>
     </div>
@@ -81,6 +81,25 @@
               <option value="yandex_lite">Yandex Trial</option>
               <option value="yandex_pro">Yandex Pro</option>
             </select>
+          </div>
+
+          <!-- Ollama Model Selection -->
+          <div id="ollama-model-section" class="settings-subsection">
+            <div class="settings-row">
+              <label class="settings-label" for="ollama-model">Модель Ollama</label>
+              <select id="ollama-model" class="model-select" data-testid="ollama-model-select">
+                <option value="">Загрузка...</option>
+              </select>
+              <button id="btn-refresh-models" class="btn-icon-mini" title="Обновить список">↻</button>
+            </div>
+            
+            <!-- Model Profiles -->
+            <div class="model-profiles">
+              <button id="btn-profile-fast" class="btn-profile" data-profile="fast" title="Быстрые короткие ответы">Fast</button>
+              <button id="btn-profile-balanced" class="btn-profile active" data-profile="balanced" title="Баланс скорости и качества">Balanced</button>
+              <button id="btn-profile-accurate" class="btn-profile" data-profile="accurate" title="Точные развёрнутые ответы">Accurate</button>
+              <button id="btn-profile-code" class="btn-profile" data-profile="code" title="Специализация на коде">Code</button>
+            </div>
           </div>
           
           <div class="settings-row">
@@ -115,6 +134,100 @@
             <label class="settings-label">
               <input type="checkbox" id="auto-hints" data-testid="auto-hints-checkbox"> Авто-подсказки
             </label>
+          </div>
+        </div>
+
+        <!-- Audio Devices -->
+        <div class="settings-group">
+          <div class="settings-row">
+            <label class="settings-label">Микрофон</label>
+            <div class="device-row">
+              <select id="input-device" class="device-select" data-testid="input-device">
+                <option value="">По умолчанию</option>
+              </select>
+              <div id="vu-mic" class="vu-meter">
+                <div class="vu-bar" style="height:2px"></div>
+                <div class="vu-bar" style="height:2px"></div>
+                <div class="vu-bar" style="height:2px"></div>
+                <div class="vu-bar" style="height:2px"></div>
+                <div class="vu-bar" style="height:2px"></div>
+              </div>
+            </div>
+          </div>
+          <div class="settings-row">
+            <label class="settings-label">Системный звук</label>
+            <div class="device-row">
+              <select id="loopback-device" class="device-select" data-testid="loopback-device">
+                <option value="">Авто (Loopback)</option>
+              </select>
+              <div id="vu-system" class="vu-meter">
+                <div class="vu-bar" style="height:2px"></div>
+                <div class="vu-bar" style="height:2px"></div>
+                <div class="vu-bar" style="height:2px"></div>
+                <div class="vu-bar" style="height:2px"></div>
+                <div class="vu-bar" style="height:2px"></div>
+              </div>
+            </div>
+            <button id="btn-refresh-devices" class="btn-icon-mini" title="Обновить">↻</button>
+          </div>
+          <div class="settings-row">
+            <label class="settings-label">
+              <input type="checkbox" id="dual-audio" data-testid="dual-audio"> Dual Audio (микрофон + системный)
+            </label>
+            <button id="btn-mic-mute" class="btn-icon-mini" title="Mute микрофон">🎤</button>
+          </div>
+        </div>
+
+        <!-- Stealth Mode -->
+        <div class="settings-group">
+          <div class="settings-row stealth-toggle-row">
+            <label class="settings-label">Stealth режим</label>
+            <label class="toggle-switch">
+              <input type="checkbox" id="stealth-toggle" data-testid="stealth-toggle">
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+          <div class="settings-row">
+            <label class="settings-label">Стратегия</label>
+            <select id="stealth-strategy" class="strategy-select" data-testid="stealth-strategy">
+              <option value="tray">System Tray + Toasts</option>
+              <option value="second-monitor">Второй монитор</option>
+              <option value="virtual-desktop">Виртуальный рабочий стол</option>
+            </select>
+          </div>
+          <div class="stealth-status" id="stealth-status">
+            <span class="status-indicator" id="stealth-indicator"></span>
+            <span class="status-text" id="stealth-status-text">Выключен</span>
+          </div>
+        </div>
+
+        <!-- Vision AI -->
+        <div class="settings-group">
+          <div class="settings-row">
+            <label class="settings-label">
+              <input type="checkbox" id="vision-enabled" data-testid="vision-enabled"> Vision AI
+            </label>
+          </div>
+          <button id="btn-capture-screen" class="btn-secondary" style="width:100%">Захватить экран</button>
+        </div>
+
+        <!-- Remote Servers -->
+        <div class="settings-group">
+          <div class="settings-row">
+            <label class="settings-label">
+              <input type="checkbox" id="remote-mode" data-testid="remote-mode"> Удалённые серверы
+            </label>
+          </div>
+          <div id="remote-servers-config" class="remote-config hidden">
+            <div class="settings-row">
+              <label class="settings-label">STT Server</label>
+              <input type="text" id="remote-stt-url" placeholder="ws://192.168.1.100:8765" value="ws://localhost:8765">
+            </div>
+            <div class="settings-row">
+              <label class="settings-label">LLM Server</label>
+              <input type="text" id="remote-llm-url" placeholder="http://192.168.1.100:8766" value="http://localhost:8766">
+            </div>
+            <button id="btn-test-remote" class="btn-secondary" style="width:100%;margin-top:8px;">Проверить подключение</button>
           </div>
         </div>
 
@@ -156,6 +269,8 @@
         <div class="section-header">
           <span class="section-title">ТРАНСКРИПТ</span>
           <div class="section-actions">
+            <button id="btn-toggle-transcripts" class="window-btn" title="Скрыть транскрипты (Ctrl+T)" data-testid="btn-toggle-transcripts">👁‍🗨</button>
+            <button id="btn-collapse-transcripts" class="window-btn" title="Свернуть блок" data-testid="btn-collapse-transcripts">▲</button>
             <button id="btn-clear-transcript" class="window-btn" title="Очистить" data-testid="btn-clear-transcript">✕</button>
           </div>
         </div>
@@ -200,9 +315,14 @@
       <div class="modal-card">
         <div class="modal-header">
           <h2>История</h2>
-          <button id="btn-close-modal" class="window-btn" data-testid="btn-close-modal">✕</button>
+          <button id="btn-close-modal" class="window-btn" data-testid="btn-close-modal" aria-label="Закрыть историю">✕</button>
         </div>
         <div id="sessions-list" class="modal-body sessions-list" data-testid="sessions-list"></div>
+        <div class="export-import-section">
+          <button id="btn-export-sessions" class="btn-export" aria-label="Экспортировать все сессии в JSON">Экспорт всех сессий</button>
+          <button id="btn-import-sessions" class="btn-import" aria-label="Импортировать сессии из JSON">Импорт</button>
+          <input type="file" id="import-file-input" accept=".json" style="display:none">
+        </div>
       </div>
     </div>
 
@@ -210,7 +330,7 @@
       <div class="modal-card modal-content-large">
         <div class="modal-header">
           <h2 id="session-view-title">Сессия</h2>
-          <button id="btn-close-session-view" class="window-btn" data-testid="btn-close-session-view">✕</button>
+          <button id="btn-close-session-view" class="window-btn" data-testid="btn-close-session-view" aria-label="Закрыть сессию">✕</button>
         </div>
         <div class="modal-body">
           <div class="session-view-section">
@@ -227,7 +347,36 @@
 
     <div id="error-toast" class="toast hidden" data-testid="error-toast">
       <span id="error-message"></span>
-      <button id="btn-dismiss-error" class="toast-dismiss">✕</button>
+      <button id="btn-dismiss-error" class="toast-dismiss" aria-label="Закрыть уведомление">✕</button>
+    </div>
+
+    <!-- Vision AI Preview Modal -->
+    <div id="vision-modal" class="modal-overlay hidden" data-testid="vision-modal">
+      <div class="modal-card vision-modal-card">
+        <div class="modal-header">
+          <h2>Vision AI - Preview</h2>
+          <button id="btn-close-vision" class="window-btn" aria-label="Закрыть Vision AI">✕</button>
+        </div>
+        <div class="modal-body">
+          <div class="vision-capture-options">
+            <button id="btn-capture-fullscreen" class="btn-capture-option">Весь экран</button>
+            <button id="btn-capture-window" class="btn-capture-option">Активное окно</button>
+            <button id="btn-capture-region" class="btn-capture-option">Выделить область</button>
+          </div>
+          <div id="vision-preview-container" class="vision-preview hidden">
+            <img id="vision-preview-img" class="vision-preview-img" alt="Screenshot preview">
+            <div class="vision-actions">
+              <button id="btn-vision-send" class="btn-primary">Отправить в AI</button>
+              <button id="btn-vision-retake" class="btn-secondary">Пересделать</button>
+              <button id="btn-vision-cancel" class="btn-secondary">Отмена</button>
+            </div>
+          </div>
+          <div id="vision-result" class="vision-result hidden">
+            <h3>Анализ изображения:</h3>
+            <div id="vision-analysis-text" class="vision-analysis-text"></div>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 
