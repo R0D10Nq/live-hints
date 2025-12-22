@@ -1,0 +1,49 @@
+{
+    "env": {
+        "browser": true,
+        "node": true,
+        "es2021": true,
+        "jest": true
+    },
+    "extends": [
+        "eslint:recommended",
+        "plugin:prettier/recommended"
+    ],
+    "parserOptions": {
+        "ecmaVersion": "latest",
+        "sourceType": "module"
+    },
+    "globals": {
+        "electronAPI": "readonly"
+    },
+    "rules": {
+        "no-unused-vars": [
+            "warn",
+            {
+                "argsIgnorePattern": "^_"
+            }
+        ],
+        "no-console": "off",
+        "prefer-const": "warn",
+        "no-var": "error",
+        "eqeqeq": [
+            "warn",
+            "smart"
+        ],
+        "curly": [
+            "warn",
+            "multi-line"
+        ],
+        "no-throw-literal": "error",
+        "no-return-await": "warn",
+        "require-await": "warn",
+        "prettier/prettier": "warn"
+    },
+    "ignorePatterns": [
+        "node_modules/",
+        "dist/",
+        "build/",
+        "coverage/",
+        "*.min.js"
+    ]
+}

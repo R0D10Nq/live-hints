@@ -1,10 +1,14 @@
-const { app, BrowserWindow, ipcMain, screen } = require('electron');
+const { app, BrowserWindow, ipcMain, screen, desktopCapturer, Tray, Menu, nativeImage } = require('electron');
 const path = require('path');
-const { spawn } = require('child_process');
+const { spawn, exec } = require('child_process');
 
 let mainWindow = null;
 let sttProcess = null;
 let audioCaptureProcess = null;
+let tray = null;
+let stealthMode = false;
+let stealthStrategy = 'content-protection';
+let stealthCheckInterval = null;
 
 function createWindow() {
     const primaryDisplay = screen.getPrimaryDisplay();
@@ -167,6 +171,236 @@ function setupIPC() {
         if (!mainWindow) return null;
         return mainWindow.getPosition();
     });
+
+    // ===== STEALTH MODE =====
+
+    // Включить/выключить stealth режим вручную
+    ipcMain.handle('stealth:toggle', () => {
+        stealthMode = !stealthMode;
+        if (stealthMode) {
+            activateStealth();
+        } else {
+            deactivateStealth();
+        }
+        return stealthMode;
+    });
+
+    // Получить статус stealth режима
+    ipcMain.handle('stealth:status', () => {
+        return stealthMode;
+    });
+
+    // Установить режим stealth
+    ipcMain.handle('stealth:set-mode', (event, mode) => {
+        // mode: 'hide', 'tray', 'second-monitor', 'disabled'
+        return setStealthMode(mode);
+    });
+
+    // Установить стратегию stealth
+    ipcMain.handle('stealth:set-strategy', (event, strategy) => {
+        stealthStrategy = strategy;
+        console.log(`[Stealth] Стратегия установлена: ${strategy}`);
+        return { strategy };
+    });
+
+    // Получить текущую стратегию
+    ipcMain.handle('stealth:get-strategy', () => {
+        return { strategy: stealthStrategy, active: stealthMode };
+    });
+
+    // Показать toast уведомление (для подсказок в stealth режиме)
+    ipcMain.handle('stealth:show-toast', (event, text) => {
+        console.log('[Stealth Toast]', text);
+        return true;
+    });
+
+    // Проверить доступность второго монитора
+    ipcMain.handle('stealth:has-second-monitor', () => {
+        const displays = screen.getAllDisplays();
+        return displays.length > 1;
+    });
+
+    // Начать мониторинг screen sharing
+    ipcMain.handle('stealth:start-monitoring', () => {
+        startScreenSharingMonitor();
+        return true;
+    });
+
+    // Остановить мониторинг screen sharing
+    ipcMain.handle('stealth:stop-monitoring', () => {
+        stopScreenSharingMonitor();
+        return true;
+    });
+
+    // Переместить на второй монитор
+    ipcMain.handle('window:move-to-secondary', () => {
+        moveToSecondaryMonitor();
+    });
+
+    // Получить список мониторов
+    ipcMain.handle('window:get-displays', () => {
+        return screen.getAllDisplays().map(d => ({
+            id: d.id,
+            label: d.label || `Монитор ${d.id}`,
+            bounds: d.bounds,
+            primary: d.id === screen.getPrimaryDisplay().id
+        }));
+    });
+
+    // Переместить на конкретный монитор
+    ipcMain.handle('window:move-to-display', (event, displayId) => {
+        const displays = screen.getAllDisplays();
+        const target = displays.find(d => d.id === displayId);
+        if (target && mainWindow) {
+            const { x, y } = target.bounds;
+            mainWindow.setPosition(x + 20, y + 20);
+        }
+    });
+
+    // ===== VISION AI =====
+    ipcMain.handle('vision:capture-screen', async () => {
+        try {
+            const { desktopCapturer } = require('electron');
+            const sources = await desktopCapturer.getSources({
+                types: ['screen'],
+                thumbnailSize: { width: 1280, height: 720 }
+            });
+
+            if (sources.length > 0) {
+                const thumbnail = sources[0].thumbnail;
+                const dataUrl = thumbnail.toDataURL();
+                // Возвращаем base64 без префикса data:image/png;base64,
+                return dataUrl.replace(/^data:image\/\w+;base64,/, '');
+            }
+            return null;
+        } catch (e) {
+            console.error('[Vision] Ошибка захвата экрана:', e);
+            return null;
+        }
+    });
+}
+
+// ===== STEALTH FUNCTIONS =====
+
+function activateStealth() {
+    if (!mainWindow) return;
+
+    // Включаем защиту контента - окно невидимо на записи экрана, но видимо локально
+    mainWindow.setContentProtection(true);
+
+    stealthMode = true;
+    mainWindow.webContents.send('stealth:activated');
+    console.log('[Stealth] Режим активирован - окно защищено от записи экрана');
+}
+
+function deactivateStealth() {
+    if (!mainWindow) return;
+
+    // Выключаем защиту контента - окно снова видно на записи
+    mainWindow.setContentProtection(false);
+
+    stealthMode = false;
+    mainWindow.webContents.send('stealth:deactivated');
+    console.log('[Stealth] Режим деактивирован - окно видно на записи');
+}
+
+function moveToSecondaryMonitor() {
+    if (!mainWindow) return;
+
+    const displays = screen.getAllDisplays();
+    const primaryDisplay = screen.getPrimaryDisplay();
+    const secondary = displays.find(d => d.id !== primaryDisplay.id);
+
+    if (secondary) {
+        const { x, y, width } = secondary.bounds;
+        mainWindow.setPosition(x + width - 420, y + 20);
+        console.log('[Stealth] Перемещено на вторичный монитор');
+        return true;
+    } else {
+        console.log('[Stealth] Вторичный монитор не найден');
+        return false;
+    }
+}
+
+function startScreenSharingMonitor() {
+    if (stealthCheckInterval) return;
+
+    // Проверяем каждые 2 секунды
+    stealthCheckInterval = setInterval(async () => {
+        const isSharing = await checkScreenSharing();
+
+        if (isSharing && !stealthMode) {
+            console.log('[Stealth] Обнаружен screen sharing - активация stealth');
+            stealthMode = true;
+            activateStealth();
+
+            // Уведомляем renderer
+            if (mainWindow) {
+                mainWindow.webContents.send('stealth:auto-activated');
+            }
+        }
+    }, 2000);
+
+    console.log('[Stealth] Мониторинг screen sharing запущен');
+}
+
+function stopScreenSharingMonitor() {
+    if (stealthCheckInterval) {
+        clearInterval(stealthCheckInterval);
+        stealthCheckInterval = null;
+        console.log('[Stealth] Мониторинг screen sharing остановлен');
+    }
+}
+
+async function checkScreenSharing() {
+    // Проверяем запущенные процессы screen sharing приложений
+    return new Promise((resolve) => {
+        if (process.platform === 'win32') {
+            // Windows: проверяем процессы Zoom, Teams, Discord, Meet и т.д.
+            exec('tasklist /FI "IMAGENAME eq Zoom.exe" /FI "IMAGENAME eq Teams.exe" /FI "IMAGENAME eq Discord.exe" /FI "IMAGENAME eq chrome.exe"', (error, stdout) => {
+                if (error) {
+                    resolve(false);
+                    return;
+                }
+
+                // Проверяем наличие процессов с активным screen sharing
+                // Это упрощённая проверка - в реальности нужно проверять состояние sharing
+                const hasScreenShareApp =
+                    stdout.includes('Zoom.exe') ||
+                    stdout.includes('Teams.exe') ||
+                    stdout.includes('Discord.exe');
+
+                // Дополнительно проверяем через desktopCapturer
+                desktopCapturer.getSources({ types: ['screen'] }).then(sources => {
+                    // Если есть активные захваты экрана
+                    const activeCapture = sources.some(s => s.name.includes('Sharing'));
+                    resolve(hasScreenShareApp || activeCapture);
+                }).catch(() => resolve(hasScreenShareApp));
+            });
+        } else {
+            resolve(false);
+        }
+    });
+}
+
+function setStealthMode(mode) {
+    // mode: 'hide', 'tray', 'second-monitor', 'disabled'
+    switch (mode) {
+        case 'hide':
+            if (mainWindow) mainWindow.hide();
+            break;
+        case 'tray':
+            activateStealth();
+            break;
+        case 'second-monitor':
+            moveToSecondaryMonitor();
+            break;
+        case 'disabled':
+            deactivateStealth();
+            stealthMode = false;
+            break;
+    }
+    return mode;
 }
 
 app.whenReady().then(() => {

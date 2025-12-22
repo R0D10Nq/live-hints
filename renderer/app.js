@@ -20,6 +20,10 @@ class LiveHintsApp {
         // UI режимы
         this.compactMode = false;
         this.focusMode = false;
+        this.hideTranscripts = false;
+        this.transcriptsCollapsed = false;
+        this.theme = 'dark';
+        this.stealthMode = false;
 
         // Настройки контекста и LLM
         this.contextWindowSize = 20;  // 5..20
@@ -27,6 +31,11 @@ class LiveHintsApp {
         this.maxTokens = 500;         // 50..500
         this.temperature = 0.8;       // 0.0..1.0
         this.debugMode = false;
+
+        // Remote servers
+        this.remoteMode = false;
+        this.sttServerUrl = 'ws://localhost:8765';
+        this.llmServerUrl = 'http://localhost:8766';
 
         // Метрики runtime
         this.metrics = {
@@ -250,6 +259,44 @@ class LiveHintsApp {
             });
         }
 
+        // Remote mode toggle
+        const remoteMode = document.getElementById('remote-mode');
+        const remoteConfig = document.getElementById('remote-servers-config');
+        const remoteSttUrl = document.getElementById('remote-stt-url');
+        const remoteLlmUrl = document.getElementById('remote-llm-url');
+        const btnTestRemote = document.getElementById('btn-test-remote');
+
+        if (remoteMode) {
+            remoteMode.addEventListener('change', (e) => {
+                this.remoteMode = e.target.checked;
+                if (remoteConfig) {
+                    remoteConfig.classList.toggle('hidden', !e.target.checked);
+                }
+                this.saveSettings({ remoteMode: e.target.checked });
+            });
+        }
+
+        if (remoteSttUrl) {
+            remoteSttUrl.addEventListener('change', (e) => {
+                this.sttServerUrl = e.target.value;
+                this.saveSettings({ sttServerUrl: e.target.value });
+            });
+        }
+
+        if (remoteLlmUrl) {
+            remoteLlmUrl.addEventListener('change', (e) => {
+                this.llmServerUrl = e.target.value;
+                this.saveSettings({ llmServerUrl: e.target.value });
+            });
+        }
+
+        if (btnTestRemote) {
+            btnTestRemote.addEventListener('click', () => this.testRemoteConnection());
+        }
+
+        // Stealth mode
+        this.setupStealthMode();
+
         // Settings drawer toggle
         if (this.elements.btnSettingsToggle) {
             this.elements.btnSettingsToggle.addEventListener('click', () => {
@@ -307,6 +354,23 @@ class LiveHintsApp {
             });
         }
 
+        // Toggle transcripts visibility
+        const btnToggleTranscripts = document.getElementById('btn-toggle-transcripts');
+        if (btnToggleTranscripts) {
+            btnToggleTranscripts.addEventListener('click', () => {
+                this.toggleTranscripts();
+            });
+        }
+
+        // Collapse transcripts
+        const btnCollapseTranscripts = document.getElementById('btn-collapse-transcripts');
+        if (btnCollapseTranscripts) {
+            btnCollapseTranscripts.addEventListener('click', () => {
+                this.collapseTranscripts();
+                btnCollapseTranscripts.textContent = this.transcriptsCollapsed ? '▼' : '▲';
+            });
+        }
+
         // Хоткеи
         document.addEventListener('keydown', (e) => this.handleHotkeys(e));
 
@@ -340,6 +404,590 @@ class LiveHintsApp {
         this.elements.btnDismissError.addEventListener('click', () => {
             this.hideError();
         });
+
+        // Export/Import sessions
+        this.setupExportImport();
+
+        // Ollama model selection
+        this.setupModelSelection();
+
+        // Audio devices
+        this.setupAudioDevices();
+
+        // Vision AI
+        this.setupVisionAI();
+    }
+
+    setupAudioDevices() {
+        const inputDevice = document.getElementById('input-device');
+        const loopbackDevice = document.getElementById('loopback-device');
+        const refreshBtn = document.getElementById('btn-refresh-devices');
+        const dualAudio = document.getElementById('dual-audio');
+
+        // Загружаем устройства при старте
+        this.loadAudioDevices();
+
+        if (refreshBtn) {
+            refreshBtn.addEventListener('click', () => this.loadAudioDevices());
+        }
+
+        if (inputDevice) {
+            inputDevice.addEventListener('change', (e) => {
+                this.inputDeviceIndex = e.target.value;
+                this.saveSettings({ inputDeviceIndex: e.target.value });
+            });
+        }
+
+        if (loopbackDevice) {
+            loopbackDevice.addEventListener('change', (e) => {
+                this.loopbackDeviceIndex = e.target.value;
+                this.saveSettings({ loopbackDeviceIndex: e.target.value });
+            });
+        }
+
+        if (dualAudio) {
+            dualAudio.addEventListener('change', (e) => {
+                this.dualAudioEnabled = e.target.checked;
+                this.saveSettings({ dualAudioEnabled: e.target.checked });
+                this.showToast(e.target.checked ? 'Dual Audio включён' : 'Dual Audio выключен', 'success');
+            });
+        }
+    }
+
+    async loadAudioDevices() {
+        try {
+            const resp = await fetch(`${this.llmServerUrl}/audio/devices`);
+            const data = await resp.json();
+
+            const inputSelect = document.getElementById('input-device');
+            const loopbackSelect = document.getElementById('loopback-device');
+
+            if (inputSelect && data.input) {
+                inputSelect.innerHTML = '<option value="">По умолчанию</option>' +
+                    data.input.map(d => `<option value="${d.index}">${d.name}</option>`).join('');
+            }
+
+            if (loopbackSelect && data.output) {
+                const loopbacks = data.output.filter(d => d.isLoopback);
+                loopbackSelect.innerHTML = '<option value="">Авто (Loopback)</option>' +
+                    loopbacks.map(d => `<option value="${d.index}">${d.name}</option>`).join('');
+            }
+        } catch (e) {
+            console.error('Ошибка загрузки аудио устройств:', e);
+        }
+    }
+
+    setupVisionAI() {
+        const visionEnabled = document.getElementById('vision-enabled');
+        const captureBtn = document.getElementById('btn-capture-screen');
+        const visionModal = document.getElementById('vision-modal');
+        const closeVision = document.getElementById('btn-close-vision');
+        const captureFullscreen = document.getElementById('btn-capture-fullscreen');
+        const captureWindow = document.getElementById('btn-capture-window');
+        const captureRegion = document.getElementById('btn-capture-region');
+        const visionSend = document.getElementById('btn-vision-send');
+        const visionRetake = document.getElementById('btn-vision-retake');
+        const visionCancel = document.getElementById('btn-vision-cancel');
+
+        this.capturedScreenshot = null;
+
+        if (visionEnabled) {
+            visionEnabled.addEventListener('change', (e) => {
+                this.visionEnabled = e.target.checked;
+                this.saveSettings({ visionEnabled: e.target.checked });
+            });
+        }
+
+        // Открыть Vision modal
+        if (captureBtn) {
+            captureBtn.addEventListener('click', () => this.showVisionModal());
+        }
+
+        // Закрыть Vision modal
+        if (closeVision) {
+            closeVision.addEventListener('click', () => this.hideVisionModal());
+        }
+        if (visionModal) {
+            visionModal.addEventListener('click', (e) => {
+                if (e.target === visionModal) this.hideVisionModal();
+            });
+        }
+
+        // Опции захвата
+        if (captureFullscreen) {
+            captureFullscreen.addEventListener('click', () => this.captureScreen('fullscreen'));
+        }
+        if (captureWindow) {
+            captureWindow.addEventListener('click', () => this.captureScreen('window'));
+        }
+        if (captureRegion) {
+            captureRegion.addEventListener('click', () => this.captureScreen('region'));
+        }
+
+        // Действия preview
+        if (visionSend) {
+            visionSend.addEventListener('click', () => this.sendScreenshotToAI());
+        }
+        if (visionRetake) {
+            visionRetake.addEventListener('click', () => this.retakeScreenshot());
+        }
+        if (visionCancel) {
+            visionCancel.addEventListener('click', () => this.hideVisionModal());
+        }
+
+        // Горячая клавиша Ctrl+S для Vision
+        document.addEventListener('keydown', (e) => {
+            if (e.ctrlKey && e.key === 's' && this.visionEnabled) {
+                e.preventDefault();
+                this.showVisionModal();
+            }
+        });
+    }
+
+    showVisionModal() {
+        const modal = document.getElementById('vision-modal');
+        const previewContainer = document.getElementById('vision-preview-container');
+        const resultContainer = document.getElementById('vision-result');
+
+        if (modal) modal.classList.remove('hidden');
+        if (previewContainer) previewContainer.classList.add('hidden');
+        if (resultContainer) resultContainer.classList.add('hidden');
+    }
+
+    hideVisionModal() {
+        const modal = document.getElementById('vision-modal');
+        if (modal) modal.classList.add('hidden');
+        this.capturedScreenshot = null;
+    }
+
+    async captureScreen(mode = 'fullscreen') {
+        try {
+            this.hideVisionModal(); // Скрываем modal перед захватом
+
+            await new Promise(r => setTimeout(r, 200)); // Даём время скрыться
+
+            const imageData = await window.electronAPI?.captureScreen();
+
+            if (imageData) {
+                this.capturedScreenshot = imageData;
+                this.showScreenshotPreview(imageData);
+                this.showVisionModal();
+            } else {
+                this.showToast('Ошибка захвата экрана', 'error');
+            }
+        } catch (e) {
+            console.error('Capture error:', e);
+            this.showToast('Ошибка захвата', 'error');
+        }
+    }
+
+    showScreenshotPreview(imageData) {
+        const previewContainer = document.getElementById('vision-preview-container');
+        const previewImg = document.getElementById('vision-preview-img');
+
+        if (previewImg) {
+            previewImg.src = `data:image/png;base64,${imageData}`;
+        }
+        if (previewContainer) {
+            previewContainer.classList.remove('hidden');
+        }
+    }
+
+    retakeScreenshot() {
+        const previewContainer = document.getElementById('vision-preview-container');
+        if (previewContainer) previewContainer.classList.add('hidden');
+        this.capturedScreenshot = null;
+    }
+
+    async sendScreenshotToAI() {
+        if (!this.capturedScreenshot) {
+            this.showToast('Сначала сделайте скриншот', 'error');
+            return;
+        }
+
+        this.showToast('Анализ изображения...', 'info');
+
+        try {
+            const resp = await fetch(`${this.llmServerUrl}/vision/analyze`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    image: this.capturedScreenshot,
+                    prompt: 'Это скриншот с собеседования или технической задачи. Опиши что видишь и дай рекомендации по ответу.'
+                })
+            });
+
+            const data = await resp.json();
+
+            if (data.analysis) {
+                // Показываем результат в modal
+                const resultContainer = document.getElementById('vision-result');
+                const analysisText = document.getElementById('vision-analysis-text');
+
+                if (analysisText) analysisText.textContent = data.analysis;
+                if (resultContainer) resultContainer.classList.remove('hidden');
+
+                // Добавляем как подсказку
+                this.addHintItem(`[Vision AI] ${data.analysis}`, new Date().toLocaleTimeString());
+                this.showToast('Анализ завершён', 'success');
+            } else if (data.error) {
+                this.showToast(`Vision ошибка: ${data.error}`, 'error');
+            }
+        } catch (e) {
+            console.error('Vision AI error:', e);
+            this.showToast('Ошибка Vision AI', 'error');
+        }
+    }
+
+    async captureAndAnalyze() {
+        try {
+            if (window.electronAPI?.captureScreen) {
+                const imageData = await window.electronAPI.captureScreen();
+                if (imageData) {
+                    this.showToast('Анализ изображения...', 'info');
+                    const resp = await fetch(`${this.llmServerUrl}/vision/analyze`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            image: imageData,
+                            prompt: 'Это скриншот собеседования. Опиши что видишь и дай рекомендации.'
+                        })
+                    });
+                    const data = await resp.json();
+                    if (data.analysis) {
+                        this.addHintItem(`[Vision AI] ${data.analysis}`, new Date().toLocaleTimeString());
+                    } else if (data.error) {
+                        this.showToast(`Vision ошибка: ${data.error}`, 'error');
+                    }
+                }
+            } else {
+                this.showToast('Захват экрана недоступен', 'error');
+            }
+        } catch (e) {
+            this.showToast('Ошибка Vision AI', 'error');
+            console.error(e);
+        }
+    }
+
+    setupStealthMode() {
+        const stealthToggle = document.getElementById('stealth-toggle');
+        const stealthStrategy = document.getElementById('stealth-strategy');
+        const stealthIndicator = document.getElementById('stealth-indicator');
+        const stealthStatusText = document.getElementById('stealth-status-text');
+
+        // Загружаем текущее состояние
+        this.loadStealthStatus();
+
+        // Toggle stealth
+        if (stealthToggle) {
+            stealthToggle.addEventListener('change', async (e) => {
+                const result = await window.electronAPI?.stealthToggle();
+                this.updateStealthUI(result);
+            });
+        }
+
+        // Выбор стратегии
+        if (stealthStrategy) {
+            stealthStrategy.addEventListener('change', async (e) => {
+                await window.electronAPI?.stealthSetStrategy(e.target.value);
+                this.saveSettings({ stealthStrategy: e.target.value });
+                this.showToast(`Stealth стратегия: ${e.target.value}`, 'success');
+            });
+        }
+
+        // Горячая клавиша Ctrl+H
+        document.addEventListener('keydown', async (e) => {
+            if (e.ctrlKey && e.key === 'h') {
+                e.preventDefault();
+                const result = await window.electronAPI?.stealthToggle();
+                this.updateStealthUI(result);
+                if (stealthToggle) stealthToggle.checked = result;
+            }
+        });
+
+        // События от main process
+        window.electronAPI?.onStealthActivated(() => {
+            this.updateStealthUI(true);
+            if (stealthToggle) stealthToggle.checked = true;
+        });
+
+        window.electronAPI?.onStealthDeactivated(() => {
+            this.updateStealthUI(false);
+            if (stealthToggle) stealthToggle.checked = false;
+        });
+    }
+
+    async loadStealthStatus() {
+        try {
+            const status = await window.electronAPI?.stealthGetStrategy();
+            if (status) {
+                const stealthToggle = document.getElementById('stealth-toggle');
+                const stealthStrategy = document.getElementById('stealth-strategy');
+
+                if (stealthToggle) stealthToggle.checked = status.active;
+                if (stealthStrategy) stealthStrategy.value = status.strategy;
+                this.updateStealthUI(status.active);
+            }
+
+            // Проверяем доступность второго монитора
+            const hasSecondMonitor = await window.electronAPI?.stealthHasSecondMonitor();
+            const secondMonitorOption = document.querySelector('#stealth-strategy option[value="second-monitor"]');
+            if (secondMonitorOption && !hasSecondMonitor) {
+                secondMonitorOption.textContent = 'Второй монитор (недоступен)';
+                secondMonitorOption.disabled = true;
+            }
+        } catch (e) {
+            console.error('Ошибка загрузки stealth статуса:', e);
+        }
+    }
+
+    updateStealthUI(isActive) {
+        const indicator = document.getElementById('stealth-indicator');
+        const statusText = document.getElementById('stealth-status-text');
+
+        if (indicator) {
+            indicator.classList.toggle('active', isActive);
+            indicator.classList.toggle('inactive', !isActive);
+        }
+        if (statusText) {
+            statusText.textContent = isActive ? 'АКТИВЕН' : 'Выключен';
+        }
+
+        // Показываем toast если в stealth режиме
+        if (isActive) {
+            this.showToast('Stealth режим активирован', 'warning');
+        }
+    }
+
+    // Отправить подсказку как toast в stealth режиме
+    async sendHintAsToast(text) {
+        if (this.stealthMode) {
+            await window.electronAPI?.stealthShowToast(text);
+        }
+    }
+
+    setupExportImport() {
+        const exportBtn = document.getElementById('btn-export-sessions');
+        const importBtn = document.getElementById('btn-import-sessions');
+        const importInput = document.getElementById('import-file-input');
+
+        if (exportBtn) {
+            exportBtn.addEventListener('click', () => this.exportAllSessions());
+        }
+
+        if (importBtn) {
+            importBtn.addEventListener('click', () => importInput?.click());
+        }
+
+        if (importInput) {
+            importInput.addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if (file) this.importSessions(file);
+                importInput.value = '';
+            });
+        }
+    }
+
+    exportAllSessions() {
+        try {
+            const sessions = JSON.parse(localStorage.getItem('live-hints-sessions') || '[]');
+
+            if (sessions.length === 0) {
+                this.showToast('Нет сессий для экспорта', 'warning');
+                return;
+            }
+
+            const exportData = {
+                version: '1.0',
+                exportDate: new Date().toISOString(),
+                sessionsCount: sessions.length,
+                sessions: sessions
+            };
+
+            const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `live-hints-sessions-${new Date().toISOString().split('T')[0]}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+
+            this.showToast(`Экспортировано ${sessions.length} сессий`, 'success');
+        } catch (e) {
+            console.error('Export error:', e);
+            this.showToast('Ошибка экспорта', 'error');
+        }
+    }
+
+    async importSessions(file) {
+        try {
+            const text = await file.text();
+            const data = JSON.parse(text);
+
+            if (!data.sessions || !Array.isArray(data.sessions)) {
+                this.showToast('Неверный формат файла', 'error');
+                return;
+            }
+
+            const existingSessions = JSON.parse(localStorage.getItem('live-hints-sessions') || '[]');
+            const existingIds = new Set(existingSessions.map(s => s.id));
+
+            // Добавляем только новые сессии
+            let imported = 0;
+            for (const session of data.sessions) {
+                if (!existingIds.has(session.id)) {
+                    existingSessions.push(session);
+                    imported++;
+                }
+            }
+
+            // Сортируем по дате (новые первые)
+            existingSessions.sort((a, b) => new Date(b.startTime) - new Date(a.startTime));
+
+            localStorage.setItem('live-hints-sessions', JSON.stringify(existingSessions));
+
+            this.showToast(`Импортировано ${imported} новых сессий`, 'success');
+            this.renderSessionsList();
+        } catch (e) {
+            console.error('Import error:', e);
+            this.showToast('Ошибка импорта: неверный формат', 'error');
+        }
+    }
+
+    setupModelSelection() {
+        const modelSelect = document.getElementById('ollama-model');
+        const refreshBtn = document.getElementById('btn-refresh-models');
+        const profileBtns = document.querySelectorAll('.btn-profile');
+
+        // Загружаем модели при запуске
+        this.loadOllamaModels();
+
+        // Обновить список моделей
+        if (refreshBtn) {
+            refreshBtn.addEventListener('click', () => this.loadOllamaModels());
+        }
+
+        // Выбор модели
+        if (modelSelect) {
+            modelSelect.addEventListener('change', (e) => {
+                this.setOllamaModel(e.target.value);
+            });
+        }
+
+        // Профили моделей
+        profileBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                const profile = btn.dataset.profile;
+                this.setModelProfile(profile);
+                // Обновляем активную кнопку
+                profileBtns.forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+            });
+        });
+
+        // Горячие клавиши для профилей
+        document.addEventListener('keydown', (e) => {
+            if (e.ctrlKey && ['1', '2', '3', '4'].includes(e.key)) {
+                e.preventDefault();
+                const profiles = ['fast', 'balanced', 'accurate', 'code'];
+                const profile = profiles[parseInt(e.key) - 1];
+                this.setModelProfile(profile);
+                // Обновляем UI
+                profileBtns.forEach(b => {
+                    b.classList.toggle('active', b.dataset.profile === profile);
+                });
+            }
+        });
+    }
+
+    async loadOllamaModels() {
+        const modelSelect = document.getElementById('ollama-model');
+        if (!modelSelect) return;
+
+        try {
+            const resp = await fetch(`${this.llmServerUrl}/models`);
+            const data = await resp.json();
+
+            if (data.models && data.models.length > 0) {
+                modelSelect.innerHTML = data.models.map(m => {
+                    const name = typeof m === 'string' ? m : m.name;
+                    const size = typeof m === 'object' ? ` (${m.size})` : '';
+                    const selected = name === data.current ? 'selected' : '';
+                    return `<option value="${name}" ${selected}>${name}${size}</option>`;
+                }).join('');
+            } else {
+                modelSelect.innerHTML = '<option value="">Нет моделей</option>';
+            }
+        } catch (e) {
+            modelSelect.innerHTML = '<option value="">Ошибка загрузки</option>';
+            console.error('Ошибка загрузки моделей:', e);
+        }
+    }
+
+    async setOllamaModel(modelName) {
+        if (!modelName) return;
+        try {
+            await fetch(`${this.llmServerUrl}/model/${encodeURIComponent(modelName)}`, {
+                method: 'POST'
+            });
+            this.showToast(`Модель: ${modelName}`, 'success');
+        } catch (e) {
+            this.showToast('Ошибка смены модели', 'error');
+        }
+    }
+
+    async setModelProfile(profileName) {
+        try {
+            const resp = await fetch(`${this.llmServerUrl}/model/profile/${profileName}`, {
+                method: 'POST'
+            });
+            const data = await resp.json();
+            this.showToast(`Профиль: ${profileName}`, 'success');
+            this.loadOllamaModels();
+        } catch (e) {
+            this.showToast('Ошибка смены профиля', 'error');
+        }
+    }
+
+    async testRemoteConnection() {
+        const sttUrl = document.getElementById('remote-stt-url')?.value || this.sttServerUrl;
+        const llmUrl = document.getElementById('remote-llm-url')?.value || this.llmServerUrl;
+
+        let sttOk = false;
+        let llmOk = false;
+
+        // Тест LLM
+        try {
+            const resp = await fetch(`${llmUrl}/health`, { timeout: 5000 });
+            llmOk = resp.ok;
+        } catch (e) {
+            llmOk = false;
+        }
+
+        // Тест STT (WebSocket)
+        try {
+            const ws = new WebSocket(sttUrl);
+            await new Promise((resolve, reject) => {
+                ws.onopen = () => { sttOk = true; ws.close(); resolve(); };
+                ws.onerror = () => { sttOk = false; reject(); };
+                setTimeout(() => { ws.close(); reject(); }, 3000);
+            });
+        } catch (e) {
+            sttOk = false;
+        }
+
+        if (sttOk && llmOk) {
+            this.showToast('Оба сервера доступны', 'success');
+        } else if (llmOk) {
+            this.showToast('LLM доступен, STT недоступен', 'warning');
+        } else if (sttOk) {
+            this.showToast('STT доступен, LLM недоступен', 'warning');
+        } else {
+            this.showToast('Оба сервера недоступны', 'error');
+        }
     }
 
     setupIPCListeners() {
@@ -370,17 +1018,69 @@ class LiveHintsApp {
     }
 
     sendAudioToSTT(data) {
-        // Не отправляем аудио на паузе
         if (this.isPaused) return;
 
         if (this.wsConnection && this.wsConnection.readyState === WebSocket.OPEN) {
             try {
-                // data это Buffer с бинарными PCM данными
                 this.wsConnection.send(data);
             } catch (e) {
                 console.error('Ошибка отправки аудио:', e);
             }
         }
+    }
+
+    // Dual Audio: подключение микрофона
+    connectMicrophone() {
+        if (!this.dualAudioEnabled) return;
+
+        const micUrl = this.sttServerUrl.replace(':8765', ':8764');
+
+        try {
+            this.wsMicrophone = new WebSocket(micUrl);
+
+            this.wsMicrophone.onopen = () => {
+                console.log('[MIC] WebSocket подключен');
+                this.showToast('Микрофон подключен', 'success');
+            };
+
+            this.wsMicrophone.onmessage = (event) => {
+                try {
+                    const data = JSON.parse(event.data);
+                    if (data.type === 'transcript' && data.text) {
+                        this.addTranscriptItem(data.text, data.timestamp, 'candidate');
+                    }
+                } catch (e) {
+                    console.error('[MIC] Parse error:', e);
+                }
+            };
+
+            this.wsMicrophone.onerror = (e) => {
+                console.error('[MIC] WebSocket error:', e);
+            };
+
+            this.wsMicrophone.onclose = () => {
+                console.log('[MIC] WebSocket закрыт');
+            };
+        } catch (e) {
+            console.error('[MIC] Ошибка подключения:', e);
+        }
+    }
+
+    disconnectMicrophone() {
+        if (this.wsMicrophone) {
+            this.wsMicrophone.close();
+            this.wsMicrophone = null;
+        }
+    }
+
+    toggleMicMute() {
+        this.micMuted = !this.micMuted;
+        const btn = document.getElementById('btn-mic-mute');
+        if (btn) {
+            btn.textContent = this.micMuted ? '🔇' : '🎤';
+            btn.title = this.micMuted ? 'Включить микрофон' : 'Выключить микрофон';
+        }
+        this.showToast(this.micMuted ? 'Микрофон выключен' : 'Микрофон включён', 'info');
     }
 
     // Пауза/Продолжить
@@ -480,17 +1180,15 @@ class LiveHintsApp {
                     try {
                         const data = JSON.parse(event.data);
                         if (data.type === 'transcript') {
-                            // Показываем транскрипт с latency
                             const latencyInfo = data.latency_ms ? ` (${data.latency_ms}ms)` : '';
-                            console.log(`[STT] "${data.text}"${latencyInfo}`);
+                            const source = data.source || 'interviewer';
+                            console.log(`[STT:${source}] "${data.text}"${latencyInfo}`);
 
-                            this.addTranscriptItem(data.text, new Date().toISOString(), data.latency_ms);
+                            this.addTranscriptItem(data.text, new Date().toISOString(), source);
 
-                            // Запрашиваем подсказку ТОЛЬКО если включены авто-подсказки
                             if (this.autoHintsEnabled) {
                                 this.requestHint(data.text);
                             }
-                            // Активируем кнопку "Получить ответ"
                             this.elements.btnGetHint.disabled = false;
                         }
                     } catch (e) {
@@ -643,12 +1341,16 @@ class LiveHintsApp {
                             this.updateMetricsPanel();
 
                             if (this.debugMode) {
-                                console.log(`[LLM] Streaming завершён: total=${totalLatency}ms, server=${data.latency_ms}ms`);
+                                console.log(`[LLM] Streaming завершён: total=${totalLatency}ms, server=${data.latency_ms}ms, cached=${data.cached}, type=${data.question_type}`);
                             }
 
-                            // Финализируем подсказку
+                            // Финализируем подсказку с cache индикацией и типом
                             if (hintElement && accumulatedHint.trim()) {
-                                this.finalizeStreamingHint(hintElement, accumulatedHint, data.latency_ms);
+                                this.finalizeStreamingHint(hintElement, accumulatedHint, {
+                                    latencyMs: data.latency_ms,
+                                    cached: data.cached || false,
+                                    questionType: data.question_type || 'general'
+                                });
                                 this.lastHintText = accumulatedHint.trim();
                             } else if (!accumulatedHint.trim()) {
                                 this.hideHintLoading();
@@ -749,18 +1451,48 @@ class LiveHintsApp {
     }
 
     // Финализировать streaming подсказку
-    finalizeStreamingHint(element, text, latencyMs) {
+    finalizeStreamingHint(element, text, options = {}) {
         if (!element) return;
         element.classList.remove('streaming-hint');
 
-        // Добавляем badge с латентностью
+        const { latencyMs, cached, questionType } = options;
         const timeEl = element.querySelector('.feed-item-time');
-        if (timeEl && latencyMs) {
-            const badge = document.createElement('span');
-            badge.className = 'latency-badge';
-            badge.textContent = this.formatLatency(latencyMs);
-            timeEl.appendChild(badge);
+
+        if (timeEl) {
+            // Badge типа вопроса
+            if (questionType) {
+                const typeBadge = document.createElement('span');
+                typeBadge.className = `question-type-badge type-${questionType}`;
+                typeBadge.textContent = this.getQuestionTypeLabel(questionType);
+                timeEl.appendChild(typeBadge);
+            }
+
+            // Cache индикация
+            if (cached) {
+                const cacheBadge = document.createElement('span');
+                cacheBadge.className = 'cache-badge';
+                cacheBadge.textContent = 'Из кэша';
+                timeEl.appendChild(cacheBadge);
+            }
+
+            // Латентность (только если не из кэша)
+            if (latencyMs && !cached) {
+                const latencyBadge = document.createElement('span');
+                latencyBadge.className = 'latency-badge';
+                latencyBadge.textContent = this.formatLatency(latencyMs);
+                timeEl.appendChild(latencyBadge);
+            }
         }
+    }
+
+    // Получить человекочитаемый label для типа вопроса
+    getQuestionTypeLabel(type) {
+        const labels = {
+            'technical': 'Технический',
+            'experience': 'Опыт',
+            'general': 'Общий'
+        };
+        return labels[type] || type;
     }
 
     updateStatus(status) {
@@ -789,11 +1521,11 @@ class LiveHintsApp {
 
         if (this.isRunning) {
             btn.classList.add('active');
-            if (icon) icon.textContent = '⏹';
+            if (icon) icon.textContent = '';
             if (text) text.textContent = 'Стоп';
         } else {
             btn.classList.remove('active');
-            if (icon) icon.textContent = '▶';
+            if (icon) icon.textContent = '';
             if (text) text.textContent = 'Старт';
         }
     }
@@ -807,14 +1539,20 @@ class LiveHintsApp {
         }
     }
 
-    addTranscriptItem(text, timestamp, latencyMs = null) {
+    addTranscriptItem(text, timestamp, source = 'interviewer') {
         // Дедуп транскриптов
         if (text === this.lastTranscriptText) {
             console.log('[STT] Дубликат транскрипта, пропускаем');
             return;
         }
         this.lastTranscriptText = text;
-        this.addFeedItem(this.elements.transcriptFeed, text, timestamp, latencyMs);
+
+        // Добавляем метку источника для Dual Audio
+        const icon = source === 'candidate' ? '🗣️' : '🎙️';
+        const label = source === 'candidate' ? 'Ты' : 'Интервьюер';
+        const formattedText = this.dualAudioEnabled ? `${icon} ${label}: ${text}` : text;
+
+        this.addFeedItem(this.elements.transcriptFeed, formattedText, timestamp, null, source);
     }
 
     addHintItem(text, timestamp, latencyMs = null) {
@@ -968,19 +1706,94 @@ class LiveHintsApp {
             return;
         }
 
-        this.elements.sessionsList.innerHTML = sessions.map(session => `
-      <div class="session-item" data-session-id="${session.id}">
-        <div class="session-item-date">${this.formatDate(session.date)}</div>
-        <div class="session-item-preview">${this.escapeHtml(session.transcript.substring(0, 100))}...</div>
-      </div>
-    `).join('');
+        this.elements.sessionsList.innerHTML = sessions.map(session => {
+            const transcriptLines = (session.transcript || '').split('\n').filter(l => l.trim());
+            const hintLines = (session.hints || '').split('\n').filter(l => l.trim());
+            const duration = this.calculateDuration(session);
+            const tags = session.tags || [];
+
+            return `
+            <div class="session-card" data-session-id="${session.id}">
+                <div class="session-card-header">
+                    <span class="session-card-title">${session.name || 'Сессия'}</span>
+                    <span class="session-card-date">${this.formatDateFull(session.date)}</span>
+                </div>
+                <div class="session-card-stats">
+                    <span class="session-stat">
+                        <span class="stat-icon">🎙️</span>
+                        <span class="stat-value">${transcriptLines.length} реплик</span>
+                    </span>
+                    <span class="session-stat">
+                        <span class="stat-icon">💡</span>
+                        <span class="stat-value">${hintLines.length} подсказок</span>
+                    </span>
+                    <span class="session-stat">
+                        <span class="stat-icon">⏱️</span>
+                        <span class="stat-value">${duration}</span>
+                    </span>
+                </div>
+                ${tags.length > 0 ? `
+                <div class="session-card-tags">
+                    ${tags.map(tag => `<span class="session-tag">${this.escapeHtml(tag)}</span>`).join('')}
+                </div>
+                ` : ''}
+                <div class="session-card-preview">${this.escapeHtml((session.transcript || '').substring(0, 120))}...</div>
+                <div class="session-card-actions">
+                    <button class="btn-session-view" data-action="view">Открыть</button>
+                    <button class="btn-session-export" data-action="export">Экспорт</button>
+                    <button class="btn-session-delete" data-action="delete">Удалить</button>
+                </div>
+            </div>
+            `;
+        }).join('');
 
         // Добавляем обработчики
-        this.elements.sessionsList.querySelectorAll('.session-item').forEach(item => {
-            item.addEventListener('click', () => {
-                const sessionId = item.dataset.sessionId;
+        this.elements.sessionsList.querySelectorAll('.session-card').forEach(card => {
+            const sessionId = card.dataset.sessionId;
+
+            card.querySelector('.btn-session-view')?.addEventListener('click', (e) => {
+                e.stopPropagation();
                 this.showSessionView(sessionId);
             });
+
+            card.querySelector('.btn-session-export')?.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.exportSession(sessionId);
+            });
+
+            card.querySelector('.btn-session-delete')?.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.deleteSession(sessionId);
+            });
+
+            card.addEventListener('click', () => {
+                this.showSessionView(sessionId);
+            });
+        });
+    }
+
+    calculateDuration(session) {
+        if (session.endedAt && session.date) {
+            const start = new Date(session.date);
+            const end = new Date(session.endedAt);
+            const diffMs = end - start;
+            const mins = Math.floor(diffMs / 60000);
+            if (mins < 1) return '< 1 мин';
+            if (mins < 60) return `${mins} мин`;
+            const hours = Math.floor(mins / 60);
+            return `${hours} ч ${mins % 60} мин`;
+        }
+        return '—';
+    }
+
+    formatDateFull(isoString) {
+        const date = new Date(isoString);
+        return date.toLocaleString('ru-RU', {
+            day: 'numeric',
+            month: 'long',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
         });
     }
 
@@ -990,12 +1803,71 @@ class LiveHintsApp {
 
         if (!session) return;
 
-        this.elements.sessionViewTitle.textContent = `Сессия от ${this.formatDate(session.date)}`;
-        this.elements.sessionTranscript.textContent = session.transcript || 'Нет данных';
-        this.elements.sessionHints.textContent = session.hints || 'Нет данных';
+        // Парсим транскрипты и подсказки в хронологическом порядке
+        const transcriptLines = (session.transcript || '').split('\n').filter(l => l.trim());
+        const hintLines = (session.hints || '').split('\n').filter(l => l.trim());
+
+        this.elements.sessionViewTitle.textContent = session.name || `Сессия от ${this.formatDate(session.date)}`;
+
+        // Форматируем транскрипт с временными метками
+        this.elements.sessionTranscript.innerHTML = transcriptLines.length > 0
+            ? transcriptLines.map((line, i) => `
+                <div class="session-dialog-item">
+                    <span class="dialog-icon">🎙️</span>
+                    <span class="dialog-text">${this.escapeHtml(line)}</span>
+                </div>
+            `).join('')
+            : '<p class="placeholder">Нет транскрипта</p>';
+
+        // Форматируем подсказки
+        this.elements.sessionHints.innerHTML = hintLines.length > 0
+            ? hintLines.map((line, i) => `
+                <div class="session-dialog-item hint-item">
+                    <span class="dialog-icon">💡</span>
+                    <span class="dialog-text">${this.renderMarkdown(line)}</span>
+                </div>
+            `).join('')
+            : '<p class="placeholder">Нет подсказок</p>';
 
         this.hideHistoryModal();
         this.elements.sessionViewModal.classList.remove('hidden');
+    }
+
+    exportSession(sessionId) {
+        const sessions = this.getSessions();
+        const session = sessions.find(s => s.id === sessionId);
+        if (!session) return;
+
+        const content = `# Сессия: ${session.name || 'Без названия'}
+Дата: ${this.formatDateFull(session.date)}
+
+## Транскрипт
+${session.transcript || 'Нет данных'}
+
+## Подсказки
+${session.hints || 'Нет данных'}
+`;
+
+        const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `session_${new Date(session.date).toISOString().split('T')[0]}.txt`;
+        a.click();
+        URL.revokeObjectURL(url);
+
+        this.showToast('Сессия экспортирована', 'success');
+    }
+
+    deleteSession(sessionId) {
+        if (!confirm('Удалить эту сессию?')) return;
+
+        let sessions = this.getSessions();
+        sessions = sessions.filter(s => s.id !== sessionId);
+        localStorage.setItem('live-hints-sessions', JSON.stringify(sessions));
+
+        this.renderSessionsList();
+        this.showToast('Сессия удалена', 'success');
     }
 
     hideSessionView() {
@@ -1030,6 +1902,66 @@ class LiveHintsApp {
         if (e.ctrlKey && e.key === 'Enter' && this.isRunning) {
             e.preventDefault();
             this.manualRequestHint();
+        }
+        // Ctrl+T - скрыть/показать транскрипты
+        if (e.ctrlKey && e.key === 't') {
+            e.preventDefault();
+            this.toggleTranscripts();
+        }
+        // Ctrl+H - stealth режим
+        if (e.ctrlKey && e.key === 'h') {
+            e.preventDefault();
+            this.toggleStealth();
+        }
+        // Ctrl+D - переключить тему
+        if (e.ctrlKey && e.key === 'd') {
+            e.preventDefault();
+            this.toggleTheme();
+        }
+    }
+
+    // Переключение видимости транскриптов
+    toggleTranscripts() {
+        this.hideTranscripts = !this.hideTranscripts;
+        const mainContent = document.querySelector('.main-content');
+        if (mainContent) {
+            mainContent.setAttribute('data-hide-transcripts', this.hideTranscripts);
+        }
+        // Обновляем кнопку если есть
+        const btn = document.getElementById('btn-toggle-transcripts');
+        if (btn) {
+            btn.textContent = this.hideTranscripts ? '👁' : '👁‍🗨';
+            btn.title = this.hideTranscripts ? 'Показать транскрипты' : 'Скрыть транскрипты';
+        }
+        this.showToast(this.hideTranscripts ? 'Транскрипты скрыты' : 'Транскрипты показаны', 'success');
+        this.saveSettings();
+    }
+
+    // Свернуть/развернуть блок транскриптов
+    collapseTranscripts() {
+        this.transcriptsCollapsed = !this.transcriptsCollapsed;
+        const mainContent = document.querySelector('.main-content');
+        if (mainContent) {
+            mainContent.setAttribute('data-transcripts-collapsed', this.transcriptsCollapsed);
+        }
+        this.showToast(this.transcriptsCollapsed ? 'Транскрипты свёрнуты' : 'Транскрипты развёрнуты', 'success');
+    }
+
+    // Переключение темы
+    toggleTheme() {
+        this.theme = this.theme === 'dark' ? 'light' : 'dark';
+        document.body.setAttribute('data-theme', this.theme);
+        this.showToast(`Тема: ${this.theme === 'dark' ? 'тёмная' : 'светлая'}`, 'success');
+        this.saveSettings();
+    }
+
+    // Переключение stealth режима
+    async toggleStealth() {
+        if (window.electronAPI?.stealthToggle) {
+            this.stealthMode = await window.electronAPI.stealthToggle();
+            if (this.stealthMode) {
+                this.showToast('Stealth режим активирован', 'success');
+            }
         }
     }
 
