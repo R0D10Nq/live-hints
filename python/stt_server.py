@@ -30,7 +30,8 @@ WEBSOCKET_PORT_MIC = 8764  # Порт для микрофона
 SAMPLE_RATE = 16000
 
 # GPU настройки - RTX 5060 Ti 16GB
-MODEL_PRIORITY = ['whisper-large-v3-russian', 'large-v3', 'medium', 'small']  # distil-large-v3 только для английского
+# Приоритет моделей: large-v3 лучшее качество для русского, medium как fallback
+MODEL_PRIORITY = ['large-v3', 'medium', 'small', 'base']
 DEVICE = 'cuda'
 COMPUTE_TYPE = 'float16'
 

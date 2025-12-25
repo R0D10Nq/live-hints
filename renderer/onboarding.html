@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self' ws://localhost:8765 http://localhost:8766"
+    />
+    <title>Live Hints - Настройка</title>
+    <link rel="stylesheet" href="onboarding.css" />
+  </head>
+  <body>
+    <div id="onboarding-app">
+      <!-- Header -->
+      <header class="onboarding-header">
+        <div class="header-drag-region"></div>
+        <div class="logo">
+          <span class="logo-icon">💡</span>
+          <span class="logo-text">Live Hints</span>
+        </div>
+        <div class="window-controls">
+          <button id="btn-minimize" class="window-btn" title="Свернуть">─</button>
+          <button id="btn-close" class="window-btn window-btn-close" title="Закрыть">✕</button>
+        </div>
+      </header>
+
+      <!-- Progress Indicator -->
+      <div class="progress-container">
+        <div class="progress-steps">
+          <div class="progress-step active" data-step="1">
+            <div class="step-circle">1</div>
+            <span class="step-label">Язык</span>
+          </div>
+          <div class="progress-line"></div>
+          <div class="progress-step" data-step="2">
+            <div class="step-circle">2</div>
+            <span class="step-label">Микрофон</span>
+          </div>
+          <div class="progress-line"></div>
+          <div class="progress-step" data-step="3">
+            <div class="step-circle">3</div>
+            <span class="step-label">Экран</span>
+          </div>
+          <div class="progress-line"></div>
+          <div class="progress-step" data-step="4">
+            <div class="step-circle">4</div>
+            <span class="step-label">Контекст</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Step Content Container -->
+      <main class="step-container">
+        <!-- Step 1: Language Selection -->
+        <div class="step-content active" data-step="1">
+          <div class="step-icon">🌐</div>
+          <h2 class="step-title">Выберите язык AI-ответов</h2>
+          <p class="step-description">На каком языке вы хотите получать подсказки от AI?</p>
+
+          <div class="form-group">
+            <select id="language-select" class="form-select">
+              <option value="ru" selected>Русский</option>
+              <option value="en">English</option>
+              <option value="de">Deutsch</option>
+              <option value="fr">Français</option>
+              <option value="es">Español</option>
+              <option value="zh">中文</option>
+              <option value="ja">日本語</option>
+              <option value="ko">한국어</option>
+            </select>
+          </div>
+
+          <div class="language-preview">
+            <div class="preview-label">Пример ответа:</div>
+            <div id="language-preview-text" class="preview-text">
+              "Расскажите о себе" — это возможность кратко представить свой опыт и навыки,
+              релевантные позиции...
+            </div>
+          </div>
+        </div>
+
+        <!-- Step 2: Microphone Access -->
+        <div class="step-content" data-step="2">
+          <div class="step-icon">🎤</div>
+          <h2 class="step-title">Доступ к микрофону</h2>
+          <p class="step-description">Для распознавания речи необходим доступ к микрофону</p>
+
+          <div class="permission-card" id="mic-permission-card">
+            <div class="permission-status" id="mic-status">
+              <span class="status-icon pending">○</span>
+              <span class="status-text">Ожидание разрешения</span>
+            </div>
+            <button id="btn-request-mic" class="btn-permission">
+              <span class="btn-icon">🎤</span>
+              Предоставить доступ к микрофону
+            </button>
+          </div>
+
+          <div class="device-selection hidden" id="mic-device-selection">
+            <label class="form-label">Выберите микрофон:</label>
+            <select id="mic-select" class="form-select">
+              <option value="">Загрузка устройств...</option>
+            </select>
+            <div class="vu-meter-container">
+              <div class="vu-meter" id="mic-vu-meter">
+                <div class="vu-bar"></div>
+                <div class="vu-bar"></div>
+                <div class="vu-bar"></div>
+                <div class="vu-bar"></div>
+                <div class="vu-bar"></div>
+                <div class="vu-bar"></div>
+                <div class="vu-bar"></div>
+                <div class="vu-bar"></div>
+              </div>
+              <span class="vu-label">Уровень сигнала</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Step 3: Screen Capture Access -->
+        <div class="step-content" data-step="3">
+          <div class="step-icon">🖥️</div>
+          <h2 class="step-title">Доступ к захвату экрана</h2>
+          <p class="step-description">Для анализа задач с экрана необходим доступ к захвату</p>
+
+          <div class="permission-card" id="screen-permission-card">
+            <div class="permission-status" id="screen-status">
+              <span class="status-icon pending">○</span>
+              <span class="status-text">Ожидание разрешения</span>
+            </div>
+            <button id="btn-request-screen" class="btn-permission">
+              <span class="btn-icon">🖥️</span>
+              Предоставить доступ к экрану
+            </button>
+          </div>
+
+          <div class="monitor-selection hidden" id="monitor-selection">
+            <label class="form-label">Выберите монитор:</label>
+            <div class="monitor-grid" id="monitor-grid">
+              <!-- Monitors will be populated dynamically -->
+            </div>
+          </div>
+        </div>
+
+        <!-- Step 4: Context File (Optional) -->
+        <div class="step-content" data-step="4">
+          <div class="step-icon">📄</div>
+          <h2 class="step-title">Загрузка контекста</h2>
+          <p class="step-description">
+            Загрузите резюме или другой файл для персонализации подсказок (опционально)
+          </p>
+
+          <div class="file-upload-area" id="file-upload-area">
+            <div class="upload-icon">📁</div>
+            <p class="upload-text">Перетащите файл сюда или нажмите для выбора</p>
+            <p class="upload-formats">Поддерживаемые форматы: PDF, TXT</p>
+            <input type="file" id="context-file-input" accept=".pdf,.txt" hidden />
+          </div>
+
+          <div class="file-info hidden" id="file-info">
+            <div class="file-icon">📄</div>
+            <div class="file-details">
+              <span class="file-name" id="file-name">document.pdf</span>
+              <span class="file-size" id="file-size">1.2 MB</span>
+            </div>
+            <button id="btn-remove-file" class="btn-remove-file" title="Удалить файл">✕</button>
+          </div>
+
+          <p class="optional-note">Этот шаг можно пропустить и загрузить файл позже в настройках</p>
+        </div>
+      </main>
+
+      <!-- Navigation Footer -->
+      <footer class="onboarding-footer">
+        <button id="btn-back" class="btn-nav btn-back hidden">
+          <span class="btn-arrow">←</span> Назад
+        </button>
+
+        <div class="step-indicator">
+          <span id="current-step">1</span> из <span id="total-steps">4</span>
+        </div>
+
+        <div class="footer-actions">
+          <button id="btn-skip" class="btn-nav btn-skip hidden">Пропустить</button>
+          <button id="btn-next" class="btn-nav btn-next">
+            Далее <span class="btn-arrow">→</span>
+          </button>
+          <button id="btn-finish" class="btn-nav btn-finish hidden">Начать работу</button>
+        </div>
+      </footer>
+    </div>
+
+    <script src="onboarding.js"></script>
+  </body>
+</html>

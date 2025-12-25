@@ -5,317 +5,636 @@
 import { STATUS_CONFIG, TIMEOUTS, QUESTION_TYPE_LABELS } from './constants.js';
 
 export class UIController {
-    constructor(app) {
-        this.app = app;
-        this.elements = {};
-        this.compactMode = false;
-        this.focusMode = false;
-        this.hideTranscripts = false;
-        this.transcriptsCollapsed = false;
-        this.lastTranscriptText = '';
-        this.lastHintText = '';
-        this.pinnedHintText = '';
+  constructor(app) {
+    this.app = app;
+    this.elements = {};
+    this.compactMode = false;
+    this.hideTranscripts = false;
+    this.transcriptsCollapsed = false;
+    this.lastTranscriptText = '';
+    this.lastHintText = '';
+  }
+
+  cacheElements() {
+    this.elements = {
+      // Header controls
+      btnToggle: document.getElementById('btn-toggle'),
+      btnMinimize: document.getElementById('btn-minimize'),
+      btnClose: document.getElementById('btn-close'),
+      btnAsk: document.getElementById('btn-ask'),
+      btnScreenshot: document.getElementById('btn-screenshot'),
+      btnSettings: document.getElementById('btn-settings'),
+      btnHistory: document.getElementById('btn-history'),
+      btnHelp: document.getElementById('btn-help'),
+      statusIndicator: document.getElementById('status-indicator'),
+
+      // Transcript sidebar
+      transcriptSidebar: document.getElementById('transcript-sidebar'),
+      transcriptFeed: document.getElementById('transcript-feed'),
+      btnToggleSidebar: document.getElementById('btn-toggle-sidebar'),
+      btnExpandSidebar: document.getElementById('btn-expand-sidebar'),
+      btnClearTranscript: document.getElementById('btn-clear-transcript'),
+
+      // Hints area
+      hintsFeed: document.getElementById('hints-feed'),
+      hintsCounter: document.getElementById('hints-counter'),
+      btnPrevHint: document.getElementById('btn-prev-hint'),
+      btnNextHint: document.getElementById('btn-next-hint'),
+      btnCopyHint: document.getElementById('btn-copy-hint'),
+      btnClearHints: document.getElementById('btn-clear-hints'),
+      streamingHint: document.getElementById('streaming-hint'),
+      streamingText: document.getElementById('streaming-text'),
+
+      // Settings panel
+      settingsPanel: document.getElementById('settings-panel'),
+      btnCloseSettings: document.getElementById('btn-close-settings'),
+      btnBasicMode: document.getElementById('btn-basic-mode'),
+      btnAdvancedMode: document.getElementById('btn-advanced-mode'),
+      basicSettings: document.getElementById('basic-settings'),
+      advancedSettings: document.getElementById('advanced-settings'),
+      llmProvider: document.getElementById('llm-provider'),
+      aiProfile: document.getElementById('ai-profile'),
+
+      // History modal
+      historyModal: document.getElementById('history-modal'),
+      sessionsList: document.getElementById('sessions-list'),
+      btnCloseHistory: document.getElementById('btn-close-history'),
+      sessionViewModal: document.getElementById('session-view-modal'),
+      sessionViewTitle: document.getElementById('session-view-title'),
+      sessionTranscript: document.getElementById('session-transcript'),
+      sessionHints: document.getElementById('session-hints'),
+      btnCloseSessionView: document.getElementById('btn-close-session-view'),
+
+      // Help modal
+      helpModal: document.getElementById('help-modal'),
+      btnCloseHelp: document.getElementById('btn-close-help'),
+
+      // Vision modal
+      visionModal: document.getElementById('vision-modal'),
+      btnCloseVision: document.getElementById('btn-close-vision'),
+      visionOptions: document.getElementById('vision-options'),
+      visionPreview: document.getElementById('vision-preview'),
+      visionResult: document.getElementById('vision-result'),
+
+      // Toast
+      errorToast: document.getElementById('error-toast'),
+      errorMessage: document.getElementById('error-message'),
+      btnDismissError: document.getElementById('btn-dismiss-error'),
+      successToast: document.getElementById('success-toast'),
+      successMessage: document.getElementById('success-message'),
+
+      // Debug
+      debugPanel: document.getElementById('debug-panel'),
+      metricsSttLatency: document.getElementById('metrics-stt-latency'),
+      metricsLlmLatency: document.getElementById('metrics-llm-latency'),
+
+      // Legacy compatibility
+      btnGetHint: document.getElementById('btn-ask'),
+      btnPause: document.getElementById('btn-pause'),
+      metricsPanel: document.getElementById('debug-panel'),
+    };
+
+    // Hints pagination state
+    this.hints = [];
+    this.currentHintIndex = 0;
+  }
+
+  setup() {
+    this.cacheElements();
+    this.bindUIEvents();
+    this.restoreTranscriptState();
+  }
+
+  bindUIEvents() {
+    // Settings panel toggle
+    if (this.elements.btnSettings) {
+      this.elements.btnSettings.addEventListener('click', () => this.toggleSettingsPanel());
     }
 
-    cacheElements() {
-        this.elements = {
-            btnToggle: document.getElementById('btn-toggle'),
-            btnMinimize: document.getElementById('btn-minimize'),
-            btnClose: document.getElementById('btn-close'),
-            btnHistory: document.getElementById('btn-history'),
-            btnCloseModal: document.getElementById('btn-close-modal'),
-            btnCloseSessionView: document.getElementById('btn-close-session-view'),
-            btnDismissError: document.getElementById('btn-dismiss-error'),
-            statusIndicator: document.getElementById('status-indicator'),
-            statusText: document.getElementById('status-text'),
-            llmProvider: document.getElementById('llm-provider'),
-            transcriptFeed: document.getElementById('transcript-feed'),
-            hintsFeed: document.getElementById('hints-feed'),
-            historyModal: document.getElementById('history-modal'),
-            sessionsList: document.getElementById('sessions-list'),
-            sessionViewModal: document.getElementById('session-view-modal'),
-            sessionViewTitle: document.getElementById('session-view-title'),
-            sessionTranscript: document.getElementById('session-transcript'),
-            sessionHints: document.getElementById('session-hints'),
-            errorToast: document.getElementById('error-toast'),
-            errorMessage: document.getElementById('error-message'),
-            btnGetHint: document.getElementById('btn-get-hint'),
-            aiProfile: document.getElementById('ai-profile'),
-            btnPause: document.getElementById('btn-pause'),
-            btnCompactToggle: document.getElementById('btn-compact-toggle'),
-            btnFocusToggle: document.getElementById('btn-focus-toggle'),
-            btnSettingsToggle: document.getElementById('btn-settings-toggle'),
-            settingsDrawer: document.getElementById('settings-drawer'),
-            btnExitFocus: document.getElementById('btn-exit-focus'),
-            btnPinHint: document.getElementById('btn-pin-hint'),
-            btnCopyLast: document.getElementById('btn-copy-last'),
-            btnClearHints: document.getElementById('btn-clear-hints'),
-            pinnedHintContainer: document.getElementById('pinned-hint-container'),
-            pinnedHintText: document.getElementById('pinned-hint-text'),
-            metricsPanel: document.getElementById('metrics-panel'),
-            metricsSttLatency: document.getElementById('metrics-stt-latency'),
-            metricsLlmLatency: document.getElementById('metrics-llm-latency')
+    if (this.elements.btnCloseSettings) {
+      this.elements.btnCloseSettings.addEventListener('click', () => this.toggleSettingsPanel());
+    }
+
+    // Settings mode toggle (basic/advanced)
+    if (this.elements.btnBasicMode) {
+      this.elements.btnBasicMode.addEventListener('click', () => this.setSettingsMode('basic'));
+    }
+
+    if (this.elements.btnAdvancedMode) {
+      this.elements.btnAdvancedMode.addEventListener('click', () =>
+        this.setSettingsMode('advanced')
+      );
+    }
+
+    // Transcript sidebar toggle
+    if (this.elements.btnToggleSidebar) {
+      this.elements.btnToggleSidebar.addEventListener('click', () =>
+        this.toggleTranscriptSidebar()
+      );
+    }
+
+    // Expand sidebar button
+    if (this.elements.btnExpandSidebar) {
+      this.elements.btnExpandSidebar.addEventListener('click', () =>
+        this.toggleTranscriptSidebar()
+      );
+    }
+
+    // Clear transcript
+    if (this.elements.btnClearTranscript) {
+      this.elements.btnClearTranscript.addEventListener('click', () => this.clearTranscript());
+    }
+
+    // Hints pagination
+    if (this.elements.btnPrevHint) {
+      this.elements.btnPrevHint.addEventListener('click', () => this.showPrevHint());
+    }
+
+    if (this.elements.btnNextHint) {
+      this.elements.btnNextHint.addEventListener('click', () => this.showNextHint());
+    }
+
+    // Copy hint
+    if (this.elements.btnCopyHint) {
+      this.elements.btnCopyHint.addEventListener('click', () => this.copyCurrentHint());
+    }
+
+    // Clear hints
+    if (this.elements.btnClearHints) {
+      this.elements.btnClearHints.addEventListener('click', () => this.clearHints());
+    }
+
+    // Help modal
+    if (this.elements.btnHelp) {
+      this.elements.btnHelp.addEventListener('click', () => this.showHelpModal());
+    }
+
+    if (this.elements.btnCloseHelp) {
+      this.elements.btnCloseHelp.addEventListener('click', () => this.hideHelpModal());
+    }
+
+    // History modal
+    if (this.elements.btnCloseHistory) {
+      this.elements.btnCloseHistory.addEventListener('click', () => this.hideHistoryModal());
+    }
+
+    // Error dismiss
+    if (this.elements.btnDismissError) {
+      this.elements.btnDismissError.addEventListener('click', () => this.hideError());
+    }
+
+    // Modal backdrop clicks
+    this.elements.historyModal?.addEventListener('click', (e) => {
+      if (e.target === this.elements.historyModal) this.hideHistoryModal();
+    });
+
+    this.elements.helpModal?.addEventListener('click', (e) => {
+      if (e.target === this.elements.helpModal) this.hideHelpModal();
+    });
+
+    this.elements.sessionViewModal?.addEventListener('click', (e) => {
+      if (e.target === this.elements.sessionViewModal) this.hideSessionView();
+    });
+  }
+
+  // Settings panel
+  toggleSettingsPanel() {
+    this.elements.settingsPanel?.classList.toggle('hidden');
+  }
+
+  setSettingsMode(mode) {
+    if (mode === 'basic') {
+      this.elements.btnBasicMode?.classList.add('active');
+      this.elements.btnAdvancedMode?.classList.remove('active');
+      this.elements.basicSettings?.classList.remove('hidden');
+      this.elements.advancedSettings?.classList.add('hidden');
+    } else {
+      this.elements.btnBasicMode?.classList.remove('active');
+      this.elements.btnAdvancedMode?.classList.add('active');
+      this.elements.basicSettings?.classList.add('hidden');
+      this.elements.advancedSettings?.classList.remove('hidden');
+    }
+  }
+
+  // Transcript sidebar - 3 состояния: expanded -> compact -> collapsed -> expanded
+  toggleTranscriptSidebar() {
+    const sidebar = this.elements.transcriptSidebar;
+    const btnCollapse = this.elements.btnToggleSidebar;
+    const btnExpand = this.elements.btnExpandSidebar;
+
+    if (!sidebar) {
+      console.warn('[UI] Sidebar элемент не найден');
+      return;
+    }
+
+    // Определяем текущее состояние и переключаем на следующее
+    const isExpanded =
+      sidebar.classList.contains('expanded') ||
+      (!sidebar.classList.contains('compact') && !sidebar.classList.contains('collapsed'));
+    const isCompact = sidebar.classList.contains('compact');
+
+    // Убираем все состояния
+    sidebar.classList.remove('expanded', 'compact', 'collapsed');
+
+    let newState;
+    if (isExpanded) {
+      sidebar.classList.add('compact');
+      newState = 'compact';
+    } else if (isCompact) {
+      sidebar.classList.add('collapsed');
+      newState = 'collapsed';
+    } else {
+      sidebar.classList.add('expanded');
+      newState = 'expanded';
+    }
+
+    console.log('[UI] Транскрипт:', newState);
+
+    // Показываем/скрываем кнопку разворачивания
+    if (btnExpand) {
+      btnExpand.classList.toggle('hidden', newState !== 'collapsed');
+    }
+
+    // Обновляем иконку кнопки
+    if (btnCollapse) {
+      const icons = { expanded: '◀', compact: '◁', collapsed: '▶' };
+      const titles = {
+        expanded: 'Компактный режим',
+        compact: 'Свернуть транскрипт',
+        collapsed: 'Развернуть транскрипт',
+      };
+      btnCollapse.textContent = icons[newState];
+      btnCollapse.title = titles[newState];
+    }
+
+    // Сохраняем состояние
+    try {
+      localStorage.setItem('transcriptState', newState);
+    } catch {
+      console.warn('Не удалось сохранить состояние транскрипта');
+    }
+  }
+
+  // Восстановление состояния транскрипта (поддержка 3 состояний)
+  restoreTranscriptState() {
+    try {
+      // Поддержка legacy формата
+      let state = localStorage.getItem('transcriptState');
+      if (!state) {
+        const legacyCollapsed = localStorage.getItem('transcriptCollapsed') === 'true';
+        state = legacyCollapsed ? 'collapsed' : 'expanded';
+      }
+
+      const sidebar = this.elements.transcriptSidebar;
+      const btnCollapse = this.elements.btnToggleSidebar;
+      const btnExpand = this.elements.btnExpandSidebar;
+
+      if (sidebar && state !== 'expanded') {
+        sidebar.classList.remove('expanded', 'compact', 'collapsed');
+        sidebar.classList.add(state);
+
+        const icons = { expanded: '◀', compact: '◁', collapsed: '▶' };
+        const titles = {
+          expanded: 'Компактный режим',
+          compact: 'Свернуть транскрипт',
+          collapsed: 'Развернуть транскрипт',
         };
+
+        if (btnCollapse) {
+          btnCollapse.textContent = icons[state];
+          btnCollapse.title = titles[state];
+        }
+        if (btnExpand) {
+          btnExpand.classList.toggle('hidden', state !== 'collapsed');
+        }
+      }
+    } catch {
+      console.warn('Не удалось восстановить состояние транскрипта');
+    }
+  }
+
+  // Альтернативный метод для горячих клавиш
+  toggleTranscriptsVisibility() {
+    this.toggleTranscriptSidebar();
+  }
+
+  // Help modal
+  showHelpModal() {
+    this.elements.helpModal?.classList.remove('hidden');
+  }
+
+  hideHelpModal() {
+    this.elements.helpModal?.classList.add('hidden');
+  }
+
+  // Hints pagination
+  showPrevHint() {
+    if (this.currentHintIndex > 0) {
+      this.currentHintIndex--;
+      this.displayCurrentHint();
+    }
+  }
+
+  showNextHint() {
+    if (this.currentHintIndex < this.hints.length - 1) {
+      this.currentHintIndex++;
+      this.displayCurrentHint();
+    }
+  }
+
+  displayCurrentHint() {
+    const feed = this.elements.hintsFeed;
+    if (!feed || this.hints.length === 0) return;
+
+    const hint = this.hints[this.currentHintIndex];
+    feed.innerHTML = `
+            <div class="hint-card active">
+                <div class="hint-content">${this.renderMarkdown(hint.text)}</div>
+                <div class="hint-meta">
+                    <span>${this.formatTime(hint.timestamp)}</span>
+                    ${hint.latencyMs ? `<span>${this.formatLatency(hint.latencyMs)}</span>` : ''}
+                </div>
+            </div>
+        `;
+
+    this.updatePaginationControls();
+  }
+
+  updatePaginationControls() {
+    const counter = this.elements.hintsCounter;
+    const prevBtn = this.elements.btnPrevHint;
+    const nextBtn = this.elements.btnNextHint;
+
+    if (counter) {
+      counter.textContent =
+        this.hints.length > 0 ? `${this.currentHintIndex + 1} / ${this.hints.length}` : '0 / 0';
     }
 
-    setup() {
-        this.cacheElements();
-        this.bindUIEvents();
+    if (prevBtn) prevBtn.disabled = this.currentHintIndex <= 0;
+    if (nextBtn) nextBtn.disabled = this.currentHintIndex >= this.hints.length - 1;
+  }
+
+  copyCurrentHint() {
+    if (this.hints.length === 0) return;
+
+    const hint = this.hints[this.currentHintIndex];
+    navigator.clipboard
+      .writeText(hint.text)
+      .then(() => {
+        this.showToast('Скопировано в буфер', 'success');
+      })
+      .catch(() => {
+        this.showToast('Ошибка копирования', 'error');
+      });
+  }
+
+  updateStatus(status) {
+    const config = STATUS_CONFIG[status] || STATUS_CONFIG.paused;
+
+    if (this.elements.statusIndicator) {
+      this.elements.statusIndicator.className = `status-indicator ${config.class}`;
     }
-
-    bindUIEvents() {
-        // Compact mode
-        if (this.elements.btnCompactToggle) {
-            this.elements.btnCompactToggle.addEventListener('click', () => this.toggleCompactMode());
-        }
-
-        // Focus mode
-        if (this.elements.btnFocusToggle) {
-            this.elements.btnFocusToggle.addEventListener('click', () => this.toggleFocusMode());
-        }
-
-        if (this.elements.btnExitFocus) {
-            this.elements.btnExitFocus.addEventListener('click', () => this.toggleFocusMode());
-        }
-
-        // Settings drawer
-        if (this.elements.btnSettingsToggle) {
-            this.elements.btnSettingsToggle.addEventListener('click', () => this.toggleSettingsDrawer());
-        }
-
-        // Pin/copy/clear hints
-        if (this.elements.btnPinHint) {
-            this.elements.btnPinHint.addEventListener('click', () => this.pinLastHint());
-        }
-
-        if (this.elements.btnCopyLast) {
-            this.elements.btnCopyLast.addEventListener('click', () => this.copyLastHint());
-        }
-
-        if (this.elements.btnClearHints) {
-            this.elements.btnClearHints.addEventListener('click', () => this.clearHints());
-        }
-
-        // Clear transcript
-        const btnClearTranscript = document.getElementById('btn-clear-transcript');
-        if (btnClearTranscript) {
-            btnClearTranscript.addEventListener('click', () => this.clearTranscript());
-        }
-
-        // Toggle transcripts
-        const btnToggleTranscripts = document.getElementById('btn-toggle-transcripts');
-        if (btnToggleTranscripts) {
-            btnToggleTranscripts.addEventListener('click', () => this.toggleTranscripts());
-        }
-
-        // Collapse transcripts
-        const btnCollapseTranscripts = document.getElementById('btn-collapse-transcripts');
-        if (btnCollapseTranscripts) {
-            btnCollapseTranscripts.addEventListener('click', () => {
-                this.collapseTranscripts();
-                btnCollapseTranscripts.textContent = this.transcriptsCollapsed ? '▼' : '▲';
-            });
-        }
-
-        // Error dismiss
-        if (this.elements.btnDismissError) {
-            this.elements.btnDismissError.addEventListener('click', () => this.hideError());
-        }
+    if (this.elements.statusText) {
+      this.elements.statusText.textContent = config.text;
     }
+  }
 
-    updateStatus(status) {
-        const config = STATUS_CONFIG[status] || STATUS_CONFIG.paused;
+  updateToggleButton(isRunning) {
+    const btn = this.elements.btnToggle;
+    const btnPause = this.elements.btnPause;
+    if (!btn) return;
 
-        if (this.elements.statusIndicator) {
-            this.elements.statusIndicator.className = `status-indicator ${config.class}`;
-        }
-        if (this.elements.statusText) {
-            this.elements.statusText.textContent = config.text;
-        }
+    const icon = btn.querySelector('.btn-icon');
+    const label = btn.querySelector('.btn-label');
+
+    if (isRunning) {
+      // Сессия запущена: кнопка Стоп (красная), Пауза активна
+      btn.classList.remove('btn-start');
+      btn.classList.add('btn-stop');
+      if (icon) icon.textContent = '■';
+      if (label) label.textContent = 'Стоп';
+
+      if (btnPause) {
+        btnPause.disabled = false;
+        const pauseIcon = btnPause.querySelector('.btn-icon');
+        const pauseLabel = btnPause.querySelector('.btn-label');
+        if (pauseIcon) pauseIcon.textContent = '⏸';
+        if (pauseLabel) pauseLabel.textContent = 'Пауза';
+      }
+    } else {
+      // Сессия остановлена: кнопка Старт (зелёная), Пауза неактивна
+      btn.classList.remove('btn-stop');
+      btn.classList.add('btn-start');
+      if (icon) icon.textContent = '▶';
+      if (label) label.textContent = 'Старт';
+
+      if (btnPause) {
+        btnPause.disabled = true;
+        const pauseIcon = btnPause.querySelector('.btn-icon');
+        const pauseLabel = btnPause.querySelector('.btn-label');
+        if (pauseIcon) pauseIcon.textContent = '⏸';
+        if (pauseLabel) pauseLabel.textContent = 'Пауза';
+      }
     }
+  }
 
-    updateToggleButton(isRunning) {
-        const btn = this.elements.btnToggle;
-        if (!btn) return;
+  updatePauseButton(isPaused) {
+    const btnPause = this.elements.btnPause;
+    if (!btnPause) return;
 
-        const icon = btn.querySelector('.btn-icon');
-        const text = btn.querySelector('.btn-text');
+    const icon = btnPause.querySelector('.btn-icon');
+    const label = btnPause.querySelector('.btn-label');
 
-        if (isRunning) {
-            btn.classList.add('active');
-            if (icon) icon.textContent = '';
-            if (text) text.textContent = 'Стоп';
-        } else {
-            btn.classList.remove('active');
-            if (icon) icon.textContent = '';
-            if (text) text.textContent = 'Старт';
-        }
+    if (isPaused) {
+      btnPause.classList.add('paused');
+      if (icon) icon.textContent = '▶';
+      if (label) label.textContent = 'Продолжить';
+    } else {
+      btnPause.classList.remove('paused');
+      if (icon) icon.textContent = '⏸';
+      if (label) label.textContent = 'Пауза';
     }
+  }
 
-    clearFeeds() {
-        if (this.elements.transcriptFeed) {
-            this.elements.transcriptFeed.innerHTML = '';
-        }
-        if (this.elements.hintsFeed) {
-            this.elements.hintsFeed.innerHTML = '';
-        }
-        this.lastTranscriptText = '';
-        this.lastHintText = '';
+  clearFeeds() {
+    if (this.elements.transcriptFeed) {
+      this.elements.transcriptFeed.innerHTML = '';
     }
-
-    addTranscriptItem(text, timestamp, source = 'interviewer') {
-        if (text === this.lastTranscriptText) {
-            console.log('[STT] Дубликат транскрипта, пропускаем');
-            return;
-        }
-        this.lastTranscriptText = text;
-
-        const icon = source === 'candidate' ? '🗣️' : '🎙️';
-        const label = source === 'candidate' ? 'Ты' : 'Интервьюер';
-        const formattedText = this.app.audio?.dualAudioEnabled ? `${icon} ${label}: ${text}` : text;
-
-        this.addFeedItem(this.elements.transcriptFeed, formattedText, timestamp, null, source);
+    if (this.elements.hintsFeed) {
+      this.elements.hintsFeed.innerHTML = '';
     }
+    this.lastTranscriptText = '';
+    this.lastHintText = '';
+  }
 
-    addHintItem(text, timestamp, latencyMs = null) {
-        if (text === this.lastHintText) {
-            console.log('[LLM] Дубликат подсказки, пропускаем');
-            return;
-        }
-        this.lastHintText = text;
-        this.addFeedItem(this.elements.hintsFeed, text, timestamp, latencyMs);
+  addTranscriptItem(text, timestamp, source = 'interviewer') {
+    if (text === this.lastTranscriptText) {
+      console.log('[STT] Дубликат транскрипта, пропускаем');
+      return;
     }
+    this.lastTranscriptText = text;
 
-    addFeedItem(feed, text, timestamp, latencyMs = null) {
-        if (!feed) return;
+    const icon = source === 'candidate' ? '🗣️' : '🎙️';
+    const label = source === 'candidate' ? 'Ты' : 'Интервьюер';
+    const formattedText = this.app.audio?.dualAudioEnabled ? `${icon} ${label}: ${text}` : text;
 
-        const placeholder = feed.querySelector('.placeholder');
-        if (placeholder) placeholder.remove();
+    this.addFeedItem(this.elements.transcriptFeed, formattedText, timestamp, null, source);
+  }
 
-        const item = document.createElement('div');
-        item.className = 'feed-item';
+  addHintItem(text, timestamp, latencyMs = null) {
+    if (text === this.lastHintText) {
+      console.log('[LLM] Дубликат подсказки, пропускаем');
+      return;
+    }
+    this.lastHintText = text;
+    this.addFeedItem(this.elements.hintsFeed, text, timestamp, latencyMs);
+  }
 
-        const latencyBadge = latencyMs ? `<span class="latency-badge">${this.formatLatency(latencyMs)}</span>` : '';
-        const isHintsFeed = feed === this.elements.hintsFeed;
-        const renderedText = isHintsFeed ? this.renderMarkdown(text) : this.escapeHtml(text);
+  addFeedItem(feed, text, timestamp, latencyMs = null) {
+    if (!feed) return;
 
-        item.innerHTML = `
+    const placeholder = feed.querySelector('.placeholder');
+    if (placeholder) placeholder.remove();
+
+    const item = document.createElement('div');
+    item.className = 'feed-item';
+
+    const latencyBadge = latencyMs
+      ? `<span class="latency-badge">${this.formatLatency(latencyMs)}</span>`
+      : '';
+    const isHintsFeed = feed === this.elements.hintsFeed;
+    const renderedText = isHintsFeed ? this.renderMarkdown(text) : this.escapeHtml(text);
+
+    item.innerHTML = `
             <div class="feed-item-time">${this.formatTime(timestamp)}${latencyBadge}</div>
             <div class="feed-item-text">${renderedText}</div>
         `;
 
-        feed.appendChild(item);
-        feed.scrollTop = feed.scrollHeight;
-    }
+    feed.appendChild(item);
+    feed.scrollTop = feed.scrollHeight;
+  }
 
-    showHintLoading() {
-        const feed = this.elements.hintsFeed;
-        if (!feed) return;
+  showHintLoading() {
+    const feed = this.elements.hintsFeed;
+    if (!feed) return;
 
-        const placeholder = feed.querySelector('.placeholder');
-        if (placeholder) placeholder.remove();
+    // Скрываем empty state
+    const emptyState = document.getElementById('hints-empty-state');
+    if (emptyState) emptyState.classList.add('hidden');
 
-        const existingLoader = feed.querySelector('.hint-loading');
-        if (existingLoader) existingLoader.remove();
+    // Показываем loading state
+    const loadingState = document.getElementById('hints-loading-state');
+    if (loadingState) loadingState.classList.remove('hidden');
 
-        const loader = document.createElement('div');
-        loader.className = 'feed-item hint-loading';
-        loader.innerHTML = `
-            <div class="feed-item-time">${this.formatTime(new Date().toISOString())}</div>
-            <div class="feed-item-text loading-text">Генерация подсказки...</div>
-        `;
-        feed.appendChild(loader);
-        feed.scrollTop = feed.scrollHeight;
-    }
+    // Убираем старый loader если есть
+    const existingLoader = feed.querySelector('.hint-loading');
+    if (existingLoader) existingLoader.remove();
+  }
 
-    hideHintLoading() {
-        const feed = this.elements.hintsFeed;
-        if (!feed) return;
-        const loader = feed.querySelector('.hint-loading');
-        if (loader) loader.remove();
-    }
+  hideHintLoading() {
+    const loadingState = document.getElementById('hints-loading-state');
+    if (loadingState) loadingState.classList.add('hidden');
 
-    createStreamingHintElement() {
-        const feed = this.elements.hintsFeed;
-        if (!feed) return null;
+    const feed = this.elements.hintsFeed;
+    if (!feed) return;
+    const loader = feed.querySelector('.hint-loading');
+    if (loader) loader.remove();
+  }
 
-        const item = document.createElement('div');
-        item.className = 'feed-item streaming-hint';
-        item.innerHTML = `
+  showHintsEmptyState() {
+    const emptyState = document.getElementById('hints-empty-state');
+    const loadingState = document.getElementById('hints-loading-state');
+    if (emptyState) emptyState.classList.remove('hidden');
+    if (loadingState) loadingState.classList.add('hidden');
+  }
+
+  hideHintsEmptyState() {
+    const emptyState = document.getElementById('hints-empty-state');
+    if (emptyState) emptyState.classList.add('hidden');
+  }
+
+  createStreamingHintElement() {
+    const feed = this.elements.hintsFeed;
+    if (!feed) return null;
+
+    const item = document.createElement('div');
+    item.className = 'feed-item streaming-hint';
+    item.innerHTML = `
             <div class="feed-item-time">${this.formatTime(new Date().toISOString())}</div>
             <div class="feed-item-text"></div>
         `;
-        feed.appendChild(item);
-        feed.scrollTop = feed.scrollHeight;
-        return item;
+    feed.appendChild(item);
+    feed.scrollTop = feed.scrollHeight;
+    return item;
+  }
+
+  updateStreamingHint(element, text) {
+    if (!element) return;
+    const textEl = element.querySelector('.feed-item-text');
+    if (textEl) {
+      textEl.innerHTML = this.renderMarkdown(text);
+    }
+    const feed = this.elements.hintsFeed;
+    if (feed) feed.scrollTop = feed.scrollHeight;
+  }
+
+  finalizeStreamingHint(element, text, options = {}) {
+    if (!element) return;
+    element.classList.remove('streaming-hint');
+
+    const { latencyMs, cached, questionType } = options;
+    const timeEl = element.querySelector('.feed-item-time');
+
+    if (timeEl) {
+      if (questionType) {
+        const typeBadge = document.createElement('span');
+        typeBadge.className = `question-type-badge type-${questionType}`;
+        typeBadge.textContent = QUESTION_TYPE_LABELS[questionType] || questionType;
+        timeEl.appendChild(typeBadge);
+      }
+
+      if (cached) {
+        const cacheBadge = document.createElement('span');
+        cacheBadge.className = 'cache-badge';
+        cacheBadge.textContent = 'Из кэша';
+        timeEl.appendChild(cacheBadge);
+      }
+
+      if (latencyMs && !cached) {
+        const latencyBadge = document.createElement('span');
+        latencyBadge.className = 'latency-badge';
+        latencyBadge.textContent = this.formatLatency(latencyMs);
+        timeEl.appendChild(latencyBadge);
+      }
+    }
+  }
+
+  // History Modal
+  showHistoryModal() {
+    this.renderSessionsList();
+    this.elements.historyModal?.classList.remove('hidden');
+  }
+
+  hideHistoryModal() {
+    this.elements.historyModal?.classList.add('hidden');
+  }
+
+  renderSessionsList() {
+    const sessions = this.app.sessions.getAll();
+
+    if (sessions.length === 0) {
+      this.elements.sessionsList.innerHTML = '<p class="placeholder">Нет сохранённых сессий</p>';
+      return;
     }
 
-    updateStreamingHint(element, text) {
-        if (!element) return;
-        const textEl = element.querySelector('.feed-item-text');
-        if (textEl) {
-            textEl.innerHTML = this.renderMarkdown(text);
-        }
-        const feed = this.elements.hintsFeed;
-        if (feed) feed.scrollTop = feed.scrollHeight;
-    }
+    this.elements.sessionsList.innerHTML = sessions
+      .map((session) => {
+        const transcriptLines = (session.transcript || '').split('\n').filter((l) => l.trim());
+        const hintLines = (session.hints || '').split('\n').filter((l) => l.trim());
+        const duration = this.app.sessions.calculateDuration(session);
+        const tags = session.tags || [];
 
-    finalizeStreamingHint(element, text, options = {}) {
-        if (!element) return;
-        element.classList.remove('streaming-hint');
-
-        const { latencyMs, cached, questionType } = options;
-        const timeEl = element.querySelector('.feed-item-time');
-
-        if (timeEl) {
-            if (questionType) {
-                const typeBadge = document.createElement('span');
-                typeBadge.className = `question-type-badge type-${questionType}`;
-                typeBadge.textContent = QUESTION_TYPE_LABELS[questionType] || questionType;
-                timeEl.appendChild(typeBadge);
-            }
-
-            if (cached) {
-                const cacheBadge = document.createElement('span');
-                cacheBadge.className = 'cache-badge';
-                cacheBadge.textContent = 'Из кэша';
-                timeEl.appendChild(cacheBadge);
-            }
-
-            if (latencyMs && !cached) {
-                const latencyBadge = document.createElement('span');
-                latencyBadge.className = 'latency-badge';
-                latencyBadge.textContent = this.formatLatency(latencyMs);
-                timeEl.appendChild(latencyBadge);
-            }
-        }
-    }
-
-    // History Modal
-    showHistoryModal() {
-        this.renderSessionsList();
-        this.elements.historyModal?.classList.remove('hidden');
-    }
-
-    hideHistoryModal() {
-        this.elements.historyModal?.classList.add('hidden');
-    }
-
-    renderSessionsList() {
-        const sessions = this.app.sessions.getAll();
-
-        if (sessions.length === 0) {
-            this.elements.sessionsList.innerHTML = '<p class="placeholder">Нет сохранённых сессий</p>';
-            return;
-        }
-
-        this.elements.sessionsList.innerHTML = sessions.map(session => {
-            const transcriptLines = (session.transcript || '').split('\n').filter(l => l.trim());
-            const hintLines = (session.hints || '').split('\n').filter(l => l.trim());
-            const duration = this.app.sessions.calculateDuration(session);
-            const tags = session.tags || [];
-
-            return `
+        return `
                 <div class="session-card" data-session-id="${session.id}">
                     <div class="session-card-header">
                         <span class="session-card-title">${session.name || 'Сессия'}</span>
@@ -335,11 +654,14 @@ export class UIController {
                             <span class="stat-value">${duration}</span>
                         </span>
                     </div>
-                    ${tags.length > 0 ? `
+                    ${tags.length > 0
+            ? `
                         <div class="session-card-tags">
-                            ${tags.map(tag => `<span class="session-tag">${this.escapeHtml(tag)}</span>`).join('')}
+                            ${tags.map((tag) => `<span class="session-tag">${this.escapeHtml(tag)}</span>`).join('')}
                         </div>
-                    ` : ''}
+                    `
+            : ''
+          }
                     <div class="session-card-preview">${this.escapeHtml((session.transcript || '').substring(0, 120))}...</div>
                     <div class="session-card-actions">
                         <button class="btn-session-view" data-action="view">Открыть</button>
@@ -348,286 +670,285 @@ export class UIController {
                     </div>
                 </div>
             `;
-        }).join('');
+      })
+      .join('');
 
-        this.elements.sessionsList.querySelectorAll('.session-card').forEach(card => {
-            const sessionId = card.dataset.sessionId;
+    this.elements.sessionsList.querySelectorAll('.session-card').forEach((card) => {
+      const sessionId = card.dataset.sessionId;
 
-            card.querySelector('.btn-session-view')?.addEventListener('click', (e) => {
-                e.stopPropagation();
-                this.showSessionView(sessionId);
-            });
+      card.querySelector('.btn-session-view')?.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.showSessionView(sessionId);
+      });
 
-            card.querySelector('.btn-session-export')?.addEventListener('click', (e) => {
-                e.stopPropagation();
-                this.app.sessions.exportSession(sessionId);
-            });
+      card.querySelector('.btn-session-export')?.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.app.sessions.exportSession(sessionId);
+      });
 
-            card.querySelector('.btn-session-delete')?.addEventListener('click', (e) => {
-                e.stopPropagation();
-                if (this.app.sessions.delete(sessionId)) {
-                    this.renderSessionsList();
-                    this.showToast('Сессия удалена', 'success');
-                }
-            });
+      card.querySelector('.btn-session-delete')?.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (this.app.sessions.delete(sessionId)) {
+          this.renderSessionsList();
+          this.showToast('Сессия удалена', 'success');
+        }
+      });
 
-            card.addEventListener('click', () => this.showSessionView(sessionId));
-        });
-    }
+      card.addEventListener('click', () => this.showSessionView(sessionId));
+    });
+  }
 
-    showSessionView(sessionId) {
-        const session = this.app.sessions.getById(sessionId);
-        if (!session) return;
+  showSessionView(sessionId) {
+    const session = this.app.sessions.getById(sessionId);
+    if (!session) return;
 
-        const transcriptLines = (session.transcript || '').split('\n').filter(l => l.trim());
-        const hintLines = (session.hints || '').split('\n').filter(l => l.trim());
+    const transcriptLines = (session.transcript || '').split('\n').filter((l) => l.trim());
+    const hintLines = (session.hints || '').split('\n').filter((l) => l.trim());
 
-        this.elements.sessionViewTitle.textContent = session.name || `Сессия от ${this.app.sessions.formatDate(session.date)}`;
+    this.elements.sessionViewTitle.textContent =
+      session.name || `Сессия от ${this.app.sessions.formatDate(session.date)}`;
 
-        this.elements.sessionTranscript.innerHTML = transcriptLines.length > 0
-            ? transcriptLines.map(line => `
+    this.elements.sessionTranscript.innerHTML =
+      transcriptLines.length > 0
+        ? transcriptLines
+          .map(
+            (line) => `
                 <div class="session-dialog-item">
                     <span class="dialog-icon">🎙️</span>
                     <span class="dialog-text">${this.escapeHtml(line)}</span>
                 </div>
-            `).join('')
-            : '<p class="placeholder">Нет транскрипта</p>';
+            `
+          )
+          .join('')
+        : '<p class="placeholder">Нет транскрипта</p>';
 
-        this.elements.sessionHints.innerHTML = hintLines.length > 0
-            ? hintLines.map(line => `
+    this.elements.sessionHints.innerHTML =
+      hintLines.length > 0
+        ? hintLines
+          .map(
+            (line) => `
                 <div class="session-dialog-item hint-item">
                     <span class="dialog-icon">💡</span>
                     <span class="dialog-text">${this.renderMarkdown(line)}</span>
                 </div>
-            `).join('')
-            : '<p class="placeholder">Нет подсказок</p>';
+            `
+          )
+          .join('')
+        : '<p class="placeholder">Нет подсказок</p>';
 
-        this.hideHistoryModal();
-        this.elements.sessionViewModal?.classList.remove('hidden');
+    this.hideHistoryModal();
+    this.elements.sessionViewModal?.classList.remove('hidden');
+  }
+
+  hideSessionView() {
+    this.elements.sessionViewModal?.classList.add('hidden');
+  }
+
+  // UI Modes
+  toggleSettingsDrawer() {
+    if (!this.elements.settingsDrawer) return;
+
+    const isOpen = this.elements.settingsDrawer.classList.toggle('open');
+    if (this.elements.btnSettingsToggle) {
+      this.elements.btnSettingsToggle.classList.toggle('active', isOpen);
+    }
+  }
+
+  toggleCompactMode() {
+    this.compactMode = !this.compactMode;
+    document.body.classList.toggle('compact-mode', this.compactMode);
+
+    if (this.elements.btnCompactToggle) {
+      this.elements.btnCompactToggle.classList.toggle('active', this.compactMode);
     }
 
-    hideSessionView() {
-        this.elements.sessionViewModal?.classList.add('hidden');
+    this.app.saveSettings({ compactMode: this.compactMode });
+  }
+
+  toggleFocusMode() {
+    this.focusMode = !this.focusMode;
+    document.body.classList.toggle('focus-mode', this.focusMode);
+
+    if (this.elements.btnFocusToggle) {
+      this.elements.btnFocusToggle.classList.toggle('active', this.focusMode);
     }
 
-    // UI Modes
-    toggleSettingsDrawer() {
-        if (!this.elements.settingsDrawer) return;
+    this.app.saveSettings({ focusMode: this.focusMode });
+  }
 
-        const isOpen = this.elements.settingsDrawer.classList.toggle('open');
-        if (this.elements.btnSettingsToggle) {
-            this.elements.btnSettingsToggle.classList.toggle('active', isOpen);
-        }
+  toggleTranscripts() {
+    this.hideTranscripts = !this.hideTranscripts;
+    const mainContent = document.querySelector('.main-content');
+    if (mainContent) {
+      mainContent.setAttribute('data-hide-transcripts', this.hideTranscripts);
+    }
+    const btn = document.getElementById('btn-toggle-transcripts');
+    if (btn) {
+      btn.textContent = this.hideTranscripts ? '👁' : '👁‍🗨';
+      btn.title = this.hideTranscripts ? 'Показать транскрипты' : 'Скрыть транскрипты';
+    }
+    this.showToast(this.hideTranscripts ? 'Транскрипты скрыты' : 'Транскрипты показаны', 'success');
+    this.app.saveSettings();
+  }
+
+  collapseTranscripts() {
+    this.transcriptsCollapsed = !this.transcriptsCollapsed;
+    const mainContent = document.querySelector('.main-content');
+    if (mainContent) {
+      mainContent.setAttribute('data-transcripts-collapsed', this.transcriptsCollapsed);
+    }
+    this.showToast(
+      this.transcriptsCollapsed ? 'Транскрипты свёрнуты' : 'Транскрипты развёрнуты',
+      'success'
+    );
+  }
+
+  async copyLastHint() {
+    const textToCopy = this.lastHintText;
+
+    if (!textToCopy) {
+      this.showToast('Нет подсказки для копирования', 'info');
+      return;
     }
 
-    toggleCompactMode() {
-        this.compactMode = !this.compactMode;
-        document.body.classList.toggle('compact-mode', this.compactMode);
-
-        if (this.elements.btnCompactToggle) {
-            this.elements.btnCompactToggle.classList.toggle('active', this.compactMode);
-        }
-
-        this.app.saveSettings({ compactMode: this.compactMode });
+    try {
+      await navigator.clipboard.writeText(textToCopy);
+      this.showToast('Скопировано в буфер', 'success');
+    } catch (error) {
+      console.error('Ошибка копирования:', error);
+      this.showToast('Ошибка копирования', 'error');
     }
+  }
 
-    toggleFocusMode() {
-        this.focusMode = !this.focusMode;
-        document.body.classList.toggle('focus-mode', this.focusMode);
-
-        if (this.elements.btnFocusToggle) {
-            this.elements.btnFocusToggle.classList.toggle('active', this.focusMode);
-        }
-
-        this.app.saveSettings({ focusMode: this.focusMode });
+  clearHints() {
+    if (this.elements.hintsFeed) {
+      this.elements.hintsFeed.innerHTML = '<p class="placeholder">Подсказки появятся здесь...</p>';
     }
+    this.lastHintText = '';
+    this.hints = [];
+    this.currentHintIndex = 0;
+    this.updatePaginationControls();
+  }
 
-    toggleTranscripts() {
-        this.hideTranscripts = !this.hideTranscripts;
-        const mainContent = document.querySelector('.main-content');
-        if (mainContent) {
-            mainContent.setAttribute('data-hide-transcripts', this.hideTranscripts);
-        }
-        const btn = document.getElementById('btn-toggle-transcripts');
-        if (btn) {
-            btn.textContent = this.hideTranscripts ? '👁' : '👁‍🗨';
-            btn.title = this.hideTranscripts ? 'Показать транскрипты' : 'Скрыть транскрипты';
-        }
-        this.showToast(this.hideTranscripts ? 'Транскрипты скрыты' : 'Транскрипты показаны', 'success');
-        this.app.saveSettings();
+  clearTranscript() {
+    if (this.elements.transcriptFeed) {
+      this.elements.transcriptFeed.innerHTML = '<p class="placeholder">Ожидание речи...</p>';
     }
+    this.app.transcriptContext = [];
+    this.lastTranscriptText = '';
+    this.app.lastContextHash = '';
+  }
 
-    collapseTranscripts() {
-        this.transcriptsCollapsed = !this.transcriptsCollapsed;
-        const mainContent = document.querySelector('.main-content');
-        if (mainContent) {
-            mainContent.setAttribute('data-transcripts-collapsed', this.transcriptsCollapsed);
-        }
-        this.showToast(this.transcriptsCollapsed ? 'Транскрипты свёрнуты' : 'Транскрипты развёрнуты', 'success');
+  getTranscriptText() {
+    const items = this.elements.transcriptFeed?.querySelectorAll('.feed-item-text');
+    return items
+      ? Array.from(items)
+        .map((el) => el.textContent)
+        .join('\n')
+      : '';
+  }
+
+  getHintsText() {
+    const items = this.elements.hintsFeed?.querySelectorAll('.feed-item-text');
+    return items
+      ? Array.from(items)
+        .map((el) => el.textContent)
+        .join('\n')
+      : '';
+  }
+
+  // Toast/Error
+  showToast(message, type = 'info') {
+    if (this.elements.errorMessage) {
+      this.elements.errorMessage.textContent = message;
     }
-
-    // Pin/Copy hints
-    pinLastHint() {
-        if (!this.lastHintText) {
-            this.showToast('Нет подсказки для закрепления', 'info');
-            return;
-        }
-
-        this.pinnedHintText = this.lastHintText;
-
-        if (this.elements.pinnedHintText) {
-            this.elements.pinnedHintText.textContent = this.pinnedHintText;
-        }
-        if (this.elements.pinnedHintContainer) {
-            this.elements.pinnedHintContainer.classList.remove('hidden');
-        }
-
-        this.showToast('Подсказка закреплена', 'success');
+    if (this.elements.errorToast) {
+      this.elements.errorToast.classList.remove('hidden');
+      this.elements.errorToast.style.background = type === 'success' ? 'var(--accent-success)' : '';
+      setTimeout(() => {
+        this.elements.errorToast.classList.add('hidden');
+        this.elements.errorToast.style.background = '';
+      }, TIMEOUTS.TOAST_DURATION);
     }
+  }
 
-    unpinHint() {
-        this.pinnedHintText = '';
-        if (this.elements.pinnedHintContainer) {
-            this.elements.pinnedHintContainer.classList.add('hidden');
-        }
+  showError(message) {
+    if (this.elements.errorMessage) {
+      this.elements.errorMessage.textContent = message;
     }
-
-    async copyLastHint() {
-        const textToCopy = this.pinnedHintText || this.lastHintText;
-
-        if (!textToCopy) {
-            this.showToast('Нет подсказки для копирования', 'info');
-            return;
-        }
-
-        try {
-            await navigator.clipboard.writeText(textToCopy);
-            this.showToast('Скопировано в буфер', 'success');
-        } catch (error) {
-            console.error('Ошибка копирования:', error);
-            this.showToast('Ошибка копирования', 'error');
-        }
+    if (this.elements.errorToast) {
+      this.elements.errorToast.classList.remove('hidden');
     }
+    this.updateStatus('error');
 
-    clearHints() {
-        if (this.elements.hintsFeed) {
-            this.elements.hintsFeed.innerHTML = '<p class="placeholder">Подсказки появятся здесь...</p>';
-        }
-        this.lastHintText = '';
-        this.unpinHint();
+    setTimeout(() => this.hideError(), TIMEOUTS.ERROR_TOAST_DURATION);
+  }
+
+  hideError() {
+    this.elements.errorToast?.classList.add('hidden');
+  }
+
+  // Metrics panel
+  toggleMetricsPanel(debugMode) {
+    if (!this.elements.metricsPanel) return;
+
+    if (debugMode) {
+      this.elements.metricsPanel.classList.remove('hidden');
+      document.body.classList.add('debug-mode');
+    } else {
+      this.elements.metricsPanel.classList.add('hidden');
+      document.body.classList.remove('debug-mode');
     }
+  }
 
-    clearTranscript() {
-        if (this.elements.transcriptFeed) {
-            this.elements.transcriptFeed.innerHTML = '<p class="placeholder">Ожидание речи...</p>';
-        }
-        this.app.transcriptContext = [];
-        this.lastTranscriptText = '';
-        this.app.lastContextHash = '';
+  updateMetricsPanel(metrics) {
+    if (this.elements.metricsSttLatency) {
+      this.elements.metricsSttLatency.textContent = metrics.stt_latency_ms ?? '-';
     }
-
-    getTranscriptText() {
-        const items = this.elements.transcriptFeed?.querySelectorAll('.feed-item-text');
-        return items ? Array.from(items).map(el => el.textContent).join('\n') : '';
+    if (this.elements.metricsLlmLatency) {
+      this.elements.metricsLlmLatency.textContent = metrics.llm_server_latency_ms ?? '-';
     }
+  }
 
-    getHintsText() {
-        const items = this.elements.hintsFeed?.querySelectorAll('.feed-item-text');
-        return items ? Array.from(items).map(el => el.textContent).join('\n') : '';
-    }
+  // Utilities
+  formatTime(timestamp) {
+    const date = new Date(timestamp);
+    return date.toLocaleTimeString('ru-RU', {
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+    });
+  }
 
-    // Toast/Error
-    showToast(message, type = 'info') {
-        if (this.elements.errorMessage) {
-            this.elements.errorMessage.textContent = message;
-        }
-        if (this.elements.errorToast) {
-            this.elements.errorToast.classList.remove('hidden');
-            this.elements.errorToast.style.background = type === 'success' ? 'var(--accent-success)' : '';
-            setTimeout(() => {
-                this.elements.errorToast.classList.add('hidden');
-                this.elements.errorToast.style.background = '';
-            }, TIMEOUTS.TOAST_DURATION);
-        }
-    }
+  formatLatency(latencyMs) {
+    if (latencyMs == null) return '';
+    const seconds = latencyMs / 1000;
+    return `${seconds.toFixed(1)}s`;
+  }
 
-    showError(message) {
-        if (this.elements.errorMessage) {
-            this.elements.errorMessage.textContent = message;
-        }
-        if (this.elements.errorToast) {
-            this.elements.errorToast.classList.remove('hidden');
-        }
-        this.updateStatus('error');
+  escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+  }
 
-        setTimeout(() => this.hideError(), TIMEOUTS.ERROR_TOAST_DURATION);
-    }
+  renderMarkdown(text) {
+    if (!text) return '';
 
-    hideError() {
-        this.elements.errorToast?.classList.add('hidden');
-    }
+    let html = this.escapeHtml(text);
 
-    // Metrics panel
-    toggleMetricsPanel(debugMode) {
-        if (!this.elements.metricsPanel) return;
+    html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+    html = html.replace(/__(.+?)__/g, '<strong>$1</strong>');
+    html = html.replace(/\*(.+?)\*/g, '<em>$1</em>');
+    html = html.replace(/_(.+?)_/g, '<em>$1</em>');
+    html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
+    html = html.replace(/^[-*]\s+(.+)$/gm, '<li>$1</li>');
+    html = html.replace(/(<li>.*<\/li>\n?)+/g, '<ul>$&</ul>');
+    html = html.replace(/^\d+\.\s+(.+)$/gm, '<li>$1</li>');
+    html = html.replace(/\n/g, '<br>');
+    html = html.replace(/<\/li><br>/g, '</li>');
+    html = html.replace(/<br><li>/g, '<li>');
 
-        if (debugMode) {
-            this.elements.metricsPanel.classList.remove('hidden');
-            document.body.classList.add('debug-mode');
-        } else {
-            this.elements.metricsPanel.classList.add('hidden');
-            document.body.classList.remove('debug-mode');
-        }
-    }
-
-    updateMetricsPanel(metrics) {
-        if (this.elements.metricsSttLatency) {
-            this.elements.metricsSttLatency.textContent = metrics.stt_latency_ms ?? '-';
-        }
-        if (this.elements.metricsLlmLatency) {
-            this.elements.metricsLlmLatency.textContent = metrics.llm_server_latency_ms ?? '-';
-        }
-    }
-
-    // Utilities
-    formatTime(timestamp) {
-        const date = new Date(timestamp);
-        return date.toLocaleTimeString('ru-RU', {
-            hour: '2-digit',
-            minute: '2-digit',
-            second: '2-digit'
-        });
-    }
-
-    formatLatency(latencyMs) {
-        if (latencyMs == null) return '';
-        const seconds = latencyMs / 1000;
-        return `${seconds.toFixed(1)}s`;
-    }
-
-    escapeHtml(text) {
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
-    }
-
-    renderMarkdown(text) {
-        if (!text) return '';
-
-        let html = this.escapeHtml(text);
-
-        html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
-        html = html.replace(/__(.+?)__/g, '<strong>$1</strong>');
-        html = html.replace(/\*(.+?)\*/g, '<em>$1</em>');
-        html = html.replace(/_(.+?)_/g, '<em>$1</em>');
-        html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
-        html = html.replace(/^[-*]\s+(.+)$/gm, '<li>$1</li>');
-        html = html.replace(/(<li>.*<\/li>\n?)+/g, '<ul>$&</ul>');
-        html = html.replace(/^\d+\.\s+(.+)$/gm, '<li>$1</li>');
-        html = html.replace(/\n/g, '<br>');
-        html = html.replace(/<\/li><br>/g, '</li>');
-        html = html.replace(/<br><li>/g, '<li>');
-
-        return html;
-    }
+    return html;
+  }
 }
