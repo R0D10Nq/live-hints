@@ -25,7 +25,7 @@
             data-testid="status-indicator"
           >
             <span class="status-dot"></span>
-            <span class="status-label" data-testid="status-text">Готов</span>
+            <span class="status-label">Готов</span>
           </span>
         </div>
 
@@ -34,7 +34,7 @@
         <div class="header-actions">
           <button
             id="btn-toggle"
-            class="btn-action btn-start"
+            class="btn-action btn-primary"
             data-testid="btn-toggle"
             title="Старт/Стоп (Space)"
           >
@@ -42,23 +42,12 @@
             <span class="btn-label">Старт</span>
           </button>
 
-          <button
-            id="btn-pause"
-            class="btn-action btn-pause"
-            data-testid="btn-pause"
-            title="Пауза/Продолжить"
-            disabled
-          >
-            <span class="btn-icon">⏸</span>
-            <span class="btn-label">Пауза</span>
-          </button>
-
           <div class="action-divider"></div>
 
           <button
             id="btn-ask"
-            class="btn-action btn-ask"
-            data-testid="btn-get-hint"
+            class="btn-action"
+            data-testid="btn-ask"
             title="Запросить подсказку (Ctrl+Enter)"
             disabled
           >
@@ -68,7 +57,7 @@
 
           <button
             id="btn-screenshot"
-            class="btn-action btn-secondary-action"
+            class="btn-action"
             data-testid="btn-screenshot"
             title="Скриншот (Ctrl+Shift+S)"
           >
@@ -118,9 +107,6 @@
 
       <!-- Main Layout -->
       <div class="main-layout">
-        <!-- Кнопка разворачивания sidebar когда он свёрнут -->
-        <button id="btn-expand-sidebar" class="btn-expand-sidebar hidden" title="Развернуть транскрипт (Ctrl+T)">▶</button>
-        
         <!-- Transcript Sidebar -->
         <aside
           id="transcript-sidebar"
@@ -178,19 +164,10 @@
             </div>
 
             <div id="hints-feed" class="hints-feed" data-testid="hints-feed">
-              <div id="hints-empty-state" class="empty-state">
+              <div class="empty-state">
                 <span class="empty-icon">💡</span>
-                <h3>Подсказки появятся здесь</h3>
-                <p>Запустите сессию и начните говорить.</p>
-                <p class="empty-hint">AI проанализирует разговор и предложит ответы</p>
-              </div>
-
-              <div id="hints-loading-state" class="loading-state hidden">
-                <div class="loading-spinner"></div>
-                <span class="loading-text">Анализирую контекст...</span>
-                <div class="loading-progress">
-                  <div class="loading-progress-bar"></div>
-                </div>
+                <p>Подсказки появятся здесь</p>
+                <p class="empty-hint">Нажмите "Старт" и начните говорить</p>
               </div>
             </div>
 
@@ -271,7 +248,7 @@
                 </select>
               </div>
 
-              <div id="custom-prompt-group" class="settings-group hidden" data-testid="custom-instructions-container">
+              <div id="custom-prompt-group" class="settings-group hidden">
                 <label class="settings-label">Системный промпт</label>
                 <textarea
                   id="custom-instructions"
@@ -299,10 +276,9 @@
               </div>
 
               <div class="settings-group">
-                <label class="settings-label" title="Автоматически генерировать подсказки когда обнаруживается длинная пауза в диалоге (более 3 секунд)">
+                <label class="settings-label">
                   <input type="checkbox" id="auto-hints" data-testid="auto-hints-checkbox" />
                   Авто-подсказки при паузе в речи
-                  <span class="help-icon" title="Автоматически генерировать подсказки когда обнаруживается длинная пауза в диалоге (более 3 секунд)">?</span>
                 </label>
               </div>
 
@@ -340,7 +316,7 @@
 
               <div class="settings-group">
                 <label class="settings-label"
-                  >Размер контекста: <span id="context-window-size-value">20</span></label
+                  >Размер контекста: <span id="context-size-value">20</span></label
                 >
                 <input
                   type="range"
@@ -461,7 +437,7 @@
         <div class="modal-container modal-lg">
           <div class="modal-header">
             <h2 class="modal-title">История сессий</h2>
-            <button id="btn-close-history" class="btn-close" data-testid="btn-close-modal">✕</button>
+            <button id="btn-close-history" class="btn-close">✕</button>
           </div>
           <div class="modal-body">
             <div id="sessions-list" class="sessions-list" data-testid="sessions-list">
@@ -615,6 +591,6 @@
       </div>
     </div>
 
-    <script type="module" src="app-new.js"></script>
+    <script src="app-new.js"></script>
   </body>
 </html>

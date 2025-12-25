@@ -1,92 +1,93 @@
 {
-    "name": "live-hints",
-    "version": "1.0.0",
-    "description": "Windows desktop overlay для транскрипции системного звука и генерации подсказок",
-    "main": "main.js",
-    "scripts": {
-        "start": "electron .",
-        "test": "jest --coverage",
-        "test:unit": "jest tests/unit",
-        "test:e2e": "playwright test",
-        "perf": "node tests/perf/perf.test.js",
-        "lint": "eslint . --ext .js",
-        "lint:fix": "eslint . --ext .js --fix",
-        "format": "prettier --write \"**/*.{js,json,css,html,md}\"",
-        "format:check": "prettier --check \"**/*.{js,json,css,html,md}\"",
-        "python:install": "pip install -r python/requirements.txt",
-        "python:stt": "python python/stt_server.py",
-        "python:llm": "python python/llm_server.py",
-        "setup": "powershell -ExecutionPolicy Bypass -File scripts/dev.ps1",
-        "build": "electron-builder --win",
-        "build:portable": "electron-builder --win portable"
+  "name": "live-hints",
+  "version": "1.0.0",
+  "description": "Windows desktop overlay для транскрипции системного звука и генерации подсказок",
+  "main": "main.js",
+  "scripts": {
+    "start": "cross-env ELECTRON_RUN_AS_NODE= node_modules\\.bin\\electron .",
+    "start:win": "node node_modules/electron/cli.js .",
+    "test": "jest --coverage",
+    "test:unit": "jest tests/unit",
+    "test:e2e": "playwright test",
+    "perf": "node tests/perf/perf.test.js",
+    "lint": "eslint . --ext .js",
+    "lint:fix": "eslint . --ext .js --fix",
+    "format": "prettier --write \"**/*.{js,json,css,html,md}\"",
+    "format:check": "prettier --check \"**/*.{js,json,css,html,md}\"",
+    "python:install": "pip install -r python/requirements.txt",
+    "python:stt": "python python/stt_server.py",
+    "python:llm": "python python/llm_server.py",
+    "setup": "powershell -ExecutionPolicy Bypass -File scripts/dev.ps1",
+    "build": "electron-builder --win",
+    "build:portable": "electron-builder --win portable"
+  },
+  "keywords": [
+    "electron",
+    "overlay",
+    "transcription",
+    "whisper",
+    "llm"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "@playwright/test": "^1.40.0",
+    "electron": "^28.3.3",
+    "electron-builder": "^26.0.12",
+    "eslint": "^9.39.2",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-prettier": "^5.5.4",
+    "jest": "^29.7.0",
+    "playwright": "^1.40.0",
+    "prettier": "^3.7.4"
+  },
+  "dependencies": {
+    "electron-store": "^8.1.0",
+    "uuid": "^9.0.0",
+    "ws": "^8.14.0"
+  },
+  "build": {
+    "appId": "com.livehints.app",
+    "productName": "Live Hints",
+    "copyright": "Copyright © 2024",
+    "directories": {
+      "output": "dist"
     },
-    "keywords": [
-        "electron",
-        "overlay",
-        "transcription",
-        "whisper",
-        "llm"
+    "files": [
+      "main.js",
+      "preload.js",
+      "renderer/**/*",
+      "src/**/*",
+      "python/**/*",
+      "!**/*.pyc",
+      "!**/__pycache__"
     ],
-    "author": "",
-    "license": "MIT",
-    "devDependencies": {
-        "@playwright/test": "^1.40.0",
-        "electron": "^35.7.5",
-        "electron-builder": "^26.0.12",
-        "eslint": "^9.39.2",
-        "eslint-config-prettier": "^10.1.8",
-        "eslint-plugin-prettier": "^5.5.4",
-        "jest": "^29.7.0",
-        "playwright": "^1.40.0",
-        "prettier": "^3.7.4"
-    },
-    "dependencies": {
-        "electron-store": "^8.1.0",
-        "uuid": "^9.0.0",
-        "ws": "^8.14.0"
-    },
-    "build": {
-        "appId": "com.livehints.app",
-        "productName": "Live Hints",
-        "copyright": "Copyright © 2024",
-        "directories": {
-            "output": "dist"
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
         },
-        "files": [
-            "main.js",
-            "preload.js",
-            "renderer/**/*",
-            "src/**/*",
-            "python/**/*",
-            "!**/*.pyc",
-            "!**/__pycache__"
-        ],
-        "win": {
-            "target": [
-                {
-                    "target": "nsis",
-                    "arch": [
-                        "x64"
-                    ]
-                },
-                {
-                    "target": "portable",
-                    "arch": [
-                        "x64"
-                    ]
-                }
-            ],
-            "icon": "renderer/icon.ico"
-        },
-        "nsis": {
-            "oneClick": false,
-            "allowToChangeInstallationDirectory": true,
-            "createDesktopShortcut": true,
-            "createStartMenuShortcut": true,
-            "shortcutName": "Live Hints"
-        },
-        "portable": {
-            "artifactName": "LiveHints-Portable-${version}.exe"
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
         }
+      ],
+      "icon": "renderer/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Live Hints"
+    },
+    "portable": {
+      "artifactName": "LiveHints-Portable-${version}.exe"
     }
+  }
 }

@@ -15,12 +15,12 @@ Windows desktop overlay для транскрипции системного з�
 
 ## Метрики производительности
 
-| Метрика | Значение |
-|---------|----------|
-| STT латентность | ~300ms (distil-large-v3) |
-| LLM TTFT | 2-3s (streaming) |
-| LLM total | 18-25s |
-| End-to-end perceived | **3-4s** |
+| Метрика              | Значение                 |
+| -------------------- | ------------------------ |
+| STT латентность      | ~300ms (distil-large-v3) |
+| LLM TTFT             | 2-3s (streaming)         |
+| LLM total            | 18-25s                   |
+| End-to-end perceived | **3-4s**                 |
 
 ## Требования
 
@@ -123,21 +123,21 @@ npm start
 
 ### Облачные провайдеры
 
-| Провайдер | Переменные окружения | Где получить |
-|-----------|---------------------|--------------|
-| **OpenAI** | `OPENAI_API_KEY` | platform.openai.com |
-| **Gemini** | `GEMINI_API_KEY` | aistudio.google.com |
-| **Claude (Anthropic)** | `ANTHROPIC_API_KEY` | console.anthropic.com |
-| **OpenRouter** | `OPENROUTER_API_KEY` | openrouter.ai |
+| Провайдер              | Переменные окружения | Где получить          |
+| ---------------------- | -------------------- | --------------------- |
+| **OpenAI**             | `OPENAI_API_KEY`     | platform.openai.com   |
+| **Gemini**             | `GEMINI_API_KEY`     | aistudio.google.com   |
+| **Claude (Anthropic)** | `ANTHROPIC_API_KEY`  | console.anthropic.com |
+| **OpenRouter**         | `OPENROUTER_API_KEY` | openrouter.ai         |
 
 ### Российские провайдеры
 
-| Провайдер | Переменные окружения | Где получить |
-|-----------|---------------------|--------------|
-| **GigaChat Free** | `GIGACHAT_CLIENT_ID`, `GIGACHAT_CLIENT_SECRET` | developers.sber.ru |
-| **GigaChat Max** | `GIGACHAT_CLIENT_ID`, `GIGACHAT_CLIENT_SECRET` | developers.sber.ru |
-| **Yandex Lite** | `YANDEX_API_KEY`, `YANDEX_FOLDER_ID` | console.cloud.yandex.ru |
-| **Yandex Pro** | `YANDEX_API_KEY`, `YANDEX_FOLDER_ID` | console.cloud.yandex.ru |
+| Провайдер         | Переменные окружения                           | Где получить            |
+| ----------------- | ---------------------------------------------- | ----------------------- |
+| **GigaChat Free** | `GIGACHAT_CLIENT_ID`, `GIGACHAT_CLIENT_SECRET` | developers.sber.ru      |
+| **GigaChat Max**  | `GIGACHAT_CLIENT_ID`, `GIGACHAT_CLIENT_SECRET` | developers.sber.ru      |
+| **Yandex Lite**   | `YANDEX_API_KEY`, `YANDEX_FOLDER_ID`           | console.cloud.yandex.ru |
+| **Yandex Pro**    | `YANDEX_API_KEY`, `YANDEX_FOLDER_ID`           | console.cloud.yandex.ru |
 
 ### Настройка переменных окружения
 

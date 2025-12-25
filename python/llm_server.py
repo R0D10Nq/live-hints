@@ -158,6 +158,8 @@ class OllamaClient:
         self.base_url = base_url
         self.model = model
         self.metrics = HintMetrics()
+        self.max_retries = 3
+        self.retry_delay = 1.0  # секунды, с exponential backoff
     
     def _check_available(self) -> bool:
         try:
@@ -165,6 +167,20 @@ class OllamaClient:
             return resp.status_code == 200
         except:
             return False
+    
+    def _retry_request(self, func, *args, **kwargs):
+        """Retry logic с exponential backoff"""
+        last_error = None
+        for attempt in range(self.max_retries):
+            try:
+                return func(*args, **kwargs)
+            except (requests.exceptions.ConnectionError, requests.exceptions.Timeout) as e:
+                last_error = e
+                if attempt < self.max_retries - 1:
+                    delay = self.retry_delay * (2 ** attempt)
+                    logger.warning(f'[LLM] Retry {attempt + 1}/{self.max_retries} после {delay}s: {e}')
+                    time.sleep(delay)
+        raise last_error
     
     def generate(self, text: str, context: list = None, system_prompt: str = None, 
                  profile: str = 'interview', max_tokens: int = 500, temperature: float = 0.8) -> str:

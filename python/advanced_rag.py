@@ -82,16 +82,15 @@ class AdvancedRAG:
         """Инициализация ChromaDB"""
         try:
             import chromadb
-            from chromadb.config import Settings
             
             # Создаём директорию для персистентного хранения
             CHROMA_PERSIST_DIR.mkdir(parents=True, exist_ok=True)
             
-            self.chroma_client = chromadb.Client(Settings(
-                chroma_db_impl="duckdb+parquet",
-                persist_directory=str(CHROMA_PERSIST_DIR),
-                anonymized_telemetry=False
-            ))
+            # ChromaDB 1.x API - используем PersistentClient
+            self.chroma_client = chromadb.PersistentClient(
+                path=str(CHROMA_PERSIST_DIR),
+                settings=chromadb.Settings(anonymized_telemetry=False)
+            )
             
             # Создаём или получаем коллекцию
             self.collection = self.chroma_client.get_or_create_collection(
