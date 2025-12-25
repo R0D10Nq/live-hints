@@ -469,13 +469,14 @@ export class UIController {
   updateToggleButton(isRunning) {
     const btn = this.elements.btnToggle;
     const btnPause = this.elements.btnPause;
+    const btnAsk = this.elements.btnAsk;
     if (!btn) return;
 
     const icon = btn.querySelector('.btn-icon');
     const label = btn.querySelector('.btn-label');
 
     if (isRunning) {
-      // Сессия запущена: кнопка Стоп (красная), Пауза активна
+      // Сессия запущена: кнопка Стоп (красная), Пауза и Спросить активны
       btn.classList.remove('btn-start');
       btn.classList.add('btn-stop');
       if (icon) icon.textContent = '■';
@@ -488,8 +489,12 @@ export class UIController {
         if (pauseIcon) pauseIcon.textContent = '⏸';
         if (pauseLabel) pauseLabel.textContent = 'Пауза';
       }
+
+      if (btnAsk) {
+        btnAsk.disabled = false;
+      }
     } else {
-      // Сессия остановлена: кнопка Старт (зелёная), Пауза неактивна
+      // Сессия остановлена: кнопка Старт (зелёная), Пауза и Спросить неактивны
       btn.classList.remove('btn-stop');
       btn.classList.add('btn-start');
       if (icon) icon.textContent = '▶';
@@ -501,6 +506,10 @@ export class UIController {
         const pauseLabel = btnPause.querySelector('.btn-label');
         if (pauseIcon) pauseIcon.textContent = '⏸';
         if (pauseLabel) pauseLabel.textContent = 'Пауза';
+      }
+
+      if (btnAsk) {
+        btnAsk.disabled = true;
       }
     }
   }
