@@ -327,35 +327,102 @@ export class UIController {
     this.elements.helpModal?.classList.add('hidden');
   }
 
-  // Hints pagination
+  // Hints pagination с книжным эффектом
   showPrevHint() {
     if (this.currentHintIndex > 0) {
       this.currentHintIndex--;
-      this.displayCurrentHint();
+      this.displayCurrentHint('slide-right');
     }
   }
 
   showNextHint() {
     if (this.currentHintIndex < this.hints.length - 1) {
       this.currentHintIndex++;
-      this.displayCurrentHint();
+      this.displayCurrentHint('slide-left');
     }
   }
 
-  displayCurrentHint() {
-    const feed = this.elements.hintsFeed;
-    if (!feed || this.hints.length === 0) return;
+  // Перейти к последней подсказке
+  goToLastHint() {
+    if (this.hints.length > 0) {
+      this.currentHintIndex = this.hints.length - 1;
+      this.displayCurrentHint('slide-left');
+    }
+  }
 
+  displayCurrentHint(animation = null) {
+    const feed = this.elements.hintsFeed;
+    if (!feed || this.hints.length === 0) {
+      this.showHintsEmptyState();
+      return;
+    }
+
+    this.hideHintsEmptyState();
     const hint = this.hints[this.currentHintIndex];
-    feed.innerHTML = `
-            <div class="hint-card active">
-                <div class="hint-content">${this.renderMarkdown(hint.text)}</div>
-                <div class="hint-meta">
-                    <span>${this.formatTime(hint.timestamp)}</span>
-                    ${hint.latencyMs ? `<span>${this.formatLatency(hint.latencyMs)}</span>` : ''}
-                </div>
-            </div>
-        `;
+
+    // Типы вопросов с иконками
+    const typeIcons = {
+      technical: '💻',
+      experience: '📋',
+      general: '💬'
+    };
+    const typeLabels = {
+      technical: 'Технический',
+      experience: 'Опыт',
+      general: 'Общий'
+    };
+
+    const typeIcon = typeIcons[hint.questionType] || '💡';
+    const typeLabel = typeLabels[hint.questionType] || '';
+
+    // Создаём карточку подсказки
+    const card = document.createElement('div');
+    card.className = `hint-card hint-page${animation ? ` ${animation}` : ''}`;
+    card.innerHTML = `
+      <div class="hint-card-header">
+        <div class="hint-number">
+          <span class="hint-number-current">${this.currentHintIndex + 1}</span>
+          <span class="hint-number-separator">/</span>
+          <span class="hint-number-total">${this.hints.length}</span>
+        </div>
+        ${hint.questionType ? `
+          <div class="hint-type-badge type-${hint.questionType}">
+            <span>${typeIcon}</span>
+            <span>${typeLabel}</span>
+          </div>
+        ` : ''}
+        <div class="hint-meta-badges">
+          ${hint.cached ? '<span class="hint-badge hint-badge-cache">Кэш</span>' : ''}
+          ${hint.latencyMs && !hint.cached ? `<span class="hint-badge hint-badge-latency">${this.formatLatency(hint.latencyMs)}</span>` : ''}
+        </div>
+      </div>
+      <div class="hint-content-wrapper">
+        <div class="hint-content">${this.renderMarkdown(hint.text)}</div>
+      </div>
+      <div class="hint-card-footer">
+        <span class="hint-timestamp">${this.formatTime(hint.timestamp)}</span>
+        <button class="hint-copy-btn" title="Копировать">
+          <span>📋</span>
+        </button>
+      </div>
+    `;
+
+    // Очищаем feed и добавляем карточку
+    feed.innerHTML = '';
+    feed.appendChild(card);
+
+    // Кнопка копирования
+    card.querySelector('.hint-copy-btn')?.addEventListener('click', () => this.copyCurrentHint());
+
+    // Анимация появления
+    if (animation) {
+      requestAnimationFrame(() => {
+        card.classList.remove(animation);
+        card.classList.add('hint-page-active');
+      });
+    } else {
+      card.classList.add('hint-page-active');
+    }
 
     this.updatePaginationControls();
   }
@@ -465,6 +532,11 @@ export class UIController {
     }
     this.lastTranscriptText = '';
     this.lastHintText = '';
+
+    // Очищаем массив подсказок (книжный режим)
+    this.hints = [];
+    this.currentHintIndex = 0;
+    this.updatePaginationButtons();
   }
 
   addTranscriptItem(text, timestamp, source = 'interviewer') {
@@ -580,33 +652,24 @@ export class UIController {
 
   finalizeStreamingHint(element, text, options = {}) {
     if (!element) return;
-    element.classList.remove('streaming-hint');
 
     const { latencyMs, cached, questionType } = options;
-    const timeEl = element.querySelector('.feed-item-time');
 
-    if (timeEl) {
-      if (questionType) {
-        const typeBadge = document.createElement('span');
-        typeBadge.className = `question-type-badge type-${questionType}`;
-        typeBadge.textContent = QUESTION_TYPE_LABELS[questionType] || questionType;
-        timeEl.appendChild(typeBadge);
-      }
+    // Добавляем подсказку в массив для пагинации
+    this.hints.push({
+      text: text,
+      timestamp: new Date().toISOString(),
+      latencyMs: latencyMs,
+      cached: cached,
+      questionType: questionType
+    });
 
-      if (cached) {
-        const cacheBadge = document.createElement('span');
-        cacheBadge.className = 'cache-badge';
-        cacheBadge.textContent = 'Из кэша';
-        timeEl.appendChild(cacheBadge);
-      }
+    // Удаляем streaming элемент
+    element.remove();
 
-      if (latencyMs && !cached) {
-        const latencyBadge = document.createElement('span');
-        latencyBadge.className = 'latency-badge';
-        latencyBadge.textContent = this.formatLatency(latencyMs);
-        timeEl.appendChild(latencyBadge);
-      }
-    }
+    // Переключаемся на последнюю подсказку с анимацией
+    this.currentHintIndex = this.hints.length - 1;
+    this.displayCurrentHint('slide-left');
   }
 
   // History Modal
@@ -849,7 +912,12 @@ export class UIController {
   }
 
   getHintsText() {
-    const items = this.elements.hintsFeed?.querySelectorAll('.feed-item-text');
+    // Возвращаем текст из массива hints (книжный режим)
+    if (this.hints && this.hints.length > 0) {
+      return this.hints.map((hint, index) => `[${index + 1}] ${hint.text}`).join('\n\n');
+    }
+    // Fallback на DOM элементы
+    const items = this.elements.hintsFeed?.querySelectorAll('.feed-item-text, .hint-content');
     return items
       ? Array.from(items)
         .map((el) => el.textContent)
@@ -907,6 +975,21 @@ export class UIController {
     }
     if (this.elements.metricsLlmLatency) {
       this.elements.metricsLlmLatency.textContent = metrics.llm_server_latency_ms ?? '-';
+    }
+  }
+
+  updatePaginationButtons() {
+    if (!this.elements.hintsCounter) return;
+
+    const total = this.hints?.length || 0;
+    const current = total > 0 ? this.currentHintIndex + 1 : 0;
+    this.elements.hintsCounter.textContent = `${current}/${total}`;
+
+    if (this.elements.btnPrevHint) {
+      this.elements.btnPrevHint.disabled = this.currentHintIndex <= 0;
+    }
+    if (this.elements.btnNextHint) {
+      this.elements.btnNextHint.disabled = this.currentHintIndex >= total - 1;
     }
   }
 
