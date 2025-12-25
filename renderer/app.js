@@ -424,6 +424,11 @@ class LiveHintsApp {
     const refreshBtn = document.getElementById('btn-refresh-devices');
     const dualAudio = document.getElementById('dual-audio');
 
+    // VU-метр для настроек
+    this.settingsAudioContext = null;
+    this.settingsAnalyser = null;
+    this.settingsVuAnimationId = null;
+
     // Загружаем устройства при старте
     this.loadAudioDevices();
 
@@ -435,6 +440,7 @@ class LiveHintsApp {
       inputDevice.addEventListener('change', (e) => {
         this.inputDeviceIndex = e.target.value;
         this.saveSettings({ inputDeviceIndex: e.target.value });
+        this.startSettingsVuMeter(e.target.value);
       });
     }
 
@@ -476,6 +482,69 @@ class LiveHintsApp {
       }
     } catch (e) {
       console.error('Ошибка загрузки аудио устройств:', e);
+    }
+  }
+
+  async startSettingsVuMeter(deviceId) {
+    this.stopSettingsVuMeter();
+
+    try {
+      const constraints = {
+        audio: deviceId ? { deviceId: { exact: deviceId } } : true,
+        video: false,
+      };
+
+      const stream = await navigator.mediaDevices.getUserMedia(constraints);
+      this.settingsAudioContext = new AudioContext();
+      const source = this.settingsAudioContext.createMediaStreamSource(stream);
+      this.settingsAnalyser = this.settingsAudioContext.createAnalyser();
+      this.settingsAnalyser.fftSize = 256;
+      source.connect(this.settingsAnalyser);
+
+      const vuMeter = document.getElementById('vu-mic');
+      if (!vuMeter) return;
+
+      const vuBars = vuMeter.querySelectorAll('.vu-bar');
+      const bufferLength = this.settingsAnalyser.frequencyBinCount;
+      const dataArray = new Uint8Array(bufferLength);
+
+      const updateVu = () => {
+        this.settingsAnalyser.getByteFrequencyData(dataArray);
+        const average = dataArray.reduce((a, b) => a + b) / bufferLength;
+        const level = Math.min(average / 128, 1);
+
+        vuBars.forEach((bar, index) => {
+          const threshold = (index + 1) / vuBars.length;
+          bar.classList.remove('active', 'warning', 'danger');
+
+          if (level >= threshold) {
+            if (index >= vuBars.length - 1) {
+              bar.classList.add('danger');
+            } else if (index >= vuBars.length - 2) {
+              bar.classList.add('warning');
+            } else {
+              bar.classList.add('active');
+            }
+          }
+        });
+
+        this.settingsVuAnimationId = requestAnimationFrame(updateVu);
+      };
+
+      updateVu();
+    } catch (e) {
+      console.error('Ошибка запуска VU-метра:', e);
+    }
+  }
+
+  stopSettingsVuMeter() {
+    if (this.settingsVuAnimationId) {
+      cancelAnimationFrame(this.settingsVuAnimationId);
+      this.settingsVuAnimationId = null;
+    }
+    if (this.settingsAudioContext) {
+      this.settingsAudioContext.close();
+      this.settingsAudioContext = null;
     }
   }
 
@@ -1756,15 +1825,14 @@ class LiveHintsApp {
                         <span class="stat-value">${duration}</span>
                     </span>
                 </div>
-                ${
-                  tags.length > 0
-                    ? `
+                ${tags.length > 0
+            ? `
                 <div class="session-card-tags">
                     ${tags.map((tag) => `<span class="session-tag">${this.escapeHtml(tag)}</span>`).join('')}
                 </div>
                 `
-                    : ''
-                }
+            : ''
+          }
                 <div class="session-card-preview">${this.escapeHtml((session.transcript || '').substring(0, 120))}...</div>
                 <div class="session-card-actions">
                     <button class="btn-session-view" data-action="view">Открыть</button>
@@ -1843,30 +1911,30 @@ class LiveHintsApp {
     this.elements.sessionTranscript.innerHTML =
       transcriptLines.length > 0
         ? transcriptLines
-            .map(
-              (line, i) => `
+          .map(
+            (line, i) => `
                 <div class="session-dialog-item">
                     <span class="dialog-icon">🎙️</span>
                     <span class="dialog-text">${this.escapeHtml(line)}</span>
                 </div>
             `
-            )
-            .join('')
+          )
+          .join('')
         : '<p class="placeholder">Нет транскрипта</p>';
 
     // Форматируем подсказки
     this.elements.sessionHints.innerHTML =
       hintLines.length > 0
         ? hintLines
-            .map(
-              (line, i) => `
+          .map(
+            (line, i) => `
                 <div class="session-dialog-item hint-item">
                     <span class="dialog-icon">💡</span>
                     <span class="dialog-text">${this.renderMarkdown(line)}</span>
                 </div>
             `
-            )
-            .join('')
+          )
+          .join('')
         : '<p class="placeholder">Нет подсказок</p>';
 
     this.hideHistoryModal();

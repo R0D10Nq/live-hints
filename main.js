@@ -71,6 +71,10 @@ function setupIPC() {
 
   ipcMain.handle('window:close', () => {
     if (mainWindow) mainWindow.close();
+    if (onboardingWindow) {
+      onboardingWindow.close();
+      app.quit();
+    }
   });
 
   ipcMain.handle('window:set-ignore-mouse', (event, ignore) => {
