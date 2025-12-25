@@ -416,6 +416,12 @@ class LiveHintsApp {
 
     // Vision AI
     this.setupVisionAI();
+
+    // Screenshot button in header
+    const btnScreenshot = document.getElementById('btn-screenshot');
+    if (btnScreenshot) {
+      btnScreenshot.addEventListener('click', () => this.captureScreen('fullscreen'));
+    }
   }
 
   setupAudioDevices() {
@@ -2127,6 +2133,14 @@ ${session.hints || 'Нет данных'}
     const isOpen = this.elements.settingsDrawer.classList.toggle('open');
     if (this.elements.btnSettingsToggle) {
       this.elements.btnSettingsToggle.classList.toggle('active', isOpen);
+    }
+
+    // Запускаем/останавливаем VU-метр при открытии/закрытии настроек
+    if (isOpen) {
+      const inputDevice = document.getElementById('input-device');
+      this.startSettingsVuMeter(inputDevice?.value || '');
+    } else {
+      this.stopSettingsVuMeter();
     }
   }
 

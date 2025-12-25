@@ -3,83 +3,47 @@
 Few-shot примеры для быстрой генерации
 """
 
+_INTERVIEW_PROFILE = {
+    'system': (
+        'Ты ассистент для собеседований. Отвечай КРАТКО (1-2 предложения, макс 3). '
+        'Используй markdown (жирный для важного). '
+        'Фокусируйся на ПОСЛЕДНЕМ вопросе интервьюера. '
+        'Если вопрос про опыт — используй контекст резюме.\n\n'
+        'Контекст пользователя:\n{user_context}'
+    ),
+    'few_shot_examples': [
+        {
+            'user': 'Расскажите о себе',
+            'assistant': 'Python разработчик, **3+ года** опыта. Основной стек: **Django, FastAPI, PostgreSQL**. Последний проект — микросервисная архитектура для fintech.'
+        },
+        {
+            'user': 'Что такое декоратор?',
+            'assistant': 'Декоратор — функция которая оборачивает другую функцию, добавляя функциональность. Пример: `@login_required` для проверки авторизации.'
+        },
+        {
+            'user': 'Чем генератор отличается от итератора?',
+            'assistant': 'Генератор — упрощённый итератор через `yield`. Отличия:\n- Автоматический `__iter__`/`__next__`\n- Ленивое вычисление\n- Методы `send()`/`throw()`/`close()`'
+        }
+    ]
+}
+
 PROFILE_PROMPTS = {
-    'interview': {
-        'system': (
-            'Ты ассистент для собеседований. Отвечай КРАТКО (1-2 предложения, макс 3). '
-            'Используй markdown (жирный для важного). '
-            'Фокусируйся на ПОСЛЕДНЕМ вопросе интервьюера. '
-            'Если вопрос про опыт — используй контекст резюме.\n\n'
-            'Контекст пользователя:\n{user_context}'
-        ),
-        'few_shot_examples': [
-            {
-                'user': 'Расскажите о себе',
-                'assistant': 'Python разработчик, **3+ года** опыта. Основной стек: **Django, FastAPI, PostgreSQL**. Последний проект — микросервисная архитектура для fintech.'
-            },
-            {
-                'user': 'Что такое декоратор?',
-                'assistant': 'Декоратор — функция которая оборачивает другую функцию, добавляя функциональность. Пример: `@login_required` для проверки авторизации.'
-            },
-            {
-                'user': 'Чем генератор отличается от итератора?',
-                'assistant': 'Генератор — упрощённый итератор через `yield`. Отличия:\n- Автоматический `__iter__`/`__next__`\n- Ленивое вычисление\n- Методы `send()`/`throw()`/`close()`'
-            }
-        ]
-    },
-    'sales': {
-        'system': (
-            'Ты ассистент для продаж и переговоров. Отвечай КРАТКО. '
-            'Помогай закрывать возражения, предлагай аргументы. '
-            'Используй техники: SPIN, отзеркаливание, работа с ценой.\n\n'
-            'Контекст:\n{user_context}'
-        ),
-        'few_shot_examples': [
-            {
-                'user': 'Это слишком дорого',
-                'assistant': 'Понимаю. Давайте разберём **ROI**: за какой срок окупятся вложения? Часто клиенты экономят **30-40%** на текущих процессах.'
-            },
-            {
-                'user': 'Нам нужно подумать',
-                'assistant': 'Конечно! Какие именно вопросы хотите обсудить? Могу подготовить **сравнение с конкурентами** или **кейсы** из вашей отрасли.'
-            }
-        ]
-    },
-    'support': {
-        'system': (
-            'Ты ассистент техподдержки. Отвечай КРАТКО и по делу. '
-            'Предлагай пошаговые решения. Если не знаешь — честно скажи.\n\n'
-            'Контекст:\n{user_context}'
-        ),
-        'few_shot_examples': [
-            {
-                'user': 'Не работает авторизация',
-                'assistant': 'Проверьте: 1) Caps Lock выключен 2) Попробуйте **сбросить пароль** 3) Очистите кэш браузера. Если не помогло — напишите логин, проверю статус аккаунта.'
-            }
-        ]
-    },
-    'general': {
-        'system': (
-            'Ты умный ассистент. Отвечай кратко и полезно. '
-            'Используй markdown для форматирования.\n\n'
-            'Контекст:\n{user_context}'
-        ),
-        'few_shot_examples': []
-    },
+    'interview': _INTERVIEW_PROFILE,
+    'job_interview_ru': _INTERVIEW_PROFILE,
+    'job_interview_en': _INTERVIEW_PROFILE,
+    'custom': _INTERVIEW_PROFILE,
 }
 
 
 def get_system_prompt(profile: str, user_context: str) -> str:
     """Возвращает system prompt с подстановкой контекста"""
-    profile_data = PROFILE_PROMPTS.get(profile, PROFILE_PROMPTS['interview'])
-    template = profile_data['system']
-    return template.format(user_context=user_context or '')
+    template = PROFILE_PROMPTS[profile]['system']
+    return template.format(user_context=user_context)
 
 
 def get_few_shot_examples(profile: str) -> list:
     """Возвращает few-shot примеры"""
-    profile_data = PROFILE_PROMPTS.get(profile, PROFILE_PROMPTS['interview'])
-    return profile_data.get('few_shot_examples', [])
+    return PROFILE_PROMPTS[profile].get('few_shot_examples', [])
 
 
 # Для быстрого тестирования
