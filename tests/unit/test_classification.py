@@ -77,3 +77,23 @@ def test_build_contextual_prompt_short():
     # General должен обрезать контекст
     gen_prompt = build_contextual_prompt('general', context)
     assert len(gen_prompt) < 1500
+
+
+def test_get_max_tokens_for_type():
+    """Тест get_max_tokens_for_type"""
+    from classification import get_max_tokens_for_type
+    
+    assert get_max_tokens_for_type('experience') == 900
+    assert get_max_tokens_for_type('technical') == 700
+    assert get_max_tokens_for_type('general') == 500
+    assert get_max_tokens_for_type('unknown') == 600  # fallback
+
+
+def test_get_temperature_for_type():
+    """Тест get_temperature_for_type"""
+    from classification import get_temperature_for_type
+    
+    assert get_temperature_for_type('experience') == 0.8
+    assert get_temperature_for_type('technical') == 0.5
+    assert get_temperature_for_type('general') == 0.7
+    assert get_temperature_for_type('unknown') == 0.7  # fallback
