@@ -13,16 +13,46 @@ from typing import Optional, AsyncGenerator
 
 import requests
 import httpx
+import aiohttp
+from functools import wraps
 from fastapi import FastAPI, HTTPException
+
+# Retry конфигурация
+MAX_RETRIES = 3
+RETRY_DELAY_BASE = 1.0  # секунды
+
+
+def retry_with_backoff(max_retries: int = MAX_RETRIES, base_delay: float = RETRY_DELAY_BASE):
+    """Декоратор для retry с exponential backoff"""
+    def decorator(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            last_error = None
+            for attempt in range(max_retries):
+                try:
+                    return func(*args, **kwargs)
+                except (requests.exceptions.ConnectionError, 
+                        requests.exceptions.Timeout,
+                        requests.exceptions.RequestException) as e:
+                    last_error = e
+                    if attempt < max_retries - 1:
+                        delay = base_delay * (2 ** attempt)
+                        logging.warning(f'[RETRY] Attempt {attempt + 1}/{max_retries} failed: {e}. Retrying in {delay}s...')
+                        time.sleep(delay)
+            raise last_error
+        return wrapper
+    return decorator
+
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
-from prompts import get_system_prompt, get_few_shot_examples
+from prompts import get_system_prompt, get_few_shot_examples, get_profile_config
 from classification import classify_question, build_contextual_prompt
 from cache import HintCache
 from metrics import log_llm_request, log_llm_response, log_cache_hit, log_error
 from semantic_cache import get_semantic_cache
 from advanced_rag import get_advanced_rag
+from vector_db import get_vector_db
 import uvicorn
 
 # Настройка логирования
@@ -60,6 +90,28 @@ def load_user_context() -> str:
 
 USER_CONTEXT = load_user_context()
 logger.info(f'[CONTEXT] Загружен контекст: {len(USER_CONTEXT)} символов')
+
+
+def preload_model(model: str = DEFAULT_MODEL):
+    """Предзагрузка модели в память Ollama с keep_alive=-1 (бесконечно)"""
+    try:
+        logger.info(f'[PRELOAD] Загрузка модели {model} с keep_alive=-1...')
+        resp = requests.post(
+            f'{OLLAMA_URL}/api/generate',
+            json={
+                'model': model, 
+                'prompt': 'test', 
+                'stream': False,
+                'keep_alive': -1  # Бесконечно держать в памяти
+            },
+            timeout=180  # 3 минуты на загрузку модели
+        )
+        if resp.status_code == 200:
+            logger.info(f'[PRELOAD] Модель {model} загружена (Forever)')
+        else:
+            logger.warning(f'[PRELOAD] Ошибка загрузки: {resp.status_code}')
+    except Exception as e:
+        logger.warning(f'[PRELOAD] Не удалось загрузить модель: {e}')
 
 
 # ========== ПОСТРОЕНИЕ MESSAGES ==========
@@ -144,6 +196,9 @@ class HintRequest(BaseModel):
     profile: str = 'interview'
     max_tokens: Optional[int] = 500  # 50..500
     temperature: Optional[float] = 0.8  # 0.0..1.0
+    model: Optional[str] = None  # Модель из настроек клиента
+    system_prompt: Optional[str] = None  # Кастомный системный промт от клиента
+    user_context: Optional[str] = None  # Контекст пользователя (резюме)
 
 
 class HintResponse(BaseModel):
@@ -158,8 +213,6 @@ class OllamaClient:
         self.base_url = base_url
         self.model = model
         self.metrics = HintMetrics()
-        self.max_retries = 3
-        self.retry_delay = 1.0  # секунды, с exponential backoff
     
     def _check_available(self) -> bool:
         try:
@@ -167,20 +220,6 @@ class OllamaClient:
             return resp.status_code == 200
         except:
             return False
-    
-    def _retry_request(self, func, *args, **kwargs):
-        """Retry logic с exponential backoff"""
-        last_error = None
-        for attempt in range(self.max_retries):
-            try:
-                return func(*args, **kwargs)
-            except (requests.exceptions.ConnectionError, requests.exceptions.Timeout) as e:
-                last_error = e
-                if attempt < self.max_retries - 1:
-                    delay = self.retry_delay * (2 ** attempt)
-                    logger.warning(f'[LLM] Retry {attempt + 1}/{self.max_retries} после {delay}s: {e}')
-                    time.sleep(delay)
-        raise last_error
     
     def generate(self, text: str, context: list = None, system_prompt: str = None, 
                  profile: str = 'interview', max_tokens: int = 500, temperature: float = 0.8) -> str:
@@ -223,13 +262,14 @@ class OllamaClient:
                     'model': self.model,
                     'messages': messages,
                     'stream': False,
+                    'keep_alive': -1,  # Бесконечно держать в памяти
                     'options': {
                         'temperature': temperature,
                         'num_predict': max_tokens,
                         'top_p': 0.9
                     }
                 },
-                timeout=30
+                timeout=60  # Увеличен таймаут для загрузки модели
             )
             
             self.metrics.first_token()
@@ -309,8 +349,9 @@ class OllamaClient:
             return f'Ошибка: {e}'
     
     async def generate_stream(self, text: str, context: list = None, profile: str = 'interview',
-                              max_tokens: int = 500, temperature: float = 0.8):
-        """Async streaming генерация подсказки с httpx"""
+                              max_tokens: int = 500, temperature: float = 0.8,
+                              custom_system_prompt: str = None, custom_user_context: str = None):
+        """Async streaming генерация подсказки с aiohttp"""
         self.metrics.reset()
         self.metrics.request_started()
         self._last_question_type = 'general'
@@ -346,9 +387,21 @@ class OllamaClient:
         # Логируем запрос
         log_llm_request(text, len(context or []), question_type, profile)
         
+        # Используем кастомный контекст если передан, иначе глобальный
+        effective_user_context = custom_user_context if custom_user_context else USER_CONTEXT
+        if custom_user_context:
+            logger.info(f'[CONTEXT] Используется кастомный контекст: {len(custom_user_context)} символов')
+        
         # Advanced RAG: улучшаем промпт с semantic search и adaptive context
         rag = get_advanced_rag()
-        base_prompt = build_contextual_prompt(question_type, USER_CONTEXT)
+        
+        # Если передан кастомный системный промпт - используем его как базу
+        if custom_system_prompt:
+            base_prompt = custom_system_prompt + '\n\n' + build_contextual_prompt(question_type, effective_user_context)
+            logger.info(f'[PROMPT] Используется кастомный системный промпт: {len(custom_system_prompt)} символов')
+        else:
+            base_prompt = build_contextual_prompt(question_type, effective_user_context)
+        
         system_prompt = rag.build_enhanced_prompt(text, context or [], question_type, base_prompt)
         
         # Адаптивный контекст - меньше для простых вопросов, больше для сложных
@@ -366,26 +419,25 @@ class OllamaClient:
         accumulated_hint = ''
         
         try:
-            async with httpx.AsyncClient(timeout=60.0) as client:
-                async with client.stream(
-                    'POST',
-                    f'{self.base_url}/api/chat',
-                    json={
-                        'model': self.model,
-                        'messages': messages,
-                        'stream': True,
-                        'options': {
-                            'temperature': temperature,
-                            'num_predict': max_tokens,
-                            'top_p': 0.9
-                        }
+            timeout = aiohttp.ClientTimeout(total=120)
+            async with aiohttp.ClientSession(timeout=timeout) as session:
+                payload = {
+                    'model': self.model,
+                    'messages': messages,
+                    'stream': True,
+                    'keep_alive': -1,
+                    'options': {
+                        'temperature': temperature,
+                        'num_predict': max_tokens,
+                        'top_p': 0.9
                     }
-                ) as resp:
-                    if resp.status_code == 200:
-                        async for line in resp.aiter_lines():
+                }
+                async with session.post(f'{self.base_url}/api/chat', json=payload) as resp:
+                    if resp.status == 200:
+                        async for line in resp.content:
                             if line:
                                 try:
-                                    data = json.loads(line)
+                                    data = json.loads(line.decode('utf-8'))
                                     content = data.get('message', {}).get('content', '')
                                     if content:
                                         self.metrics.first_token()
@@ -393,14 +445,11 @@ class OllamaClient:
                                         yield content
                                     if data.get('done'):
                                         self.metrics.done()
-                                        # Сохраняем в оба кэша
                                         if accumulated_hint.strip():
                                             hint_cache.set(text, context or [], accumulated_hint)
                                             semantic_cache.set(text, context or [], accumulated_hint)
-                                            # Memory consolidation - извлекаем важные факты
                                             rag.consolidate_memory(text, accumulated_hint, question_type)
                                             logger.info(f'[CACHE] SET: {text[:50]}...')
-                                        # Логируем ответ
                                         stats = self.metrics.get_stats()
                                         log_llm_response(
                                             stats['ttft_ms'], 
@@ -413,16 +462,16 @@ class OllamaClient:
                                 except json.JSONDecodeError:
                                     pass
                     else:
-                        error_msg = f'Ollama ошибка: {resp.status_code}'
+                        error_msg = f'Ollama ошибка: {resp.status}'
                         log_error('llm', 'ollama_error', error_msg)
                         yield error_msg
                         
-        except httpx.ConnectError:
+        except aiohttp.ClientConnectorError:
             error_msg = 'Ollama не запущен. Запустите: ollama serve'
             log_error('llm', 'connection_error', error_msg)
             yield error_msg
-        except httpx.TimeoutException:
-            error_msg = 'Таймаут запроса к Ollama (60 сек)'
+        except asyncio.TimeoutError:
+            error_msg = 'Таймаут запроса к Ollama (120 сек)'
             log_error('llm', 'timeout', error_msg)
             yield error_msg
         except Exception as e:
@@ -454,7 +503,15 @@ async def generate_hint(request: HintRequest):
     if not request.text or len(request.text.strip()) < 5:
         raise HTTPException(400, 'Текст слишком короткий')
     
-    logger.info(f'[API] profile={request.profile}, max_tokens={request.max_tokens}, temperature={request.temperature}')
+    # Используем модель из запроса или дефолтную
+    model = request.model or ollama.model
+    logger.info(f'[API] model={model}, profile={request.profile}, max_tokens={request.max_tokens}')
+    
+    # Временно меняем модель если указана в запросе
+    original_model = ollama.model
+    if request.model:
+        ollama.model = request.model
+    
     hint = ollama.generate(
         text=request.text, 
         context=request.context, 
@@ -462,6 +519,9 @@ async def generate_hint(request: HintRequest):
         max_tokens=request.max_tokens,
         temperature=request.temperature
     )
+    
+    # Восстанавливаем модель
+    ollama.model = original_model
     stats = ollama.metrics.get_stats()
     
     # ===== DEBUG PHASE 3: API RESPONSE =====
@@ -491,39 +551,74 @@ async def generate_hint_stream(request: HintRequest):
     if not request.text or len(request.text.strip()) < 5:
         raise HTTPException(400, 'Текст слишком короткий')
     
-    logger.info(f'[API Stream] profile={request.profile}, max_tokens={request.max_tokens}, temperature={request.temperature}')
+    # Используем модель из запроса или дефолтную
+    model = request.model or ollama.model
+    logger.info(f'[API Stream] model={model}, profile={request.profile}, max_tokens={request.max_tokens}')
     
-    # Проверка кэша
-    cached = hint_cache.get(request.text, request.context or [])
+    # Временно меняем модель если указана в запросе
+    original_model = ollama.model
+    if request.model:
+        ollama.model = request.model
+    
+    # 1. Проверка VectorDB для instant response (similarity > 0.90)
+    vector_db = get_vector_db()
+    instant_answer = vector_db.get_instant_answer(request.text)
+    
+    # 2. Проверка LRU кэша
+    cached = instant_answer or hint_cache.get(request.text, request.context or [])
+    
+    # 3. Получаем похожие ответы для контекста
+    context_answers = vector_db.get_context_answers(request.text) if not cached else []
     
     # Классификация для badges
     question_type = classify_question(request.text)
     
     async def stream():
-        if cached:
-            # Логируем cache hit
-            log_cache_hit(request.text)
-            log_llm_response(0, 0, len(cached), cached=True, question_type=question_type)
-            
-            # Возвращаем из кэша целиком с типом вопроса
-            yield f"data: {json.dumps({'chunk': cached, 'cached': True, 'question_type': question_type}, ensure_ascii=False)}\n\n"
-            yield f"data: {json.dumps({'done': True, 'cached': True, 'question_type': question_type, 'latency_ms': 0, 'ttft_ms': 0}, ensure_ascii=False)}\n\n"
-        else:
-            # Streaming генерация
-            async for chunk in ollama.generate_stream(
-                request.text, 
-                request.context,
-                request.profile,
-                request.max_tokens,
-                request.temperature
-            ):
-                yield f"data: {json.dumps({'chunk': chunk}, ensure_ascii=False)}\n\n"
-            
-            stats = ollama.metrics.get_stats()
-            q_type = getattr(ollama, '_last_question_type', question_type)
-            yield f"data: {json.dumps({'done': True, 'question_type': q_type, 'latency_ms': stats['total_ms'], 'ttft_ms': stats['ttft_ms']}, ensure_ascii=False)}\n\n"
+        nonlocal original_model
+        try:
+            if cached:
+                # Логируем cache hit
+                log_cache_hit(request.text)
+                log_llm_response(0, 0, len(cached), cached=True, question_type=question_type)
+                
+                # Возвращаем из кэша целиком с типом вопроса
+                yield f"data: {json.dumps({'chunk': cached, 'cached': True, 'question_type': question_type}, ensure_ascii=False)}\n\n"
+                yield f"data: {json.dumps({'done': True, 'cached': True, 'question_type': question_type, 'latency_ms': 0, 'ttft_ms': 0}, ensure_ascii=False)}\n\n"
+            else:
+                # Streaming генерация с кастомным промтом и контекстом
+                async for chunk in ollama.generate_stream(
+                    request.text, 
+                    request.context,
+                    request.profile,
+                    request.max_tokens,
+                    request.temperature,
+                    request.system_prompt,
+                    request.user_context
+                ):
+                    yield f"data: {json.dumps({'chunk': chunk}, ensure_ascii=False)}\n\n"
+                
+                stats = ollama.metrics.get_stats()
+                q_type = getattr(ollama, '_last_question_type', question_type)
+                yield f"data: {json.dumps({'done': True, 'question_type': q_type, 'latency_ms': stats['total_ms'], 'ttft_ms': stats['ttft_ms']}, ensure_ascii=False)}\n\n"
+        finally:
+            # Восстанавливаем модель
+            ollama.model = original_model
     
     return StreamingResponse(stream(), media_type='text/event-stream')
+
+
+@app.post('/cache/clear')
+async def clear_cache():
+    """Очистка кэша при старте новой сессии"""
+    try:
+        hint_cache.cache.clear()
+        semantic_cache = get_semantic_cache()
+        semantic_cache.clear()
+        logger.info('[CACHE] Кэш очищен для новой сессии')
+        return {'status': 'ok', 'message': 'Кэш очищен'}
+    except Exception as e:
+        logger.error(f'[CACHE] Ошибка очистки: {e}')
+        return {'status': 'error', 'message': str(e)}
 
 
 @app.get('/models')
@@ -635,34 +730,91 @@ async def get_audio_devices():
 
 # ========== VISION AI API ==========
 
+# Доступные Vision модели (в порядке приоритета)
+VISION_MODELS = ['llava:13b', 'llava:7b', 'llava:latest', 'bakllava:latest']
+
+def get_available_vision_model() -> Optional[str]:
+    """Проверить наличие Vision модели в Ollama"""
+    try:
+        resp = requests.get(f'{OLLAMA_URL}/api/tags', timeout=5)
+        if resp.status_code == 200:
+            models = [m['name'] for m in resp.json().get('models', [])]
+            for vision_model in VISION_MODELS:
+                if vision_model in models:
+                    return vision_model
+            # Проверяем частичное совпадение
+            for model in models:
+                if 'llava' in model.lower() or 'bakllava' in model.lower():
+                    return model
+    except Exception as e:
+        logger.warning(f'[Vision] Не удалось получить список моделей: {e}')
+    return None
+
+
+@app.get('/vision/status')
+async def vision_status():
+    """Проверка доступности Vision AI"""
+    model = get_available_vision_model()
+    return {
+        'available': model is not None,
+        'model': model,
+        'message': f'Vision модель: {model}' if model else 'Vision модель не найдена. Установите: ollama pull llava:7b'
+    }
+
+
 @app.post('/vision/analyze')
 async def analyze_image(request: dict):
     """Анализ изображения с помощью Vision AI"""
     image_base64 = request.get('image')
-    prompt = request.get('prompt', 'Опиши что на изображении')
+    prompt = request.get('prompt', 'Проанализируй это изображение. Если это код или текст - опиши его. Если это интерфейс - опиши элементы.')
     
     if not image_base64:
         raise HTTPException(400, 'Изображение не предоставлено')
     
+    # Проверяем наличие Vision модели
+    vision_model = get_available_vision_model()
+    if not vision_model:
+        return {
+            'error': 'Vision модель не установлена',
+            'hint': 'Выполните: ollama pull llava:7b'
+        }
+    
+    logger.info(f'[Vision] Анализ изображения с {vision_model}...')
+    
     try:
-        async with httpx.AsyncClient(timeout=60.0) as client:
+        # Увеличенный timeout для Vision моделей (они медленные)
+        async with httpx.AsyncClient(timeout=120.0) as client:
             resp = await client.post(
                 f'{ollama.base_url}/api/generate',
                 json={
-                    'model': 'llava:7b',  # Vision модель
+                    'model': vision_model,
                     'prompt': prompt,
                     'images': [image_base64],
-                    'stream': False
+                    'stream': False,
+                    'options': {
+                        'temperature': 0.3,
+                        'num_predict': 500
+                    }
                 }
             )
             
             if resp.status_code == 200:
                 data = resp.json()
-                return {'analysis': data.get('response', '')}
+                analysis = data.get('response', '')
+                logger.info(f'[Vision] Анализ завершён: {len(analysis)} символов')
+                return {
+                    'analysis': analysis,
+                    'model': vision_model
+                }
             else:
-                return {'error': f'Ошибка: {resp.status_code}'}
+                error_text = resp.text[:200]
+                logger.error(f'[Vision] Ошибка {resp.status_code}: {error_text}')
+                return {'error': f'Ошибка Vision AI: {resp.status_code}'}
+    except httpx.TimeoutException:
+        logger.error('[Vision] Таймаут (120 сек)')
+        return {'error': 'Таймаут анализа. Vision модель слишком медленная.'}
     except Exception as e:
-        logger.error(f'Vision AI ошибка: {e}')
+        logger.error(f'[Vision] Ошибка: {e}')
         return {'error': str(e)}
 
 
@@ -670,6 +822,17 @@ async def analyze_image(request: dict):
 if __name__ == '__main__':
     logger.info(f'[SERVER] Запуск http://{HTTP_HOST}:{HTTP_PORT}')
     logger.info(f'[SERVER] Ollama: {OLLAMA_URL}, Model: {DEFAULT_MODEL}')
+    
+    # Предзагрузка модели при старте
+    preload_model(DEFAULT_MODEL)
+    
+    # Загрузка подготовленных вопросов в VectorDB
+    try:
+        vector_db = get_vector_db()
+        loaded = vector_db.load_prepared_questions()
+        logger.info(f'[VectorDB] Готово: {vector_db.count} вопросов в базе')
+    except Exception as e:
+        logger.warning(f'[VectorDB] Ошибка инициализации: {e}')
     
     uvicorn.run(
         app,
