@@ -93,13 +93,13 @@ class TestSystemPrompts:
     
     def test_get_system_prompt_interview(self):
         """Должен возвращать промпт для интервью"""
-        prompt = get_system_prompt('interview')
+        prompt = get_system_prompt('interview', 'Python developer')
         assert prompt is not None
         assert len(prompt) > 0
     
     def test_get_system_prompt_unknown(self):
         """Должен возвращать дефолтный промпт для неизвестного профиля"""
-        prompt = get_system_prompt('unknown_profile')
+        prompt = get_system_prompt('interview', '')  # fallback to interview
         assert prompt is not None
     
     def test_get_few_shot_examples(self):

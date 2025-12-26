@@ -174,7 +174,7 @@ body {
 }
 
 .progress-step.completed .step-circle::after {
-  content: '✓';
+  content: '✔️';
 }
 
 .step-label {
