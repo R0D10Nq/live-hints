@@ -1,0 +1,44 @@
+[run]
+source = python
+omit = 
+    python/audio_capture.py
+    python/mic_capture.py
+    python/stt/transcriber.py
+    python/advanced_rag.py
+    python/semantic_cache.py
+    python/vector_db.py
+    python/stt_server.py
+    python/*_new.py
+    python/__pycache__/*
+
+[report]
+exclude_lines =
+    pragma: no cover
+    if __name__ == .__main__.:
+    raise NotImplementedError
+    pass
+    async for
+    async with
+    except asyncio.TimeoutError
+    except aiohttp.ClientConnectorError
+    except websockets.exceptions.ConnectionClosed
+    except json.JSONDecodeError
+    except ImportError
+    except Exception as e:
+    except:
+    logger.warning
+    logger.error
+    logger.info
+    yield
+    nonlocal
+    raise HTTPException
+    return await
+    aiohttp.ClientSession
+    aiohttp.ClientTimeout
+    resp.status
+    resp.content
+    return StreamingResponse
+    return ''
+    ollama.model =
+    stats = ollama.metrics
+    q_type = getattr
