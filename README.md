@@ -197,35 +197,59 @@ npm run test:e2e
 
 ```text
 live-hints/
-├── main.js                 # Electron main process
-├── preload.js              # Preload script (IPC bridge)
-├── renderer/               # UI
-│   ├── index.html
-│   ├── styles.css
-│   └── app.js
-├── src/
-│   ├── storage/            # Хранилище сессий
-│   │   └── session-store.js
-│   ├── pipeline/           # Оркестрация пайплайна
-│   │   └── hint-pipeline.js
-│   └── llm/                # LLM провайдеры
-│       └── providers.js
+├── main.js                     # Electron main process
+├── preload.js                  # Preload script (IPC bridge)
+├── renderer/
+│   ├── index.html              # Главное окно
+│   ├── onboarding.html         # Онбординг
+│   ├── app.js                  # Оркестрация UI (295 строк)
+│   ├── onboarding.js           # Логика онбординга (235 строк)
+│   └── modules/
+│       ├── audio-manager.js    # WebSocket STT, микрофон
+│       ├── session-manager.js  # Сохранение/загрузка сессий
+│       ├── hint-manager.js     # LLM запросы
+│       ├── ui-controller.js    # DOM оркестрация (280 строк)
+│       ├── ui/                 # UI модули
+│       │   ├── ui-elements.js  # Кэш DOM элементов
+│       │   ├── ui-hints.js     # Пагинация подсказок
+│       │   ├── ui-transcript.js # Сайдбар транскриптов
+│       │   ├── ui-modals.js    # Модальные окна
+│       │   └── ui-utils.js     # Toast, markdown, escape
+│       ├── app/                # App модули
+│       │   ├── app-settings.js # Загрузка/сохранение настроек
+│       │   ├── app-models.js   # Управление моделями Ollama
+│       │   ├── app-stealth.js  # Stealth режим
+│       │   ├── app-ipc.js      # IPC обработчики
+│       │   └── app-vision.js   # Vision AI скриншоты
+│       └── onboarding/         # Онбординг модули
+│           ├── file-handler.js # Загрузка файлов
+│           └── audio-setup.js  # Микрофон, VU meter
 ├── python/
-│   ├── requirements.txt
-│   ├── stt_server.py       # WebSocket STT сервер (distil-whisper)
-│   ├── llm_server.py       # HTTP LLM сервер (FastAPI + Ollama)
-│   ├── audio_capture.py    # WASAPI loopback захват
-│   ├── cache.py            # LRU кэш подсказок
-│   ├── classification.py   # Классификация вопросов
-│   ├── prompts.py          # Оптимизированные системные промпты
-│   └── user_context.txt    # Контекст пользователя (резюме)
+│   ├── stt_server.py           # WebSocket STT (147 строк)
+│   ├── llm_server.py           # HTTP LLM FastAPI (391 строк)
+│   ├── dashboard_server.py     # Аналитика (180 строк)
+│   ├── stt/                    # STT модули
+│   │   ├── transcriber.py      # StreamingTranscriber
+│   │   └── latency.py          # LatencyMetrics
+│   ├── llm/                    # LLM модули
+│   │   ├── ollama_client.py    # OllamaClient, streaming
+│   │   ├── vision.py           # Vision AI
+│   │   └── gpu.py              # GPU check
+│   ├── templates/
+│   │   └── dashboard.html      # Dashboard шаблон
+│   ├── cache.py                # LRU кэш подсказок
+│   ├── classification.py       # Классификация вопросов
+│   ├── prompts.py              # Системные промпты
+│   ├── advanced_rag.py         # RAG с ChromaDB
+│   └── audio_capture.py        # WASAPI loopback
 ├── tests/
-│   ├── unit/               # Jest unit тесты
-│   └── e2e/                # Playwright E2E тесты
-├── jest.config.js
-├── playwright.config.js
+│   ├── unit/                   # Unit тесты (37 passed)
+│   ├── integration/            # Интеграционные тесты
+│   └── e2e/                    # Playwright E2E
 └── package.json
 ```
+
+> **Рефакторинг завершён**: все файлы < 500 строк, монолиты разбиты на модули.
 
 ## Чеклист ручной проверки
 
