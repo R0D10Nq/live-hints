@@ -787,37 +787,41 @@ async def analyze_image(request: dict):
     logger.info(f'[Vision] Анализ изображения с {vision_model}...')
     
     try:
-        # Увеличенный timeout для Vision моделей (они медленные)
-        async with httpx.AsyncClient(timeout=120.0) as client:
+        # Используем /api/chat для multimodal моделей (llava)
+        async with httpx.AsyncClient(timeout=180.0) as client:
             resp = await client.post(
-                f'{ollama.base_url}/api/generate',
+                f'{ollama.base_url}/api/chat',
                 json={
                     'model': vision_model,
-                    'prompt': prompt,
-                    'images': [image_base64],
+                    'messages': [{
+                        'role': 'user',
+                        'content': prompt,
+                        'images': [image_base64]
+                    }],
                     'stream': False,
                     'options': {
                         'temperature': 0.3,
-                        'num_predict': 500
+                        'num_predict': 1000
                     }
                 }
             )
             
             if resp.status_code == 200:
                 data = resp.json()
-                analysis = data.get('response', '')
+                # /api/chat возвращает message.content
+                analysis = data.get('message', {}).get('content', '')
                 logger.info(f'[Vision] Анализ завершён: {len(analysis)} символов')
                 return {
                     'analysis': analysis,
                     'model': vision_model
                 }
             else:
-                error_text = resp.text[:200]
+                error_text = resp.text[:500]
                 logger.error(f'[Vision] Ошибка {resp.status_code}: {error_text}')
-                return {'error': f'Ошибка Vision AI: {resp.status_code}'}
+                return {'error': f'Vision AI ошибка {resp.status_code}. Убедитесь что llava запущена: ollama run llava:7b'}
     except httpx.TimeoutException:
-        logger.error('[Vision] Таймаут (120 сек)')
-        return {'error': 'Таймаут анализа. Vision модель слишком медленная.'}
+        logger.error('[Vision] Таймаут (180 сек)')
+        return {'error': 'Таймаут. Vision модель загружается, попробуйте ещё раз.'}
     except Exception as e:
         logger.error(f'[Vision] Ошибка: {e}')
         return {'error': str(e)}
