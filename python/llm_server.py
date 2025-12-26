@@ -47,7 +47,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from prompts import get_system_prompt, get_few_shot_examples, get_profile_config
-from classification import classify_question, build_contextual_prompt
+from classification import classify_question, build_contextual_prompt, get_max_tokens_for_type, get_temperature_for_type
 from cache import HintCache
 from metrics import log_llm_request, log_llm_response, log_cache_hit, log_error
 from semantic_cache import get_semantic_cache
@@ -194,7 +194,7 @@ class HintRequest(BaseModel):
     context: Optional[list] = None
     stream: bool = False
     profile: str = 'interview'
-    max_tokens: Optional[int] = 500  # 50..500
+    max_tokens: Optional[int] = 800  # 50..1000
     temperature: Optional[float] = 0.8  # 0.0..1.0
     model: Optional[str] = None  # Модель из настроек клиента
     system_prompt: Optional[str] = None  # Кастомный системный промт от клиента
@@ -235,7 +235,7 @@ class OllamaClient:
             return cached
         
         # Валидация параметров
-        max_tokens = max(50, min(500, max_tokens or 500))
+        max_tokens = max(50, min(1000, max_tokens or 800))
         temperature = max(0.0, min(1.0, temperature or 0.8))
         
         # Классификация вопроса
@@ -375,14 +375,19 @@ class OllamaClient:
             yield cached_lru
             return
         
-        # Валидация параметров
-        max_tokens = max(50, min(500, max_tokens or 500))
-        temperature = max(0.0, min(1.0, temperature or 0.8))
-        
         # Классификация
         question_type = classify_question(text)
         self._last_question_type = question_type
         logger.info(f'[CLASSIFY Stream] Type: {question_type}')
+        
+        # Динамические параметры в зависимости от типа вопроса
+        recommended_tokens = get_max_tokens_for_type(question_type)
+        recommended_temp = get_temperature_for_type(question_type)
+        
+        # Используем переданные параметры или рекомендуемые
+        max_tokens = max(50, min(1000, max_tokens or recommended_tokens))
+        temperature = max(0.0, min(1.0, temperature or recommended_temp))
+        logger.info(f'[LLM Params] max_tokens={max_tokens}, temperature={temperature}')
         
         # Логируем запрос
         log_llm_request(text, len(context or []), question_type, profile)
