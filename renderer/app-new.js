@@ -444,6 +444,8 @@ class LiveHintsApp {
     const visionModal = document.getElementById('vision-modal');
     const closeVision = document.getElementById('btn-close-vision');
     const captureFullscreen = document.getElementById('btn-capture-fullscreen');
+    const captureWindow = document.getElementById('btn-capture-window');
+    const captureRegion = document.getElementById('btn-capture-region');
     const visionSend = document.getElementById('btn-vision-analyze');
     const visionRetake = document.getElementById('btn-vision-retake');
     const visionCancel = document.getElementById('btn-vision-cancel');
@@ -480,8 +482,25 @@ class LiveHintsApp {
       });
     }
 
+    // Весь экран
     if (captureFullscreen) {
       captureFullscreen.addEventListener('click', () => this.captureScreen());
+    }
+
+    // Активное окно - пока тоже весь экран
+    if (captureWindow) {
+      captureWindow.addEventListener('click', () => {
+        this.ui.showToast('Захват активного окна в разработке, использую весь экран', 'info');
+        this.captureScreen();
+      });
+    }
+
+    // Выделить область - пока тоже весь экран
+    if (captureRegion) {
+      captureRegion.addEventListener('click', () => {
+        this.ui.showToast('Выделение области в разработке, использую весь экран', 'info');
+        this.captureScreen();
+      });
     }
 
     if (visionSend) {
@@ -490,9 +509,8 @@ class LiveHintsApp {
 
     if (visionRetake) {
       visionRetake.addEventListener('click', () => {
-        const previewContainer = document.getElementById('vision-preview');
-        if (previewContainer) previewContainer.classList.add('hidden');
         this.capturedScreenshot = null;
+        this.showVisionModal(false); // Показать выбор режима
       });
     }
 
@@ -508,13 +526,23 @@ class LiveHintsApp {
     });
   }
 
-  showVisionModal() {
+  showVisionModal(showPreview = false) {
     const modal = document.getElementById('vision-modal');
     const previewContainer = document.getElementById('vision-preview');
     const resultContainer = document.getElementById('vision-result');
+    const captureOptions = document.getElementById('vision-options');
 
     if (modal) modal.classList.remove('hidden');
-    if (previewContainer) previewContainer.classList.add('hidden');
+
+    if (showPreview) {
+      // Показываем preview, скрываем выбор режима
+      if (previewContainer) previewContainer.classList.remove('hidden');
+      if (captureOptions) captureOptions.classList.add('hidden');
+    } else {
+      // Показываем выбор режима, скрываем preview
+      if (previewContainer) previewContainer.classList.add('hidden');
+      if (captureOptions) captureOptions.classList.remove('hidden');
+    }
     if (resultContainer) resultContainer.classList.add('hidden');
   }
 
@@ -543,11 +571,11 @@ class LiveHintsApp {
       if (imageData) {
         this.capturedScreenshot = imageData;
         const previewImg = document.getElementById('vision-preview-img');
-        const previewContainer = document.getElementById('vision-preview');
 
         if (previewImg) previewImg.src = `data:image/png;base64,${imageData}`;
-        if (previewContainer) previewContainer.classList.remove('hidden');
-        this.showVisionModal();
+
+        // Показываем модалку с preview (не с выбором режима)
+        this.showVisionModal(true);
         this.ui.showToast('Скриншот готов', 'success');
       } else {
         this.ui.showToast('Ошибка захвата экрана', 'error');
