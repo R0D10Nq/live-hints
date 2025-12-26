@@ -273,9 +273,10 @@ describe('LLM Providers', () => {
     it('должен обрабатывать успешный ответ', async () => {
       global.fetch = jest.fn().mockResolvedValue({
         ok: true,
-        json: () => Promise.resolve({
-          choices: [{ message: { content: 'OpenAI подсказка' } }],
-        }),
+        json: () =>
+          Promise.resolve({
+            choices: [{ message: { content: 'OpenAI подсказка' } }],
+          }),
       });
 
       const provider = new OpenAIProvider({ apiKey: 'test-key' });
@@ -300,9 +301,10 @@ describe('LLM Providers', () => {
     it('должен обрабатывать успешный ответ', async () => {
       global.fetch = jest.fn().mockResolvedValue({
         ok: true,
-        json: () => Promise.resolve({
-          candidates: [{ content: { parts: [{ text: 'Gemini подсказка' }] } }],
-        }),
+        json: () =>
+          Promise.resolve({
+            candidates: [{ content: { parts: [{ text: 'Gemini подсказка' }] } }],
+          }),
       });
 
       const provider = new GeminiProvider({ apiKey: 'test-key' });
@@ -313,9 +315,10 @@ describe('LLM Providers', () => {
     it('должен обрабатывать ответ с контекстом', async () => {
       global.fetch = jest.fn().mockResolvedValue({
         ok: true,
-        json: () => Promise.resolve({
-          candidates: [{ content: { parts: [{ text: 'Подсказка' }] } }],
-        }),
+        json: () =>
+          Promise.resolve({
+            candidates: [{ content: { parts: [{ text: 'Подсказка' }] } }],
+          }),
       });
 
       const provider = new GeminiProvider({ apiKey: 'test-key' });
@@ -340,9 +343,10 @@ describe('LLM Providers', () => {
     it('должен обрабатывать успешный ответ', async () => {
       global.fetch = jest.fn().mockResolvedValue({
         ok: true,
-        json: () => Promise.resolve({
-          choices: [{ message: { content: 'OpenRouter подсказка' } }],
-        }),
+        json: () =>
+          Promise.resolve({
+            choices: [{ message: { content: 'OpenRouter подсказка' } }],
+          }),
       });
 
       const provider = new OpenRouterProvider({ apiKey: 'test-key' });
@@ -367,9 +371,10 @@ describe('LLM Providers', () => {
     it('должен обрабатывать успешный ответ', async () => {
       global.fetch = jest.fn().mockResolvedValue({
         ok: true,
-        json: () => Promise.resolve({
-          content: [{ text: 'Claude подсказка' }],
-        }),
+        json: () =>
+          Promise.resolve({
+            content: [{ text: 'Claude подсказка' }],
+          }),
       });
 
       const provider = new ClaudeProvider({ apiKey: 'test-key' });
@@ -380,9 +385,10 @@ describe('LLM Providers', () => {
     it('должен обрабатывать ответ с контекстом', async () => {
       global.fetch = jest.fn().mockResolvedValue({
         ok: true,
-        json: () => Promise.resolve({
-          content: [{ text: 'Подсказка' }],
-        }),
+        json: () =>
+          Promise.resolve({
+            content: [{ text: 'Подсказка' }],
+          }),
       });
 
       const provider = new ClaudeProvider({ apiKey: 'test-key' });
@@ -450,9 +456,10 @@ describe('LLM Providers', () => {
 
       global.fetch = jest.fn().mockResolvedValue({
         ok: true,
-        json: () => Promise.resolve({
-          choices: [{ message: { content: 'GigaChat подсказка' } }],
-        }),
+        json: () =>
+          Promise.resolve({
+            choices: [{ message: { content: 'GigaChat подсказка' } }],
+          }),
       });
 
       const hint = await provider.generateHint('тест');
@@ -478,10 +485,11 @@ describe('LLM Providers', () => {
     it('должен обрабатывать успешную авторизацию', async () => {
       global.fetch = jest.fn().mockResolvedValue({
         ok: true,
-        json: () => Promise.resolve({
-          access_token: 'new-token',
-          expires_at: Math.floor(Date.now() / 1000) + 3600,
-        }),
+        json: () =>
+          Promise.resolve({
+            access_token: 'new-token',
+            expires_at: Math.floor(Date.now() / 1000) + 3600,
+          }),
       });
 
       const provider = new GigaChatProvider({
@@ -519,9 +527,10 @@ describe('LLM Providers', () => {
 
       global.fetch = jest.fn().mockResolvedValue({
         ok: true,
-        json: () => Promise.resolve({
-          choices: [{ message: { content: 'Подсказка' } }],
-        }),
+        json: () =>
+          Promise.resolve({
+            choices: [{ message: { content: 'Подсказка' } }],
+          }),
       });
 
       await provider.generateHint('тест', ['ctx1', 'ctx2', 'ctx3']);
@@ -538,11 +547,12 @@ describe('LLM Providers', () => {
     it('должен обрабатывать успешный ответ', async () => {
       global.fetch = jest.fn().mockResolvedValue({
         ok: true,
-        json: () => Promise.resolve({
-          result: {
-            alternatives: [{ message: { text: 'Yandex подсказка' } }],
-          },
-        }),
+        json: () =>
+          Promise.resolve({
+            result: {
+              alternatives: [{ message: { text: 'Yandex подсказка' } }],
+            },
+          }),
       });
 
       const provider = new YandexGPTProvider({ apiKey: 'test-key', folderId: 'test-folder' });
@@ -558,7 +568,9 @@ describe('LLM Providers', () => {
       });
 
       const provider = new YandexGPTProvider({ apiKey: 'test-key', folderId: 'test-folder' });
-      await expect(provider.generateHint('тест')).rejects.toThrow('Yandex GPT HTTP 400: Bad request');
+      await expect(provider.generateHint('тест')).rejects.toThrow(
+        'Yandex GPT HTTP 400: Bad request'
+      );
     });
 
     it('должен обрабатывать HTTP ошибку без сообщения', async () => {
@@ -575,11 +587,12 @@ describe('LLM Providers', () => {
     it('должен добавлять контекст в messages', async () => {
       global.fetch = jest.fn().mockResolvedValue({
         ok: true,
-        json: () => Promise.resolve({
-          result: {
-            alternatives: [{ message: { text: 'Подсказка' } }],
-          },
-        }),
+        json: () =>
+          Promise.resolve({
+            result: {
+              alternatives: [{ message: { text: 'Подсказка' } }],
+            },
+          }),
       });
 
       const provider = new YandexGPTProvider({ apiKey: 'test-key', folderId: 'test-folder' });

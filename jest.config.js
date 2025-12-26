@@ -16,10 +16,7 @@ module.exports = {
     'hint-manager.test.js',
     'llm-api.test.js',
   ],
-  collectCoverageFrom: [
-    'src/**/*.js',
-    '!**/node_modules/**',
-  ],
+  collectCoverageFrom: ['src/**/*.js', '!**/node_modules/**'],
   coverageDirectory: 'coverage',
   coverageReporters: ['text', 'lcov', 'html', 'text-summary'],
   verbose: true,

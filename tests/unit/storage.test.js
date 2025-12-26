@@ -322,7 +322,7 @@ describe('SessionStore', () => {
       store.addTag(session.id, 'important');
 
       const updated = store.getSession(session.id);
-      expect(updated.tags.filter(t => t === 'important').length).toBe(1);
+      expect(updated.tags.filter((t) => t === 'important').length).toBe(1);
     });
 
     test('должен возвращать null для несуществующей сессии', () => {
