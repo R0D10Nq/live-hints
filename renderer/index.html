@@ -119,8 +119,14 @@
       <!-- Main Layout -->
       <div class="main-layout">
         <!-- Кнопка разворачивания sidebar когда он свёрнут -->
-        <button id="btn-expand-sidebar" class="btn-expand-sidebar hidden" title="Развернуть транскрипт (Ctrl+T)">▶</button>
-        
+        <button
+          id="btn-expand-sidebar"
+          class="btn-expand-sidebar hidden"
+          title="Развернуть транскрипт (Ctrl+T)"
+        >
+          ▶
+        </button>
+
         <!-- Transcript Sidebar -->
         <aside
           id="transcript-sidebar"
@@ -203,6 +209,25 @@
               </div>
               <div id="streaming-text" class="streaming-text"></div>
             </div>
+            
+            <!-- Поле для прямого сообщения Ассистенту -->
+            <div class="direct-message-container" id="direct-message-container">
+              <input 
+                type="text" 
+                id="direct-message-input" 
+                class="direct-message-input" 
+                placeholder="Уточни ответ, попроси подробнее..." 
+                data-testid="direct-message-input"
+              />
+              <button 
+                id="btn-send-direct" 
+                class="btn-send-direct" 
+                title="Отправить (Enter)"
+                data-testid="btn-send-direct"
+              >
+                Отправить
+              </button>
+            </div>
           </div>
         </main>
 
@@ -271,7 +296,11 @@
                 </select>
               </div>
 
-              <div id="custom-prompt-group" class="settings-group hidden" data-testid="custom-instructions-container">
+              <div
+                id="custom-prompt-group"
+                class="settings-group hidden"
+                data-testid="custom-instructions-container"
+              >
                 <label class="settings-label">Системный промпт</label>
                 <textarea
                   id="custom-instructions"
@@ -299,10 +328,17 @@
               </div>
 
               <div class="settings-group">
-                <label class="settings-label" title="Автоматически генерировать подсказки когда обнаруживается длинная пауза в диалоге (более 3 секунд)">
+                <label
+                  class="settings-label"
+                  title="Автоматически генерировать подсказки когда обнаруживается длинная пауза в диалоге (более 3 секунд)"
+                >
                   <input type="checkbox" id="auto-hints" data-testid="auto-hints-checkbox" />
                   Авто-подсказки при паузе в речи
-                  <span class="help-icon" title="Автоматически генерировать подсказки когда обнаруживается длинная пауза в диалоге (более 3 секунд)">?</span>
+                  <span
+                    class="help-icon"
+                    title="Автоматически генерировать подсказки когда обнаруживается длинная пауза в диалоге (более 3 секунд)"
+                    >?</span
+                  >
                 </label>
               </div>
 
@@ -461,7 +497,9 @@
         <div class="modal-container modal-lg">
           <div class="modal-header">
             <h2 class="modal-title">История сессий</h2>
-            <button id="btn-close-history" class="btn-close" data-testid="btn-close-modal">✕</button>
+            <button id="btn-close-history" class="btn-close" data-testid="btn-close-modal">
+              ✕
+            </button>
           </div>
           <div class="modal-body">
             <div id="sessions-list" class="sessions-list" data-testid="sessions-list">

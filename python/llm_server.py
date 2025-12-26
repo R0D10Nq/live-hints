@@ -80,6 +80,18 @@ def load_user_context() -> str:
     return ''
 
 
+def load_vacancy_context() -> str:
+    """Загружает вакансию из файла"""
+    vacancy_path = os.path.join(os.path.dirname(__file__), 'vacancy.txt')
+    try:
+        if os.path.exists(vacancy_path):
+            with open(vacancy_path, 'r', encoding='utf-8') as f:
+                return f.read().strip()
+    except Exception as e:
+        logger.warning(f'Не удалось загрузить vacancy.txt: {e}')
+    return ''
+
+
 def preload_model(model: str = DEFAULT_MODEL):
     """Предзагрузка модели в память Ollama"""
     try:
@@ -99,10 +111,16 @@ def preload_model(model: str = DEFAULT_MODEL):
 
 # ========== ИНИЦИАЛИЗАЦИЯ ==========
 USER_CONTEXT = load_user_context()
-logger.info(f'[CONTEXT] Загружен контекст: {len(USER_CONTEXT)} символов')
+VACANCY_CONTEXT = load_vacancy_context()
+logger.info(f'[CONTEXT] Резюме: {len(USER_CONTEXT)} символов, Вакансия: {len(VACANCY_CONTEXT)} символов')
+
+# Объединяем резюме и вакансию в единый контекст
+FULL_CONTEXT = USER_CONTEXT
+if VACANCY_CONTEXT:
+    FULL_CONTEXT += f'\n\n## Вакансия:\n{VACANCY_CONTEXT}'
 
 hint_cache = HintCache(maxsize=100)
-ollama = OllamaClient(OLLAMA_URL, DEFAULT_MODEL, hint_cache, USER_CONTEXT)
+ollama = OllamaClient(OLLAMA_URL, DEFAULT_MODEL, hint_cache, FULL_CONTEXT)
 
 # FastAPI app
 app = FastAPI(title='Live Hints LLM Server')

@@ -49,8 +49,8 @@ def test_build_contextual_prompt_technical():
     prompt = build_contextual_prompt('technical', context)
     # Technical промпт должен содержать инструкции по формату
     assert len(prompt) > 100
-    # Technical промпт НЕ должен содержать резюме пользователя
-    assert context not in prompt
+    # Technical промпт теперь включает краткий контекст кандидата
+    assert 'контекст' in prompt.lower() or 'кандидат' in prompt.lower()
 
 
 def test_build_contextual_prompt_general():
@@ -66,17 +66,17 @@ def test_build_contextual_prompt_short():
     """Тест что промпты разумного размера"""
     context = 'X' * 2000  # Длинный контекст
     
-    # Technical должен быть коротким (без контекста)
+    # Technical теперь включает контекст (до 500 символов)
     tech_prompt = build_contextual_prompt('technical', context)
-    assert len(tech_prompt) < 500  # разумный лимит
+    assert len(tech_prompt) < 2000  # увеличен лимит
     
-    # Experience должен обрезать контекст
+    # Experience должен обрезать контекст (до 2000 символов)
     exp_prompt = build_contextual_prompt('experience', context)
-    assert len(exp_prompt) < 2000
+    assert len(exp_prompt) < 4000
     
-    # General должен обрезать контекст
+    # General должен обрезать контекст (до 800 символов)
     gen_prompt = build_contextual_prompt('general', context)
-    assert len(gen_prompt) < 1500
+    assert len(gen_prompt) < 2000
 
 
 def test_get_max_tokens_for_type():

@@ -29,8 +29,13 @@ export class HintManager {
     };
   }
 
-  async requestHint(transcriptText) {
-    this.transcriptContext.push(transcriptText);
+  async requestHint(transcriptText, source = 'interviewer') {
+    // Сохраняем с информацией об источнике
+    const entry = typeof transcriptText === 'object'
+      ? transcriptText
+      : { text: transcriptText, source, timestamp: Date.now() };
+
+    this.transcriptContext.push(entry);
     if (this.transcriptContext.length > this.contextWindowSize) {
       this.transcriptContext = this.transcriptContext.slice(-this.contextWindowSize);
     }
@@ -174,13 +179,46 @@ export class HintManager {
   }
 
   async manualRequestHint() {
+    // Синхронизируем контекст из app.transcriptContext если там есть данные
+    if (this.app.transcriptContext && this.app.transcriptContext.length > 0) {
+      this.transcriptContext = [...this.app.transcriptContext];
+    }
+
     if (!this.app.isRunning || this.transcriptContext.length === 0) {
       this.app.ui.showError('Нет транскрипта для анализа. Дождитесь речи.');
       return;
     }
 
-    const fullContext = this.transcriptContext.join(' ');
-    await this.requestHint(fullContext);
+    // Извлекаем последний вопрос интервьюера для фокусированного ответа
+    const lastInterviewerQuestion = this.getLastInterviewerQuestion();
+    const questionToAnswer = lastInterviewerQuestion || this.getLastTranscriptText();
+
+    await this.requestHint(questionToAnswer, 'interviewer');
+  }
+
+  getLastInterviewerQuestion() {
+    // Ищем последний вопрос от интервьюера
+    for (let i = this.transcriptContext.length - 1; i >= 0; i--) {
+      const item = this.transcriptContext[i];
+      if (typeof item === 'object' && item.source === 'interviewer') {
+        return item.text;
+      } else if (typeof item === 'string') {
+        // Для обратной совместимости — если это строка с иконкой интервьюера
+        if (item.includes('🎙️') || item.includes('Интервьюер')) {
+          return item.replace(/🎙️\s*Интервьюер:\s*/g, '');
+        }
+        return item;
+      }
+    }
+    return null;
+  }
+
+  getLastTranscriptText() {
+    const last = this.transcriptContext[this.transcriptContext.length - 1];
+    if (typeof last === 'object' && last.text) {
+      return last.text;
+    }
+    return typeof last === 'string' ? last : '';
   }
 
   buildContext() {
@@ -190,9 +228,18 @@ export class HintManager {
 
     for (let i = items.length - 1; i >= 0; i--) {
       const item = items[i];
-      if (totalChars + item.length <= this.maxContextChars) {
-        result.unshift(item);
-        totalChars += item.length;
+      // Поддерживаем как объекты с source, так и простые строки
+      let formattedText;
+      if (typeof item === 'object' && item.text) {
+        const icon = item.source === 'candidate' ? '🗣️ Ты' : '🎙️ Интервьюер';
+        formattedText = `${icon}: ${item.text}`;
+      } else {
+        formattedText = typeof item === 'string' ? item : String(item);
+      }
+
+      if (totalChars + formattedText.length <= this.maxContextChars) {
+        result.unshift(formattedText);
+        totalChars += formattedText.length;
       } else {
         break;
       }
@@ -272,6 +319,45 @@ export class HintManager {
     this.userContext = context || '';
     if (this.app.debugMode && context) {
       console.log(`[HintManager] Установлен контекст пользователя: ${context.length} символов`);
+    }
+  }
+
+  setupDirectMessage() {
+    const input = document.getElementById('direct-message-input');
+    const btn = document.getElementById('btn-send-direct');
+
+    if (!input || !btn) return;
+
+    const sendMessage = () => {
+      const message = input.value.trim();
+      if (!message) return;
+
+      input.value = '';
+      this.sendDirectMessage(message);
+    };
+
+    btn.addEventListener('click', sendMessage);
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        sendMessage();
+      }
+    });
+  }
+
+  async sendDirectMessage(message) {
+    if (!message || message.trim().length === 0) return;
+
+    // Строим контекст с учётом всей истории диалога
+    const context = this.buildContext();
+    const fullPrompt = `Пользователь просит уточнить или дополнить ответ:\n\n"${message}"\n\nКонтекст диалога:\n${context.join('\n')}`;
+
+    this.app.ui.showToast('Обрабатываю запрос...', 'info');
+
+    try {
+      await this.requestHint(fullPrompt, 'candidate');
+    } catch (error) {
+      this.app.ui.showError(`Ошибка: ${error.message}`);
     }
   }
 }
