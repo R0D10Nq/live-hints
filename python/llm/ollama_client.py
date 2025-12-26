@@ -58,8 +58,8 @@ def build_messages(system_prompt: str, context: list, question: str, few_shot: l
     
     if few_shot:
         for example in few_shot:
-            messages.append({'role': 'user', 'content': example['question']})
-            messages.append({'role': 'assistant', 'content': example['answer']})
+            messages.append({'role': 'user', 'content': example['user']})
+            messages.append({'role': 'assistant', 'content': example['assistant']})
     
     if context:
         context_text = '\n'.join(context[-10:])
