@@ -14,9 +14,15 @@ class TestGetAvailableVisionModel:
         mock_get.return_value.status_code = 200
         mock_get.return_value.json.return_value = {
             'models': [
-                {'name': 'llama3'},
-                {'name': 'llava:7b'},
-                {'name': 'phi4'}
+                {
+                    'name': 'llama3'
+                },
+                {
+                    'name': 'llava:7b'
+                },
+                {
+                    'name': 'phi4'
+                }
             ]
         }
         
@@ -31,8 +37,12 @@ class TestGetAvailableVisionModel:
         mock_get.return_value.status_code = 200
         mock_get.return_value.json.return_value = {
             'models': [
-                {'name': 'llama3'},
-                {'name': 'llava-custom:latest'}
+                {
+                    'name': 'llama3'
+                },
+                {
+                    'name': 'llava-custom:latest'
+                }
             ]
         }
         
@@ -46,7 +56,14 @@ class TestGetAvailableVisionModel:
         """Нет Vision модели"""
         mock_get.return_value.status_code = 200
         mock_get.return_value.json.return_value = {
-            'models': [{'name': 'llama3'}, {'name': 'phi4'}]
+            'models': [
+                {
+                    'name': 'llama3'
+                }, 
+                {
+                    'name': 'phi4'
+                }
+            ]
         }
         
         from llm.vision import get_available_vision_model
@@ -106,7 +123,9 @@ class TestAnalyzeImage:
         mock_response = MagicMock()
         mock_response.status_code = 200
         mock_response.json.return_value = {
-            'message': {'content': 'This is an image of code'}
+            'message': {
+                'content': 'This is an image of code'
+            }
         }
         
         mock_instance = AsyncMock()

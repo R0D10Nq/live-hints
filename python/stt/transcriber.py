@@ -16,7 +16,7 @@ logger = logging.getLogger('STT')
 
 # Конфигурация
 SAMPLE_RATE = 16000
-MODEL_PRIORITY = ['large-v3', 'medium', 'small', 'base']
+MODEL_PRIORITY = ['distil-large-v3', 'large-v3-turbo', 'large-v3', 'medium']
 DEVICE = 'cuda'
 COMPUTE_TYPE = 'float16'
 

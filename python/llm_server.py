@@ -98,7 +98,11 @@ def preload_model(model: str = DEFAULT_MODEL):
         logger.info(f'[PRELOAD] Загрузка модели {model}...')
         resp = requests.post(
             f'{OLLAMA_URL}/api/generate',
-            json={'model': model, 'prompt': '', 'keep_alive': -1},
+            json={
+                'model': model, 
+                'prompt': '', 
+                'keep_alive': -1
+            },
             timeout=120
         )
         if resp.status_code == 200:
@@ -242,18 +246,50 @@ async def clear_cache():
         semantic_cache = get_semantic_cache()
         semantic_cache.clear()
         logger.info('[CACHE] Кэш очищен')
-        return {'status': 'ok', 'message': 'Кэш очищен'}
+        return {
+            'status': 'ok', 
+            'message': 'Кэш очищен'
+        }
     except Exception as e:
         logger.error(f'[CACHE] Ошибка очистки: {e}')
-        return {'status': 'error', 'message': str(e)}
+        return {
+            'status': 'error', 
+            'message': str(e)
+        }
 
 
 # ========== MODEL MANAGEMENT ==========
 MODEL_PROFILES = {
-    'fast': {'model': 'gemma2:2b', 'temperature': 0.5, 'max_tokens': 200, 'description': 'Быстрые короткие ответы'},
-    'balanced': {'model': 'ministral-3:8b', 'temperature': 0.7, 'max_tokens': 400, 'description': 'Баланс скорости и качества'},
-    'accurate': {'model': 'phi4:latest', 'temperature': 0.8, 'max_tokens': 600, 'description': 'Точные развёрнутые ответы'},
-    'code': {'model': 'qwen2.5-coder:7b', 'temperature': 0.3, 'max_tokens': 500, 'description': 'Специализация на коде'}
+    'instant': {
+        'model': 'gemma2:2b', 
+        'temperature': 0.4, 
+        'max_tokens': 150, 
+        'description': 'Моментальные ответы <1s'
+    },
+    'fast': {
+        'model': 'qwen2.5:7b', 
+        'temperature': 0.6, 
+        'max_tokens': 300, 
+        'description': 'Моментальные ответы <1s'
+    },
+    'balanced': {
+        'model': 'ministral-3:8b', 
+        'temperature': 0.7, 
+        'max_tokens': 400, 
+        'description': 'Быстрые качественные ответы'
+    },
+    'accurate': {
+        'model': 'qwen2.5:14b', 
+        'temperature': 0.8, 
+        'max_tokens': 600, 
+        'description': 'Максимальная точность'
+    },
+    'code': {
+        'model': 'qwen2.5-coder:7b', 
+        'temperature': 0.3, 
+        'max_tokens': 500, 
+        'description': 'Специализация на коде'
+    }
 }
 
 
@@ -275,10 +311,17 @@ async def list_models():
                     'family': m.get('details', {}).get('family', 'unknown'),
                     'parameters': m.get('details', {}).get('parameter_size', 'unknown')
                 })
-            return {'models': models, 'current': ollama.model}
+            return {
+                'models': models, 
+                'current': ollama.model
+            }
     except Exception as e:
         logger.error(f'[Models] Ошибка: {e}')
-    return {'models': [], 'current': ollama.model, 'error': 'Ollama недоступен'}
+    return {
+        'models': [], 
+        'current': ollama.model, 
+        'error': 'Ollama недоступен'
+    }
 
 
 @app.post('/model/{model_name}')
@@ -286,13 +329,18 @@ async def set_model(model_name: str):
     """Смена модели"""
     ollama.model = model_name
     logger.info(f'[LLM] Модель: {model_name}')
-    return {'model': model_name}
+    return {
+        'model': model_name
+    }
 
 
 @app.get('/model/profiles')
 async def get_model_profiles():
     """Получить профили моделей"""
-    return {'profiles': MODEL_PROFILES, 'current': ollama.model}
+    return {
+        'profiles': MODEL_PROFILES, 
+        'current': ollama.model
+    }
 
 
 @app.post('/model/profile/{profile_name}')
@@ -304,14 +352,20 @@ async def set_model_profile(profile_name: str):
     profile = MODEL_PROFILES[profile_name]
     ollama.model = profile['model']
     logger.info(f'[LLM] Профиль {profile_name}: {profile["model"]}')
-    return {'profile': profile_name, 'settings': profile}
+    return {
+        'profile': profile_name, 
+        'settings': profile
+    }
 
 
 # ========== AUDIO DEVICES ==========
 @app.get('/audio/devices')
 async def get_audio_devices():
     """Получить список аудио устройств"""
-    devices = {'input': [], 'output': []}
+    devices = {
+        'input': [], 
+        'output': []
+    }
     
     try:
         import pyaudiowpatch as pyaudio

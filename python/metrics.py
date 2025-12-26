@@ -129,7 +129,9 @@ def get_metrics_stats() -> Dict[str, Any]:
     Анализирует файл метрик и возвращает статистику
     """
     if not METRICS_FILE.exists():
-        return {'error': 'Файл метрик не найден'}
+        return {
+            'error': 'Файл метрик не найден'
+        }
     
     events = []
     with open(METRICS_FILE, 'r', encoding='utf-8') as f:
@@ -141,7 +143,9 @@ def get_metrics_stats() -> Dict[str, Any]:
                     continue
     
     if not events:
-        return {'error': 'Нет данных'}
+        return {
+            'error': 'Нет данных'
+        }
     
     # Статистика по STT
     stt_events = [e for e in events if e['component'] == 'stt' and e['event_type'] == 'transcription']
@@ -165,7 +169,12 @@ def get_metrics_stats() -> Dict[str, Any]:
     
     def calc_stats(values):
         if not values:
-            return {'min': 0, 'max': 0, 'avg': 0, 'count': 0}
+            return {
+                'min': 0, 
+                'max': 0, 
+                'avg': 0, 
+                'count': 0
+            }
         return {
             'min': min(values),
             'max': max(values),

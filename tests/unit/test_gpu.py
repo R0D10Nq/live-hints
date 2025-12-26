@@ -78,7 +78,12 @@ class TestGetGpuInfo:
     @patch('llm.gpu.check_gpu_status')
     def test_gpu_info_not_available(self, mock_status):
         """GPU не доступен"""
-        mock_status.return_value = {'available': False, 'name': None, 'memory_total': None, 'memory_used': None}
+        mock_status.return_value = {
+            'available': False, 
+            'name': None, 
+            'memory_total': None, 
+            'memory_used': None
+            }
         
         from llm.gpu import get_gpu_info
         result = get_gpu_info()

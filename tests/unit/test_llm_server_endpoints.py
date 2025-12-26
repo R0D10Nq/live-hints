@@ -145,7 +145,10 @@ class TestHintEndpoint:
     def test_hint_success(self, mock_stats, mock_generate):
         """Успешная генерация подсказки"""
         mock_generate.return_value = 'Test hint'
-        mock_stats.return_value = {'total_ms': 1000, 'ttft_ms': 500}
+        mock_stats.return_value = {
+            'total_ms': 1000, 
+            'ttft_ms': 500
+            }
         
         from llm_server import app
         client = TestClient(app)
@@ -200,7 +203,13 @@ class TestModelsEndpoint:
         mock_get.return_value.status_code = 200
         mock_get.return_value.json.return_value = {
             'models': [
-                {'name': 'llama3', 'size': 4 * 1024**3, 'details': {'family': 'llama'}}
+                {
+                    'name': 'llama3', 
+                    'size': 4 * 1024**3, 
+                    'details': {
+                        'family': 'llama'
+                        }
+                    }
             ]
         }
         

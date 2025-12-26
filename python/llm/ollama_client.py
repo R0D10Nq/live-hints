@@ -49,23 +49,51 @@ class HintMetrics:
                 ttft = int((self.first_token_time - self.request_start) * 1000)
             if self.done_time:
                 total = int((self.done_time - self.request_start) * 1000)
-        return {'ttft_ms': ttft, 'total_ms': total}
+        return {
+            'ttft_ms': ttft, 
+            'total_ms': total
+        }
 
 
 def build_messages(system_prompt: str, context: list, question: str, few_shot: list = None) -> list:
     """Построение messages для Ollama API"""
-    messages = [{'role': 'system', 'content': system_prompt}]
+    messages = [
+        {
+            'role': 'system', 
+            'content': system_prompt
+        }
+    ]
     
     if few_shot:
         for example in few_shot:
-            messages.append({'role': 'user', 'content': example['user']})
-            messages.append({'role': 'assistant', 'content': example['assistant']})
+            messages.append(
+                {
+                'role': 'user', 
+                'content': example['user']
+                }
+            )
+            messages.append(
+                {
+                    'role': 'assistant', 
+                    'content': example['assistant']
+                }
+            )
     
     if context:
         context_text = '\n'.join(context[-10:])
-        messages.append({'role': 'user', 'content': f'Контекст разговора:\n{context_text}'})
+        messages.append(
+            {
+                'role': 'user', 
+                'content': f'Контекст разговора:\n{context_text}'
+                }
+            )
     
-    messages.append({'role': 'user', 'content': question})
+    messages.append(
+        {
+            'role': 'user', 
+            'content': question
+        }
+    )
     return messages
 
 
@@ -120,7 +148,11 @@ class OllamaClient:
                     'messages': messages,
                     'stream': False,
                     'keep_alive': -1,
-                    'options': {'temperature': temperature, 'num_predict': max_tokens, 'top_p': 0.9}
+                    'options': {
+                        'temperature': temperature, 
+                        'num_predict': max_tokens, 
+                        'top_p': 0.9
+                        }
                 },
                 timeout=60
             )
@@ -241,7 +273,11 @@ class OllamaClient:
                     'messages': messages,
                     'stream': True,
                     'keep_alive': -1,
-                    'options': {'temperature': temperature, 'num_predict': max_tokens, 'top_p': 0.9}
+                    'options': {
+                        'temperature': temperature, 
+                        'num_predict': max_tokens, 
+                        'top_p': 0.9
+                        }
                 }
                 async with session.post(f'{self.base_url}/api/chat', json=payload) as resp:
                     if resp.status == 200:
