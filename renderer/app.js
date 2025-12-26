@@ -10,6 +10,10 @@ class LiveHintsApp {
     this.hintRequestPending = false;
     this.transcriptContext = [];
     this.autoHintsEnabled = false;
+    this.dualAudioEnabled = false;
+    this.inputDeviceIndex = null;
+    this.wsMicrophone = null;
+    this.micMuted = false;
     this.currentProfile = 'job_interview_ru';
     this.customInstructions = '';
     this.lastContextHash = '';
@@ -1153,7 +1157,16 @@ class LiveHintsApp {
         try {
           const data = JSON.parse(event.data);
           if (data.type === 'transcript' && data.text) {
-            this.addTranscriptItem(data.text, data.timestamp, 'candidate');
+            console.log(`[MIC] Транскрипт: "${data.text}"`);
+            this.addTranscriptItem(data.text, data.timestamp || new Date().toISOString(), 'candidate');
+
+            // ВАЖНО: накапливаем контекст от микрофона тоже
+            this.accumulateContext(data.text);
+
+            // Автоматический запрос подсказки если включён
+            if (this.autoHintsEnabled) {
+              this.requestHint();
+            }
           }
         } catch (e) {
           console.error('[MIC] Parse error:', e);
@@ -1230,7 +1243,10 @@ class LiveHintsApp {
 
       // Если dual audio включён — подключаем микрофон
       if (this.dualAudioEnabled) {
+        console.log('[Session] Dual Audio включён, подключаем микрофон...');
         this.connectMicrophone();
+      } else {
+        console.log('[Session] Single mode (только loopback)');
       }
 
       // Запускаем захват аудио с опциями dual audio
@@ -2405,6 +2421,18 @@ ${session.hints || 'Нет данных'}
       if (settings.autoHints !== undefined) {
         this.autoHintsEnabled = settings.autoHints;
         this.elements.autoHints.checked = settings.autoHints;
+      }
+      // Dual Audio
+      if (settings.dualAudioEnabled !== undefined) {
+        this.dualAudioEnabled = settings.dualAudioEnabled;
+        const dualAudioCheckbox = document.getElementById('dual-audio');
+        if (dualAudioCheckbox) {
+          dualAudioCheckbox.checked = settings.dualAudioEnabled;
+        }
+      }
+      // Input device (микрофон)
+      if (settings.inputDeviceIndex !== undefined) {
+        this.inputDeviceIndex = settings.inputDeviceIndex;
       }
       // Прозрачность
       if (settings.opacity !== undefined) {
