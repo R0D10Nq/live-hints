@@ -10,13 +10,13 @@ contextBridge.exposeInMainWorld('electronAPI', {
   startSTT: () => ipcRenderer.invoke('stt:start'),
   stopSTT: () => ipcRenderer.invoke('stt:stop'),
 
-  // Аудио захват
-  startAudioCapture: () => ipcRenderer.invoke('audio:start-capture'),
+  // Аудио захват с поддержкой dual audio
+  startAudioCapture: (options) => ipcRenderer.invoke('audio:start-capture', options),
   stopAudioCapture: () => ipcRenderer.invoke('audio:stop-capture'),
 
   // События от main process
   onPCMData: (callback) => {
-    ipcRenderer.on('audio:pcm-data', (event, data) => callback(data));
+    ipcRenderer.on('audio:pcm-data', (event, data, source) => callback(data, source));
   },
 
   onTranscript: (callback) => {

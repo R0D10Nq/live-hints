@@ -16,7 +16,8 @@ let store;
 let mainWindow = null;
 let onboardingWindow = null;
 let sttProcess = null;
-let audioCaptureProcess = null;
+let audioCaptureProcess = null;      // Loopback (системный звук)
+let micCaptureProcess = null;        // Микрофон (кандидат)
 let tray = null;
 let stealthMode = false;
 let stealthStrategy = 'content-protection';
@@ -114,30 +115,59 @@ function setupIPC() {
     return { success: true };
   });
 
-  ipcMain.handle('audio:start-capture', async () => {
+  // Запуск захвата аудио с поддержкой dual audio
+  ipcMain.handle('audio:start-capture', async (event, options = {}) => {
     try {
-      // Используем venv Python если есть
       const venvPython = path.join(__dirname, 'venv', 'Scripts', 'python.exe');
       const pythonPath = require('fs').existsSync(venvPython) ? venvPython : 'python';
       const scriptPath = path.join(__dirname, 'python', 'audio_capture.py');
 
-      audioCaptureProcess = spawn(pythonPath, [scriptPath], {
+      const { dualAudio = false, micDeviceIndex = null } = options;
+
+      // Запуск loopback (системный звук → интервьюер)
+      audioCaptureProcess = spawn(pythonPath, [scriptPath, '--mode=loopback'], {
         cwd: __dirname,
         stdio: ['pipe', 'pipe', 'pipe'],
       });
 
       audioCaptureProcess.stdout.on('data', (data) => {
-        // Отправляем PCM данные в renderer
         if (mainWindow) {
-          mainWindow.webContents.send('audio:pcm-data', data);
+          mainWindow.webContents.send('audio:pcm-data', data, 'loopback');
         }
       });
 
       audioCaptureProcess.stderr.on('data', (data) => {
-        console.error(`Audio Capture Error: ${data}`);
+        console.log(`[Loopback] ${data}`);
       });
 
-      return { success: true };
+      // Если dual audio включён — запускаем микрофон
+      if (dualAudio) {
+        const micArgs = ['--mode=microphone'];
+        if (micDeviceIndex !== null) {
+          micArgs.push(`--device-index=${micDeviceIndex}`);
+        }
+
+        micCaptureProcess = spawn(pythonPath, [scriptPath, ...micArgs], {
+          cwd: __dirname,
+          stdio: ['pipe', 'pipe', 'pipe'],
+        });
+
+        micCaptureProcess.stdout.on('data', (data) => {
+          if (mainWindow) {
+            mainWindow.webContents.send('audio:pcm-data', data, 'microphone');
+          }
+        });
+
+        micCaptureProcess.stderr.on('data', (data) => {
+          console.log(`[Microphone] ${data}`);
+        });
+
+        console.log('[Audio] Dual audio запущен: loopback + microphone');
+      } else {
+        console.log('[Audio] Single mode: только loopback');
+      }
+
+      return { success: true, dualAudio };
     } catch (error) {
       return { success: false, error: error.message };
     }
@@ -148,6 +178,11 @@ function setupIPC() {
       audioCaptureProcess.kill();
       audioCaptureProcess = null;
     }
+    if (micCaptureProcess) {
+      micCaptureProcess.kill();
+      micCaptureProcess = null;
+    }
+    console.log('[Audio] Захват остановлен');
     return { success: true };
   });
 
