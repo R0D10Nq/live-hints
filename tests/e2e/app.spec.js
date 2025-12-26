@@ -40,7 +40,7 @@ test.describe('Live Hints E2E', () => {
 
   test.afterAll(async () => {
     if (electronApp) {
-      await electronApp.close().catch(() => { });
+      await electronApp.close().catch(() => {});
     }
   });
 

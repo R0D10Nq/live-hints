@@ -16,9 +16,9 @@ let store;
 let mainWindow = null;
 let onboardingWindow = null;
 let sttProcess = null;
-let audioCaptureProcess = null;      // Loopback (системный звук)
-let micCaptureProcess = null;        // Микрофон (кандидат)
-let tray = null;
+let audioCaptureProcess = null; // Loopback (системный звук)
+let micCaptureProcess = null; // Микрофон (кандидат)
+const tray = null;
 let stealthMode = false;
 let stealthStrategy = 'content-protection';
 let stealthCheckInterval = null;

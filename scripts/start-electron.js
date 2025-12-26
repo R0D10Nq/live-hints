@@ -8,14 +8,14 @@ console.log('Запуск Electron:', electronPath);
 console.log('Путь к приложению:', appPath);
 
 const proc = spawn(electronPath, [appPath], {
-    stdio: 'inherit',
-    shell: false
+  stdio: 'inherit',
+  shell: false,
 });
 
 proc.on('error', (err) => {
-    console.error('Ошибка запуска:', err);
+  console.error('Ошибка запуска:', err);
 });
 
 proc.on('close', (code) => {
-    console.log('Electron завершён с кодом:', code);
+  console.log('Electron завершён с кодом:', code);
 });

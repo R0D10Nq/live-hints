@@ -792,7 +792,7 @@ body {
   cursor: pointer;
 }
 
-.checkbox-container input[type="checkbox"] {
+.checkbox-container input[type='checkbox'] {
   position: absolute;
   opacity: 0;
   width: 0;
@@ -817,12 +817,12 @@ body {
   transition: all var(--transition-fast);
 }
 
-.checkbox-container input:checked+.checkbox-label::before {
+.checkbox-container input:checked + .checkbox-label::before {
   background: var(--color-primary);
   border-color: var(--color-primary);
 }
 
-.checkbox-container input:checked+.checkbox-label::after {
+.checkbox-container input:checked + .checkbox-label::after {
   content: '✓';
   position: absolute;
   left: 5px;
