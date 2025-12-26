@@ -818,8 +818,52 @@ async def analyze_image(request: dict):
         return {'error': str(e)}
 
 
+# ========== GPU CHECK ==========
+def check_gpu_status() -> dict:
+    """Проверка доступности GPU через nvidia-smi"""
+    import subprocess
+    result = {'available': False, 'name': None, 'memory_total': None, 'memory_used': None}
+    try:
+        output = subprocess.check_output(
+            ['nvidia-smi', '--query-gpu=name,memory.total,memory.used', '--format=csv,noheader,nounits'],
+            timeout=5
+        ).decode('utf-8').strip()
+        if output:
+            parts = output.split(',')
+            result['available'] = True
+            result['name'] = parts[0].strip()
+            result['memory_total'] = int(parts[1].strip())
+            result['memory_used'] = int(parts[2].strip())
+    except (subprocess.SubprocessError, FileNotFoundError, Exception) as e:
+        logger.warning(f'[GPU] nvidia-smi недоступен: {e}')
+    return result
+
+
+@app.get('/gpu/status')
+async def gpu_status():
+    """Статус GPU для UI"""
+    info = check_gpu_status()
+    if info['available']:
+        free = info['memory_total'] - info['memory_used']
+        return {
+            'available': True,
+            'name': info['name'],
+            'memory_free_mb': free,
+            'memory_total_mb': info['memory_total']
+        }
+    return {'available': False, 'message': 'GPU не обнаружен'}
+
+
 # ========== MAIN ==========
 if __name__ == '__main__':
+    # GPU check при старте
+    gpu_info = check_gpu_status()
+    if gpu_info['available']:
+        free_mem = gpu_info['memory_total'] - gpu_info['memory_used']
+        logger.info(f"[GPU] {gpu_info['name']}: {free_mem}/{gpu_info['memory_total']} MB свободно")
+    else:
+        logger.warning('[GPU] GPU не обнаружен, используется CPU (медленно)')
+    
     logger.info(f'[SERVER] Запуск http://{HTTP_HOST}:{HTTP_PORT}')
     logger.info(f'[SERVER] Ollama: {OLLAMA_URL}, Model: {DEFAULT_MODEL}')
     
