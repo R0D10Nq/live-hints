@@ -776,73 +776,56 @@ async def analyze_image(request: dict):
     if not image_base64:
         raise HTTPException(400, 'Изображение не предоставлено')
     
-    # Проверяем наличие Vision модели
     vision_model = get_available_vision_model()
     if not vision_model:
-        return {
-            'error': 'Vision модель не установлена',
-            'hint': 'Выполните: ollama pull llava:7b'
-        }
+        return {'error': 'Vision модель не установлена', 'hint': 'ollama pull llava:7b'}
     
-    logger.info(f'[Vision] Анализ изображения с {vision_model}...')
+    logger.info(f'[Vision] Анализ с {vision_model}...')
     
-    # Retry логика: Ollama может вернуть 502 пока переключает модели
-    max_retries = 2
-    retry_delay = 2  # секунд
+    # Выгружаем текстовую модель чтобы освободить GPU память
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            await client.post(f'{ollama.base_url}/api/generate', json={'model': DEFAULT_MODEL, 'keep_alive': 0})
+        logger.info(f'[Vision] {DEFAULT_MODEL} выгружена')
+        await asyncio.sleep(1)  # Пауза для освобождения VRAM
+    except:
+        pass
     
-    for attempt in range(max_retries):
-        try:
-            async with httpx.AsyncClient(timeout=180.0) as client:
-                resp = await client.post(
-                    f'{ollama.base_url}/api/chat',
-                    json={
-                        'model': vision_model,
-                        'messages': [{
-                            'role': 'user',
-                            'content': prompt,
-                            'images': [image_base64]
-                        }],
-                        'stream': False,
-                        'options': {
-                            'temperature': 0.3,
-                            'num_predict': 1000
-                        }
-                    }
-                )
+    # Запрос к Vision модели
+    try:
+        async with httpx.AsyncClient(timeout=90.0) as client:
+            resp = await client.post(
+                f'{ollama.base_url}/api/chat',
+                json={
+                    'model': vision_model,
+                    'messages': [{'role': 'user', 'content': prompt, 'images': [image_base64]}],
+                    'stream': False,
+                    'keep_alive': 0,
+                    'options': {'temperature': 0.3, 'num_predict': 500}
+                }
+            )
+            
+            if resp.status_code == 200:
+                data = resp.json()
+                analysis = data.get('message', {}).get('content', '')
+                logger.info(f'[Vision] Готово: {len(analysis)} символов')
+                # Загружаем обратно текстовую модель
+                try:
+                    async with httpx.AsyncClient(timeout=5.0) as c:
+                        await c.post(f'{ollama.base_url}/api/generate', json={'model': DEFAULT_MODEL, 'prompt': '', 'keep_alive': -1})
+                except:
+                    pass
+                return {'analysis': analysis, 'model': vision_model}
+            else:
+                logger.error(f'[Vision] Ошибка {resp.status_code}')
+                return {'error': f'Vision ошибка {resp.status_code}'}
                 
-                if resp.status_code == 200:
-                    data = resp.json()
-                    analysis = data.get('message', {}).get('content', '')
-                    logger.info(f'[Vision] Анализ завершён: {len(analysis)} символов')
-                    return {
-                        'analysis': analysis,
-                        'model': vision_model
-                    }
-                elif resp.status_code == 502:
-                    # 502 = модель загружается, ждём и повторяем
-                    if attempt < max_retries - 1:
-                        logger.warning(f'[Vision] 502 - модель загружается, попытка {attempt + 1}/{max_retries}, ждём {retry_delay}с...')
-                        await asyncio.sleep(retry_delay)
-                        retry_delay *= 2  # exponential backoff
-                        continue
-                    else:
-                        return {'error': 'Vision модель загружается. Подождите 10 сек и попробуйте снова.'}
-                else:
-                    error_text = resp.text[:200]
-                    logger.error(f'[Vision] Ошибка {resp.status_code}: {error_text}')
-                    return {'error': f'Vision ошибка {resp.status_code}'}
-                    
-        except httpx.TimeoutException:
-            logger.error('[Vision] Таймаут')
-            return {'error': 'Таймаут анализа. Попробуйте ещё раз.'}
-        except Exception as e:
-            logger.error(f'[Vision] Ошибка: {e}')
-            if attempt < max_retries - 1:
-                await asyncio.sleep(retry_delay)
-                continue
-            return {'error': str(e)}
-    
-    return {'error': 'Vision AI недоступен'}
+    except httpx.TimeoutException:
+        logger.error('[Vision] Таймаут')
+        return {'error': 'Таймаут. Попробуйте ещё раз.'}
+    except Exception as e:
+        logger.error(f'[Vision] {e}')
+        return {'error': str(e)}
 
 
 # ========== GPU CHECK ==========
@@ -894,30 +877,9 @@ if __name__ == '__main__':
     logger.info(f'[SERVER] Запуск http://{HTTP_HOST}:{HTTP_PORT}')
     logger.info(f'[SERVER] Ollama: {OLLAMA_URL}, Model: {DEFAULT_MODEL}')
     
-    # Предзагрузка моделей при старте
+    # Предзагрузка текстовой модели при старте
     preload_model(DEFAULT_MODEL)
-    
-    # Предзагрузка Vision модели (llava) для быстрых скриншотов
-    vision_model = get_available_vision_model()
-    if vision_model:
-        logger.info(f'[Vision] Предзагрузка {vision_model}...')
-        try:
-            resp = requests.post(
-                f'{OLLAMA_URL}/api/chat',
-                json={
-                    'model': vision_model,
-                    'messages': [{'role': 'user', 'content': 'test', 'images': []}],
-                    'stream': False,
-                    'keep_alive': -1
-                },
-                timeout=120
-            )
-            if resp.status_code == 200:
-                logger.info(f'[Vision] {vision_model} готова')
-            else:
-                logger.warning(f'[Vision] Ошибка предзагрузки: {resp.status_code}')
-        except Exception as e:
-            logger.warning(f'[Vision] Не удалось предзагрузить: {e}')
+    # Vision модель (llava) загружается по требованию - GPU памяти не хватает на обе
     
     # Загрузка подготовленных вопросов в VectorDB
     try:
