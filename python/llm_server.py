@@ -786,9 +786,9 @@ async def analyze_image(request: dict):
     
     logger.info(f'[Vision] Анализ изображения с {vision_model}...')
     
-    # Retry логика: Ollama может вернуть 502 пока выгружает другую модель
-    max_retries = 3
-    retry_delay = 5  # секунд
+    # Retry логика: Ollama может вернуть 502 пока переключает модели
+    max_retries = 2
+    retry_delay = 2  # секунд
     
     for attempt in range(max_retries):
         try:
@@ -894,8 +894,30 @@ if __name__ == '__main__':
     logger.info(f'[SERVER] Запуск http://{HTTP_HOST}:{HTTP_PORT}')
     logger.info(f'[SERVER] Ollama: {OLLAMA_URL}, Model: {DEFAULT_MODEL}')
     
-    # Предзагрузка модели при старте
+    # Предзагрузка моделей при старте
     preload_model(DEFAULT_MODEL)
+    
+    # Предзагрузка Vision модели (llava) для быстрых скриншотов
+    vision_model = get_available_vision_model()
+    if vision_model:
+        logger.info(f'[Vision] Предзагрузка {vision_model}...')
+        try:
+            resp = requests.post(
+                f'{OLLAMA_URL}/api/chat',
+                json={
+                    'model': vision_model,
+                    'messages': [{'role': 'user', 'content': 'test', 'images': []}],
+                    'stream': False,
+                    'keep_alive': -1
+                },
+                timeout=120
+            )
+            if resp.status_code == 200:
+                logger.info(f'[Vision] {vision_model} готова')
+            else:
+                logger.warning(f'[Vision] Ошибка предзагрузки: {resp.status_code}')
+        except Exception as e:
+            logger.warning(f'[Vision] Не удалось предзагрузить: {e}')
     
     # Загрузка подготовленных вопросов в VectorDB
     try:
