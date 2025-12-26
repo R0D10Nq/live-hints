@@ -10,7 +10,12 @@ logger = logging.getLogger('LLM')
 
 def check_gpu_status() -> dict:
     """Проверка доступности GPU через nvidia-smi"""
-    result = {'available': False, 'name': None, 'memory_total': None, 'memory_used': None}
+    result = {
+        'available': False, 
+        'name': None, 
+        'memory_total': None, 
+        'memory_used': None
+    }
     try:
         output = subprocess.check_output(
             ['nvidia-smi', '--query-gpu=name,memory.total,memory.used', '--format=csv,noheader,nounits'],
@@ -38,4 +43,7 @@ def get_gpu_info() -> dict:
             'memory_free_mb': free,
             'memory_total_mb': info['memory_total']
         }
-    return {'available': False, 'message': 'GPU не обнаружен'}
+    return {
+        'available': False, 
+        'message': 'GPU не обнаружен'
+    }

@@ -37,14 +37,23 @@ async def analyze_image(ollama_url: str, default_model: str, image_base64: str, 
     """Анализ изображения с помощью Vision AI"""
     vision_model = get_available_vision_model(ollama_url)
     if not vision_model:
-        return {'error': 'Vision модель не установлена', 'hint': 'ollama pull llava:7b'}
+        return {
+            'error': 'Vision модель не установлена', 
+            'hint': 'ollama pull llava:7b'
+            }
     
     logger.info(f'[Vision] Анализ с {vision_model}...')
     
     # Выгружаем текстовую модель чтобы освободить GPU память
     try:
         async with httpx.AsyncClient(timeout=5.0) as client:
-            await client.post(f'{ollama_url}/api/generate', json={'model': default_model, 'keep_alive': 0})
+            await client.post(
+                f'{ollama_url}/api/generate', 
+                json={
+                    'model': default_model, 
+                    'keep_alive': 0
+                    }
+                )
         logger.info(f'[Vision] {default_model} выгружена')
         await asyncio.sleep(1)
     except:
@@ -57,10 +66,19 @@ async def analyze_image(ollama_url: str, default_model: str, image_base64: str, 
                 f'{ollama_url}/api/chat',
                 json={
                     'model': vision_model,
-                    'messages': [{'role': 'user', 'content': prompt, 'images': [image_base64]}],
+                    'messages': [
+                        {
+                            'role': 'user', 
+                            'content': prompt, 
+                            'images': [image_base64]
+                            }
+                        ],
                     'stream': False,
                     'keep_alive': 0,
-                    'options': {'temperature': 0.3, 'num_predict': 500}
+                    'options': {
+                        'temperature': 0.3, 
+                        'num_predict': 500
+                        }
                 }
             )
             
@@ -72,18 +90,34 @@ async def analyze_image(ollama_url: str, default_model: str, image_base64: str, 
                 # Загружаем обратно текстовую модель
                 try:
                     async with httpx.AsyncClient(timeout=5.0) as c:
-                        await c.post(f'{ollama_url}/api/generate', json={'model': default_model, 'prompt': '', 'keep_alive': -1})
+                        await c.post(
+                            f'{ollama_url}/api/generate', 
+                            json={
+                                'model': default_model, 
+                                'prompt': '', 
+                                'keep_alive': -1
+                                }
+                            )
                 except:
                     pass
                 
-                return {'analysis': analysis, 'model': vision_model}
+                return {
+                    'analysis': analysis, 
+                    'model': vision_model
+                    }
             else:
                 logger.error(f'[Vision] Ошибка {resp.status_code}')
-                return {'error': f'Vision ошибка {resp.status_code}'}
+                return {
+                    'error': f'Vision ошибка {resp.status_code}'
+                    }
                 
     except httpx.TimeoutException:
         logger.error('[Vision] Таймаут')
-        return {'error': 'Таймаут. Попробуйте ещё раз.'}
+        return {
+            'error': 'Таймаут. Попробуйте ещё раз.'
+            }
     except Exception as e:
         logger.error(f'[Vision] {e}')
-        return {'error': str(e)}
+        return {
+            'error': str(e)
+            }

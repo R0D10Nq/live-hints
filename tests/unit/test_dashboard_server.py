@@ -28,9 +28,19 @@ class TestLoadMetrics:
         old = '2020-01-01T00:00:00'
         
         metrics_file.write_text(
-            json.dumps({'timestamp': now, 'event': 'test1'}) + '\n' +
-            json.dumps({'timestamp': old, 'event': 'test2'}) + '\n'
-        )
+            json.dumps(
+                {
+                    'timestamp': now, 
+                    'event': 'test1'
+                    }
+                ) + '\n' +
+            json.dumps(
+                {
+                    'timestamp': old, 
+                    'event': 'test2'
+                    }
+                ) + '\n'
+            )
         
         with patch('dashboard_server.METRICS_FILE', metrics_file):
             from dashboard_server import load_metrics
@@ -46,8 +56,13 @@ class TestLoadMetrics:
         
         metrics_file.write_text(
             'invalid json\n' +
-            json.dumps({'timestamp': now, 'event': 'valid'}) + '\n'
-        )
+            json.dumps(
+                {
+                    'timestamp': now, 
+                    'event': 'valid'
+                    }
+                ) + '\n'
+            )
         
         with patch('dashboard_server.METRICS_FILE', metrics_file):
             from dashboard_server import load_metrics
@@ -69,7 +84,12 @@ class TestLoadSessions:
     def test_loads_sessions(self, tmp_path):
         """Загружает сессии"""
         sessions_file = tmp_path / 'sessions.json'
-        sessions = [{'id': '1', 'date': '2024-01-01'}]
+        sessions = [
+            {
+                'id': '1', 
+                'date': '2024-01-01'
+            }
+        ]
         sessions_file.write_text(json.dumps(sessions))
         
         with patch('dashboard_server.SESSIONS_FILE', sessions_file):
@@ -108,9 +128,18 @@ class TestCalculateStats:
         from dashboard_server import calculate_stats
         
         metrics = [
-            {'event': 'stt_transcription', 'latency_ms': 100},
-            {'event': 'stt_transcription', 'latency_ms': 200},
-            {'event': 'stt_transcription', 'latency_ms': 300},
+            {
+                'event': 'stt_transcription', 
+                'latency_ms': 100
+                },
+            {
+                'event': 'stt_transcription', 
+                'latency_ms': 200
+                },
+            {
+                'event': 'stt_transcription', 
+                'latency_ms': 300
+                },
         ]
         
         result = calculate_stats(metrics)
@@ -125,8 +154,18 @@ class TestCalculateStats:
         from dashboard_server import calculate_stats
         
         metrics = [
-            {'event': 'llm_response', 'latency_ms': 2000, 'question_type': 'technical', 'cached': False},
-            {'event': 'llm_response', 'latency_ms': 100, 'question_type': 'experience', 'cached': True},
+            {
+                'event': 'llm_response', 
+                'latency_ms': 2000, 
+                'question_type': 'technical', 
+                'cached': False
+                },
+            {
+                'event': 'llm_response', 
+                'latency_ms': 100, 
+                'question_type': 'experience', 
+                'cached': True
+                },
         ]
         
         result = calculate_stats(metrics)
@@ -143,7 +182,12 @@ class TestCalculateStats:
         from dashboard_server import calculate_stats
         
         metrics = [
-            {'event': 'error', 'timestamp': '2024-01-01', 'component': 'llm', 'message': 'Test error'},
+            {
+                'event': 'error', 
+                'timestamp': '2024-01-01', 
+                'component': 'llm', 
+                'message': 'Test error'
+                },
         ]
         
         result = calculate_stats(metrics)
@@ -197,7 +241,13 @@ class TestDashboardEndpoints:
         metrics_file = tmp_path / 'metrics.jsonl'
         now = datetime.now().isoformat()
         metrics_file.write_text(
-            json.dumps({'timestamp': now, 'event': 'stt_transcription', 'latency_ms': 100}) + '\n'
+            json.dumps(
+                {
+                    'timestamp': now, 
+                    'event': 'stt_transcription', 
+                    'latency_ms': 100
+                    }
+                ) + '\n'
         )
         
         with patch('dashboard_server.METRICS_FILE', metrics_file):
@@ -214,7 +264,15 @@ class TestDashboardEndpoints:
     def test_get_sessions(self, tmp_path):
         """GET /api/sessions возвращает сессии"""
         sessions_file = tmp_path / 'sessions.json'
-        sessions_file.write_text(json.dumps([{'id': '1'}]))
+        sessions_file.write_text(
+            json.dumps(
+                [
+                    {
+                        'id': '1'
+                        }
+                    ]
+                )
+            )
         
         with patch('dashboard_server.SESSIONS_FILE', sessions_file):
             from dashboard_server import app
@@ -229,7 +287,16 @@ class TestDashboardEndpoints:
     def test_get_session_found(self, tmp_path):
         """GET /api/session/{id} возвращает сессию"""
         sessions_file = tmp_path / 'sessions.json'
-        sessions_file.write_text(json.dumps([{'id': 'abc123', 'transcript': 'test'}]))
+        sessions_file.write_text(
+            json.dumps(
+                [
+                    {
+                        'id': 'abc123', 
+                        'transcript': 'test'
+                        }
+                    ]
+                )
+            )
         
         with patch('dashboard_server.SESSIONS_FILE', sessions_file):
             from dashboard_server import app
@@ -269,8 +336,14 @@ class TestDashboardEndpoints:
         metrics_file = tmp_path / 'metrics.jsonl'
         now = datetime.now().isoformat()
         metrics_file.write_text(
-            json.dumps({'timestamp': now, 'event': 'test', 'latency_ms': 100}) + '\n'
-        )
+            json.dumps(
+                {
+                    'timestamp': now, 
+                    'event': 'test', 
+                    'latency_ms': 100
+                    }
+                ) + '\n'
+            )
         
         with patch('dashboard_server.METRICS_FILE', metrics_file):
             from dashboard_server import app

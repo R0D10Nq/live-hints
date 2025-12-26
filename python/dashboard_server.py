@@ -59,7 +59,10 @@ def calculate_stats(metrics: list) -> dict:
     """Рассчитать статистику из метрик"""
     stt_latencies = []
     llm_latencies = []
-    question_types = {'technical': 0, 'experience': 0, 'general': 0}
+    question_types = {
+        'technical': 0, 
+        'experience': 0, 
+        'general': 0}
     cache_hits = 0
     cache_misses = 0
     errors = []

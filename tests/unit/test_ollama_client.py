@@ -124,7 +124,10 @@ class TestBuildMessages:
         from llm.ollama_client import build_messages
         
         few_shot = [
-            {'user': 'Example question', 'assistant': 'Example answer'}
+            {
+                'user': 'Example question', 
+                'assistant': 'Example answer'
+            }
         ]
         messages = build_messages('System', [], 'Question', few_shot)
         
@@ -223,7 +226,9 @@ class TestOllamaClient:
         mock_response = MagicMock()
         mock_response.status_code = 200
         mock_response.json.return_value = {
-            'message': {'content': 'Generated hint'}
+            'message': {
+                'content': 'Generated hint'
+            }
         }
         mock_post.return_value = mock_response
         
@@ -287,7 +292,11 @@ class TestExtractHint:
         
         client = OllamaClient('http://localhost:11434', 'llama3', MagicMock())
         
-        data = {'message': {'content': 'Hint text'}}
+        data = {
+            'message': {
+                'content': 'Hint text'
+            }
+        }
         result = client._extract_hint(data)
         
         assert result == 'Hint text'
@@ -298,7 +307,12 @@ class TestExtractHint:
         
         client = OllamaClient('http://localhost:11434', 'llama3', MagicMock())
         
-        data = {'message': {'content': '', 'thinking': 'Some thinking "Important quote here" more text'}}
+        data = {
+            'message': {
+                'content': '',
+                'thinking': 'Some thinking "Important quote here" more text'
+            }
+        }
         result = client._extract_hint(data)
         
         assert result == 'Important quote here'
@@ -309,7 +323,12 @@ class TestExtractHint:
         
         client = OllamaClient('http://localhost:11434', 'llama3', MagicMock())
         
-        data = {'message': {'content': '', 'thinking': 'First sentence. Second sentence. Third sentence.'}}
+        data = {
+            'message': {
+                'content': '',
+                'thinking': 'First sentence. Second sentence. Third sentence.'
+            }
+        }
         result = client._extract_hint(data)
         
         assert 'Second sentence' in result
@@ -321,7 +340,9 @@ class TestExtractHint:
         
         client = OllamaClient('http://localhost:11434', 'llama3', MagicMock())
         
-        data = {'response': 'Response text'}
+        data = {
+            'response': 'Response text'
+        }
         result = client._extract_hint(data)
         
         assert result == 'Response text'
@@ -332,7 +353,9 @@ class TestExtractHint:
         
         client = OllamaClient('http://localhost:11434', 'llama3', MagicMock())
         
-        data = {'content': 'Content text'}
+        data = {
+            'content': 'Content text'
+        }
         result = client._extract_hint(data)
         
         assert result == 'Content text'
@@ -343,7 +366,15 @@ class TestExtractHint:
         
         client = OllamaClient('http://localhost:11434', 'llama3', MagicMock())
         
-        data = {'choices': [{'message': {'content': 'Choice content'}}]}
+        data = {
+            'choices': [
+                {
+                    'message': {
+                        'content': 'Choice content'
+                    }
+                }
+            ]
+        }
         result = client._extract_hint(data)
         
         assert result == 'Choice content'
@@ -545,7 +576,11 @@ class TestOllamaClientGenerate:
         
         mock_response = MagicMock()
         mock_response.status_code = 200
-        mock_response.json.return_value = {'message': {'content': 'Response'}}
+        mock_response.json.return_value = {
+            'message': {
+                'content': 'Response'
+            }
+        }
         mock_post.return_value = mock_response
         
         client = OllamaClient('http://localhost:11434', 'llama3', cache)

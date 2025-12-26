@@ -174,18 +174,40 @@ class TestBuildMessages:
     def test_basic_message_structure(self):
         """Должен создавать базовую структуру сообщений"""
         def build_messages(system_prompt, context, text, few_shot=None):
-            messages = [{'role': 'system', 'content': system_prompt}]
+            messages = [
+                {
+                    'role': 'system', 
+                    'content': system_prompt
+                    }
+                ]
             if few_shot:
                 for example in few_shot:
-                    messages.append({'role': 'user', 'content': example['user']})
-                    messages.append({'role': 'assistant', 'content': example['assistant']})
+                    messages.append(
+                        {
+                            'role': 'user', 
+                            'content': example['user']
+                            }
+                        )
+                    messages.append(
+                        {
+                            'role': 'assistant', 
+                            'content': example['assistant']
+                            }
+                        )
             if context:
                 for ctx in context[-5:]:
-                    messages.append({'role': 'user', 'content': ctx})
-            messages.append({
-                'role': 'user',
-                'content': f'ТЕКУЩИЙ ВОПРОС:\n{text}'
-            })
+                    messages.append(
+                        {
+                            'role': 'user', 
+                            'content': ctx
+                            }
+                        )
+            messages.append(
+                {
+                    'role': 'user',
+                    'content': f'ТЕКУЩИЙ ВОПРОС:\n{text}'
+                    }
+                )
             return messages
         
         messages = build_messages("Системный промпт", [], "Вопрос")
@@ -199,14 +221,32 @@ class TestBuildMessages:
     def test_with_context(self):
         """Должен добавлять контекст"""
         def build_messages(system_prompt, context, text, few_shot=None):
-            messages = [{'role': 'system', 'content': system_prompt}]
+            messages = [
+                {
+                    'role': 'system', 
+                    'content': system_prompt
+                    }
+                ]
             if context:
                 for ctx in context[-5:]:
-                    messages.append({'role': 'user', 'content': ctx})
-            messages.append({'role': 'user', 'content': text})
+                    messages.append(
+                        {
+                            'role': 'user', 
+                            'content': ctx
+                            }
+                        )
+            messages.append(
+                {
+                    'role': 'user', 
+                    'content': text
+                    }
+                )
             return messages
         
-        context = ["Контекст 1", "Контекст 2"]
+        context = [
+            "Контекст 1", 
+            "Контекст 2"
+            ]
         messages = build_messages("Промпт", context, "Вопрос")
         
         assert len(messages) == 4  # system + 2 context + question
@@ -214,17 +254,40 @@ class TestBuildMessages:
     def test_with_few_shot(self):
         """Должен добавлять few-shot примеры"""
         def build_messages(system_prompt, context, text, few_shot=None):
-            messages = [{'role': 'system', 'content': system_prompt}]
+            messages = [
+                {
+                    'role': 'system', 
+                    'content': system_prompt
+                    }
+                ]
             if few_shot:
                 for example in few_shot:
-                    messages.append({'role': 'user', 'content': example['user']})
-                    messages.append({'role': 'assistant', 'content': example['assistant']})
-            messages.append({'role': 'user', 'content': text})
+                    messages.append(
+                        {
+                            'role': 'user', 
+                            'content': example['user']
+                            }
+                        )
+                    messages.append(
+                        {
+                            'role': 'assistant', 
+                            'content': example['assistant']
+                            }
+                        )
+            messages.append(
+                {
+                    'role': 'user', 
+                    'content': text
+                    }
+                )
             return messages
         
         few_shot = [
-            {'user': 'Пример вопроса', 'assistant': 'Пример ответа'}
-        ]
+            {
+                'user': 'Пример вопроса', 
+                'assistant': 'Пример ответа'
+                }
+            ]
         messages = build_messages("Промпт", [], "Вопрос", few_shot)
         
         assert len(messages) == 4  # system + user + assistant + question
@@ -232,11 +295,26 @@ class TestBuildMessages:
     def test_context_limit(self):
         """Должен ограничивать контекст 5 элементами"""
         def build_messages(system_prompt, context, text, few_shot=None):
-            messages = [{'role': 'system', 'content': system_prompt}]
+            messages = [
+                {
+                    'role': 'system', 
+                    'content': system_prompt
+                    }
+                ]
             if context:
                 for ctx in context[-5:]:
-                    messages.append({'role': 'user', 'content': ctx})
-            messages.append({'role': 'user', 'content': text})
+                    messages.append(
+                        {
+                            'role': 'user',
+                            'content': ctx
+                            }
+                        )
+            messages.append(
+                {
+                    'role': 'user', 
+                    'content': text
+                    }
+                )
             return messages
         
         context = ["C1", "C2", "C3", "C4", "C5", "C6", "C7"]

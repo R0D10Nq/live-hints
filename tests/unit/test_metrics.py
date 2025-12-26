@@ -19,7 +19,9 @@ class TestMetricEvent:
             timestamp='2024-01-01T00:00:00',
             event_type='test',
             component='unit',
-            data={'key': 'value'}
+            data={
+                'key': 'value'
+                }
         )
         
         result = event.to_dict()
@@ -227,11 +229,50 @@ class TestGetMetricsStats:
         metrics_file = tmp_path / 'metrics.jsonl'
         
         events = [
-            {'timestamp': '2024-01-01T00:00:00', 'event_type': 'transcription', 'component': 'stt', 'data': {'latency_ms': 100}},
-            {'timestamp': '2024-01-01T00:00:01', 'event_type': 'transcription', 'component': 'stt', 'data': {'latency_ms': 200}},
-            {'timestamp': '2024-01-01T00:00:02', 'event_type': 'hint_response', 'component': 'llm', 'data': {'ttft_ms': 2000, 'total_ms': 5000, 'cached': False}},
-            {'timestamp': '2024-01-01T00:00:03', 'event_type': 'hint_response', 'component': 'llm', 'data': {'ttft_ms': 0, 'total_ms': 10, 'cached': True}},
-            {'timestamp': '2024-01-01T00:00:04', 'event_type': 'hint_request', 'component': 'llm', 'data': {'question_type': 'technical'}},
+            {
+                'timestamp': '2024-01-01T00:00:00', 
+                'event_type': 'transcription', 
+                'component': 'stt', 
+                'data': {
+                    'latency_ms': 100
+                    }
+                },
+            {
+                'timestamp': '2024-01-01T00:00:01', 
+                'event_type': 'transcription', 
+                'component': 'stt', 
+                'data': {
+                    'latency_ms': 200
+                    }
+                },
+            {
+                'timestamp': '2024-01-01T00:00:02', 
+                'event_type': 'hint_response', 
+                'component': 'llm', 
+                'data': {
+                    'ttft_ms': 2000, 
+                    'total_ms': 5000, 
+                    'cached': False
+                    }
+                },
+            {
+                'timestamp': '2024-01-01T00:00:03', 
+                'event_type': 'hint_response', 
+                'component': 'llm', 
+                'data': {
+                    'ttft_ms': 0, 
+                    'total_ms': 10, 
+                    'cached': True
+                    }
+                },
+            {
+                'timestamp': '2024-01-01T00:00:04', 
+                'event_type': 'hint_request', 
+                'component': 'llm', 
+                'data': {
+                    'question_type': 'technical'
+                    }
+                },
         ]
         metrics_file.write_text('\n'.join(json.dumps(e) for e in events))
         
