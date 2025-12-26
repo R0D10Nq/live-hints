@@ -613,6 +613,66 @@ app.whenReady().then(() => {
     return true;
   });
 
+  // File parsing IPC
+  ipcMain.handle('file:parse', async (event, filePath, type) => {
+    const fs = require('fs');
+    try {
+      if (type === 'pdf') {
+        // Используем pdf-parse для PDF файлов
+        try {
+          const pdfParse = require('pdf-parse');
+          const dataBuffer = fs.readFileSync(filePath);
+          const data = await pdfParse(dataBuffer);
+          return data.text;
+        } catch (e) {
+          console.error('[File] PDF parse error:', e);
+          // Fallback: читаем как текст
+          return fs.readFileSync(filePath, 'utf-8');
+        }
+      } else if (type === 'docx') {
+        // Используем mammoth для DOCX файлов
+        try {
+          const mammoth = require('mammoth');
+          const result = await mammoth.extractRawText({ path: filePath });
+          return result.value;
+        } catch (e) {
+          console.error('[File] DOCX parse error:', e);
+          return '';
+        }
+      } else {
+        return fs.readFileSync(filePath, 'utf-8');
+      }
+    } catch (err) {
+      console.error('[File] Parse error:', err);
+      throw err;
+    }
+  });
+
+  // Save context files (resume, vacancy)
+  ipcMain.handle('file:save-context', async (event, type, content) => {
+    const fs = require('fs');
+    try {
+      const pythonDir = path.join(__dirname, 'python');
+
+      if (type === 'resume') {
+        // Сохраняем резюме как user_context.txt (основной контекст)
+        const contextPath = path.join(pythonDir, 'user_context.txt');
+        fs.writeFileSync(contextPath, content, 'utf-8');
+        console.log(`[File] Резюме сохранено: ${contextPath} (${content.length} символов)`);
+      } else if (type === 'vacancy') {
+        // Сохраняем вакансию отдельно
+        const vacancyPath = path.join(pythonDir, 'vacancy.txt');
+        fs.writeFileSync(vacancyPath, content, 'utf-8');
+        console.log(`[File] Вакансия сохранена: ${vacancyPath} (${content.length} символов)`);
+      }
+
+      return { success: true };
+    } catch (err) {
+      console.error('[File] Save error:', err);
+      throw err;
+    }
+  });
+
   // Onboarding показывается при каждом запуске
   createOnboardingWindow();
 });

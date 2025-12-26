@@ -16,12 +16,12 @@
       <header class="onboarding-header">
         <div class="header-drag-region"></div>
         <div class="logo">
-          <span class="logo-icon">💡</span>
+          <span class="logo-icon">L</span>
           <span class="logo-text">Live Hints</span>
         </div>
         <div class="window-controls">
           <button id="btn-minimize" class="window-btn" title="Свернуть">─</button>
-          <button id="btn-close" class="window-btn window-btn-close" title="Закрыть">✕</button>
+          <button id="btn-close" class="window-btn window-btn-close" title="Закрыть">×</button>
         </div>
       </header>
 
@@ -30,69 +30,157 @@
         <div class="progress-steps">
           <div class="progress-step active" data-step="1">
             <div class="step-circle">1</div>
-            <span class="step-label">Язык</span>
+            <span class="step-label">Профиль</span>
           </div>
           <div class="progress-line"></div>
           <div class="progress-step" data-step="2">
             <div class="step-circle">2</div>
-            <span class="step-label">Микрофон</span>
+            <span class="step-label">Резюме</span>
           </div>
           <div class="progress-line"></div>
           <div class="progress-step" data-step="3">
             <div class="step-circle">3</div>
-            <span class="step-label">Экран</span>
+            <span class="step-label">Вакансия</span>
           </div>
           <div class="progress-line"></div>
           <div class="progress-step" data-step="4">
             <div class="step-circle">4</div>
-            <span class="step-label">Контекст</span>
+            <span class="step-label">Аудио</span>
           </div>
         </div>
       </div>
 
       <!-- Step Content Container -->
       <main class="step-container">
-        <!-- Step 1: Language Selection -->
+        <!-- Step 1: AI Profile Selection -->
         <div class="step-content active" data-step="1">
-          <div class="step-icon">🌐</div>
-          <h2 class="step-title">Выберите язык AI-ответов</h2>
-          <p class="step-description">На каком языке вы хотите получать подсказки от AI?</p>
+          <div class="step-icon">&#129302;</div>
+          <h2 class="step-title">Выберите AI профиль</h2>
+          <p class="step-description">Профиль определяет стиль и язык ответов ассистента</p>
 
-          <div class="form-group">
-            <select id="language-select" class="form-select">
-              <option value="ru" selected>Русский</option>
-              <option value="en">English</option>
-              <option value="de">Deutsch</option>
-              <option value="fr">Français</option>
-              <option value="es">Español</option>
-              <option value="zh">中文</option>
-              <option value="ja">日本語</option>
-              <option value="ko">한국어</option>
-            </select>
+          <div class="profile-cards" id="profile-cards">
+            <div class="profile-card selected" data-profile="job_interview_ru">
+              <div class="profile-icon">&#127479;&#127482;</div>
+              <div class="profile-info">
+                <div class="profile-name">Собеседование (RU)</div>
+                <div class="profile-desc">Подсказки на русском для технических собеседований</div>
+              </div>
+              <div class="profile-check">&#10003;</div>
+            </div>
+            <div class="profile-card" data-profile="job_interview_en">
+              <div class="profile-icon">&#127468;&#127463;</div>
+              <div class="profile-info">
+                <div class="profile-name">Job Interview (EN)</div>
+                <div class="profile-desc">English hints for technical interviews</div>
+              </div>
+              <div class="profile-check">&#10003;</div>
+            </div>
+            <div class="profile-card" data-profile="custom">
+              <div class="profile-icon">&#9881;</div>
+              <div class="profile-info">
+                <div class="profile-name">Свой профиль</div>
+                <div class="profile-desc">Настройте промпт под свои задачи</div>
+              </div>
+              <div class="profile-check">&#10003;</div>
+            </div>
           </div>
 
-          <div class="language-preview">
-            <div class="preview-label">Пример ответа:</div>
-            <div id="language-preview-text" class="preview-text">
-              "Расскажите о себе" — это возможность кратко представить свой опыт и навыки,
-              релевантные позиции...
-            </div>
+          <div class="custom-prompt-area hidden" id="custom-prompt-area">
+            <label class="form-label">Системный промпт:</label>
+            <textarea id="custom-prompt" class="form-textarea" rows="4" 
+              placeholder="Опишите, как должен вести себя ассистент..."></textarea>
           </div>
         </div>
 
-        <!-- Step 2: Microphone Access -->
+        <!-- Step 2: Resume Upload (Required) -->
         <div class="step-content" data-step="2">
-          <div class="step-icon">🎤</div>
-          <h2 class="step-title">Доступ к микрофону</h2>
-          <p class="step-description">Для распознавания речи необходим доступ к микрофону</p>
+          <div class="step-icon">&#128196;</div>
+          <h2 class="step-title">Загрузите ваше резюме</h2>
+          <p class="step-description">
+            Резюме поможет AI давать персонализированные ответы на основе вашего опыта
+          </p>
+
+          <div class="file-upload-area" id="resume-upload-area">
+            <div class="upload-icon">&#128194;</div>
+            <p class="upload-text">Перетащите файл сюда или нажмите для выбора</p>
+            <p class="upload-formats">Поддерживаемые форматы: TXT, PDF, DOCX</p>
+            <input type="file" id="resume-file-input" accept=".txt,.pdf,.docx" hidden />
+          </div>
+
+          <div class="file-info hidden" id="resume-file-info">
+            <div class="file-icon">&#128196;</div>
+            <div class="file-details">
+              <span class="file-name" id="resume-file-name">resume.pdf</span>
+              <span class="file-size" id="resume-file-size">1.2 MB</span>
+            </div>
+            <button id="btn-remove-resume" class="btn-remove-file" title="Удалить файл">×</button>
+          </div>
+
+          <div class="text-paste-toggle">
+            <button id="btn-paste-resume" class="btn-toggle-paste">
+              Или вставьте текст вручную
+            </button>
+          </div>
+
+          <div class="text-paste-area hidden" id="resume-paste-area">
+            <textarea id="resume-text" class="form-textarea" rows="6" 
+              placeholder="Вставьте текст резюме здесь..."></textarea>
+          </div>
+
+          <p class="required-note">* Этот шаг обязателен для продолжения</p>
+        </div>
+
+        <!-- Step 3: Vacancy Upload (Optional) -->
+        <div class="step-content" data-step="3">
+          <div class="step-icon">&#128188;</div>
+          <h2 class="step-title">Загрузите описание вакансии</h2>
+          <p class="step-description">
+            Вакансия поможет AI фокусироваться на релевантных навыках (необязательно)
+          </p>
+
+          <div class="file-upload-area" id="vacancy-upload-area">
+            <div class="upload-icon">&#128194;</div>
+            <p class="upload-text">Перетащите файл сюда или нажмите для выбора</p>
+            <p class="upload-formats">Поддерживаемые форматы: TXT, PDF</p>
+            <input type="file" id="vacancy-file-input" accept=".txt,.pdf" hidden />
+          </div>
+
+          <div class="file-info hidden" id="vacancy-file-info">
+            <div class="file-icon">&#128188;</div>
+            <div class="file-details">
+              <span class="file-name" id="vacancy-file-name">vacancy.txt</span>
+              <span class="file-size" id="vacancy-file-size">0.5 MB</span>
+            </div>
+            <button id="btn-remove-vacancy" class="btn-remove-file" title="Удалить файл">×</button>
+          </div>
+
+          <div class="text-paste-toggle">
+            <button id="btn-paste-vacancy" class="btn-toggle-paste">
+              Или вставьте текст вручную
+            </button>
+          </div>
+
+          <div class="text-paste-area hidden" id="vacancy-paste-area">
+            <textarea id="vacancy-text" class="form-textarea" rows="6" 
+              placeholder="Вставьте описание вакансии здесь..."></textarea>
+          </div>
+
+          <p class="optional-note">Этот шаг можно пропустить</p>
+        </div>
+
+        <!-- Step 4: Audio Settings -->
+        <div class="step-content" data-step="4">
+          <div class="step-icon">&#127908;</div>
+          <h2 class="step-title">Настройка аудио</h2>
+          <p class="step-description">Выберите микрофон и настройте режим захвата</p>
 
           <div class="permission-card" id="mic-permission-card">
             <div class="permission-status" id="mic-status">
-              <span class="status-icon pending">○</span>
+              <span class="status-icon pending">&#9675;</span>
               <span class="status-text">Ожидание разрешения</span>
             </div>
             <button id="btn-request-mic" class="btn-permission">
-              <span class="btn-icon">🎤</span>
+              <span class="btn-icon">&#127908;</span>
               Предоставить доступ к микрофону
             </button>
           </div>
@@ -116,65 +204,23 @@
               <span class="vu-label">Уровень сигнала</span>
             </div>
           </div>
-        </div>
 
-        <!-- Step 3: Screen Capture Access -->
-        <div class="step-content" data-step="3">
-          <div class="step-icon">🖥️</div>
-          <h2 class="step-title">Доступ к захвату экрана</h2>
-          <p class="step-description">Для анализа задач с экрана необходим доступ к захвату</p>
-
-          <div class="permission-card" id="screen-permission-card">
-            <div class="permission-status" id="screen-status">
-              <span class="status-icon pending">○</span>
-              <span class="status-text">Ожидание разрешения</span>
-            </div>
-            <button id="btn-request-screen" class="btn-permission">
-              <span class="btn-icon">🖥️</span>
-              Предоставить доступ к экрану
-            </button>
+          <div class="dual-audio-section">
+            <label class="checkbox-container">
+              <input type="checkbox" id="dual-audio-checkbox" />
+              <span class="checkbox-label">Dual Audio Mode</span>
+              <span class="checkbox-desc">
+                Захват микрофона кандидата отдельно от системного звука
+              </span>
+            </label>
           </div>
-
-          <div class="monitor-selection hidden" id="monitor-selection">
-            <label class="form-label">Выберите монитор:</label>
-            <div class="monitor-grid" id="monitor-grid">
-              <!-- Monitors will be populated dynamically -->
-            </div>
-          </div>
-        </div>
-
-        <!-- Step 4: Context File (Optional) -->
-        <div class="step-content" data-step="4">
-          <div class="step-icon">📄</div>
-          <h2 class="step-title">Загрузка контекста</h2>
-          <p class="step-description">
-            Загрузите резюме или другой файл для персонализации подсказок (опционально)
-          </p>
-
-          <div class="file-upload-area" id="file-upload-area">
-            <div class="upload-icon">📁</div>
-            <p class="upload-text">Перетащите файл сюда или нажмите для выбора</p>
-            <p class="upload-formats">Поддерживаемые форматы: PDF, TXT</p>
-            <input type="file" id="context-file-input" accept=".pdf,.txt" hidden />
-          </div>
-
-          <div class="file-info hidden" id="file-info">
-            <div class="file-icon">📄</div>
-            <div class="file-details">
-              <span class="file-name" id="file-name">document.pdf</span>
-              <span class="file-size" id="file-size">1.2 MB</span>
-            </div>
-            <button id="btn-remove-file" class="btn-remove-file" title="Удалить файл">✕</button>
-          </div>
-
-          <p class="optional-note">Этот шаг можно пропустить и загрузить файл позже в настройках</p>
         </div>
       </main>
 
       <!-- Navigation Footer -->
       <footer class="onboarding-footer">
         <button id="btn-back" class="btn-nav btn-back hidden">
-          <span class="btn-arrow">←</span> Назад
+          <span class="btn-arrow">&#8592;</span> Назад
         </button>
 
         <div class="step-indicator">
@@ -184,9 +230,9 @@
         <div class="footer-actions">
           <button id="btn-skip" class="btn-nav btn-skip hidden">Пропустить</button>
           <button id="btn-next" class="btn-nav btn-next">
-            Далее <span class="btn-arrow">→</span>
+            Далее <span class="btn-arrow">&#8594;</span>
           </button>
-          <button id="btn-finish" class="btn-nav btn-finish hidden">Начать работу</button>
+          <button id="btn-finish" class="btn-nav btn-finish hidden">Начать сессию</button>
         </div>
       </footer>
     </div>

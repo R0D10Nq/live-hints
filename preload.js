@@ -82,6 +82,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
   settingsGetAll: () => ipcRenderer.invoke('settings:getAll'),
   settingsReset: () => ipcRenderer.invoke('settings:reset'),
 
+  // ===== ONBOARDING / FILES =====
+  parseFile: (filePath, type) => ipcRenderer.invoke('file:parse', filePath, type),
+  saveContextFile: (type, content) => ipcRenderer.invoke('file:save-context', type, content),
+  finishOnboarding: (settings) => ipcRenderer.invoke('onboarding:finish', settings),
+
   // ===== SHORTCUTS =====
   onShortcutAsk: (callback) => ipcRenderer.on('shortcut:ask', callback),
   onShortcutScreenshot: (callback) => ipcRenderer.on('shortcut:screenshot', callback),
