@@ -786,45 +786,63 @@ async def analyze_image(request: dict):
     
     logger.info(f'[Vision] Анализ изображения с {vision_model}...')
     
-    try:
-        # Используем /api/chat для multimodal моделей (llava)
-        async with httpx.AsyncClient(timeout=180.0) as client:
-            resp = await client.post(
-                f'{ollama.base_url}/api/chat',
-                json={
-                    'model': vision_model,
-                    'messages': [{
-                        'role': 'user',
-                        'content': prompt,
-                        'images': [image_base64]
-                    }],
-                    'stream': False,
-                    'options': {
-                        'temperature': 0.3,
-                        'num_predict': 1000
+    # Retry логика: Ollama может вернуть 502 пока выгружает другую модель
+    max_retries = 3
+    retry_delay = 5  # секунд
+    
+    for attempt in range(max_retries):
+        try:
+            async with httpx.AsyncClient(timeout=180.0) as client:
+                resp = await client.post(
+                    f'{ollama.base_url}/api/chat',
+                    json={
+                        'model': vision_model,
+                        'messages': [{
+                            'role': 'user',
+                            'content': prompt,
+                            'images': [image_base64]
+                        }],
+                        'stream': False,
+                        'options': {
+                            'temperature': 0.3,
+                            'num_predict': 1000
+                        }
                     }
-                }
-            )
-            
-            if resp.status_code == 200:
-                data = resp.json()
-                # /api/chat возвращает message.content
-                analysis = data.get('message', {}).get('content', '')
-                logger.info(f'[Vision] Анализ завершён: {len(analysis)} символов')
-                return {
-                    'analysis': analysis,
-                    'model': vision_model
-                }
-            else:
-                error_text = resp.text[:500]
-                logger.error(f'[Vision] Ошибка {resp.status_code}: {error_text}')
-                return {'error': f'Vision AI ошибка {resp.status_code}. Убедитесь что llava запущена: ollama run llava:7b'}
-    except httpx.TimeoutException:
-        logger.error('[Vision] Таймаут (180 сек)')
-        return {'error': 'Таймаут. Vision модель загружается, попробуйте ещё раз.'}
-    except Exception as e:
-        logger.error(f'[Vision] Ошибка: {e}')
-        return {'error': str(e)}
+                )
+                
+                if resp.status_code == 200:
+                    data = resp.json()
+                    analysis = data.get('message', {}).get('content', '')
+                    logger.info(f'[Vision] Анализ завершён: {len(analysis)} символов')
+                    return {
+                        'analysis': analysis,
+                        'model': vision_model
+                    }
+                elif resp.status_code == 502:
+                    # 502 = модель загружается, ждём и повторяем
+                    if attempt < max_retries - 1:
+                        logger.warning(f'[Vision] 502 - модель загружается, попытка {attempt + 1}/{max_retries}, ждём {retry_delay}с...')
+                        await asyncio.sleep(retry_delay)
+                        retry_delay *= 2  # exponential backoff
+                        continue
+                    else:
+                        return {'error': 'Vision модель загружается. Подождите 10 сек и попробуйте снова.'}
+                else:
+                    error_text = resp.text[:200]
+                    logger.error(f'[Vision] Ошибка {resp.status_code}: {error_text}')
+                    return {'error': f'Vision ошибка {resp.status_code}'}
+                    
+        except httpx.TimeoutException:
+            logger.error('[Vision] Таймаут')
+            return {'error': 'Таймаут анализа. Попробуйте ещё раз.'}
+        except Exception as e:
+            logger.error(f'[Vision] Ошибка: {e}')
+            if attempt < max_retries - 1:
+                await asyncio.sleep(retry_delay)
+                continue
+            return {'error': str(e)}
+    
+    return {'error': 'Vision AI недоступен'}
 
 
 # ========== GPU CHECK ==========
