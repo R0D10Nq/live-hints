@@ -566,7 +566,7 @@ class LiveHintsApp {
     const captureFullscreen = document.getElementById('btn-capture-fullscreen');
     const captureWindow = document.getElementById('btn-capture-window');
     const captureRegion = document.getElementById('btn-capture-region');
-    const visionSend = document.getElementById('btn-vision-send');
+    const visionSend = document.getElementById('btn-vision-analyze');
     const visionRetake = document.getElementById('btn-vision-retake');
     const visionCancel = document.getElementById('btn-vision-cancel');
 
@@ -627,7 +627,7 @@ class LiveHintsApp {
 
   showVisionModal() {
     const modal = document.getElementById('vision-modal');
-    const previewContainer = document.getElementById('vision-preview-container');
+    const previewContainer = document.getElementById('vision-preview');
     const resultContainer = document.getElementById('vision-result');
 
     if (modal) modal.classList.remove('hidden');
@@ -643,27 +643,36 @@ class LiveHintsApp {
 
   async captureScreen(mode = 'fullscreen') {
     try {
+      console.log('[Vision] Начинаем захват экрана, mode:', mode);
+      this.showToast('Захват экрана...', 'info');
+
       this.hideVisionModal(); // Скрываем modal перед захватом
+      await new Promise((r) => setTimeout(r, 300)); // Даём время скрыться
 
-      await new Promise((r) => setTimeout(r, 200)); // Даём время скрыться
+      if (!window.electronAPI?.captureScreen) {
+        this.showToast('API захвата экрана недоступен', 'error');
+        return;
+      }
 
-      const imageData = await window.electronAPI?.captureScreen();
+      const imageData = await window.electronAPI.captureScreen();
+      console.log('[Vision] Результат захвата:', imageData ? `${imageData.length} символов` : 'null');
 
       if (imageData) {
         this.capturedScreenshot = imageData;
         this.showScreenshotPreview(imageData);
         this.showVisionModal();
+        this.showToast('Скриншот готов', 'success');
       } else {
         this.showToast('Ошибка захвата экрана', 'error');
       }
     } catch (e) {
-      console.error('Capture error:', e);
-      this.showToast('Ошибка захвата', 'error');
+      console.error('[Vision] Capture error:', e);
+      this.showToast(`Ошибка захвата: ${e.message}`, 'error');
     }
   }
 
   showScreenshotPreview(imageData) {
-    const previewContainer = document.getElementById('vision-preview-container');
+    const previewContainer = document.getElementById('vision-preview');
     const previewImg = document.getElementById('vision-preview-img');
 
     if (previewImg) {
@@ -675,7 +684,7 @@ class LiveHintsApp {
   }
 
   retakeScreenshot() {
-    const previewContainer = document.getElementById('vision-preview-container');
+    const previewContainer = document.getElementById('vision-preview');
     if (previewContainer) previewContainer.classList.add('hidden');
     this.capturedScreenshot = null;
   }
@@ -686,7 +695,15 @@ class LiveHintsApp {
       return;
     }
 
-    this.showToast('Анализ изображения...', 'info');
+    console.log('[Vision] Отправка в Vision AI...');
+    this.showToast('Отправка в Vision AI...', 'info');
+
+    // Disable button during analysis
+    const analyzeBtn = document.getElementById('btn-vision-analyze');
+    if (analyzeBtn) {
+      analyzeBtn.disabled = true;
+      analyzeBtn.textContent = 'Анализ...';
+    }
 
     try {
       const resp = await fetch(`${this.llmServerUrl}/vision/analyze`, {
@@ -699,25 +716,42 @@ class LiveHintsApp {
         }),
       });
 
+      if (!resp.ok) {
+        throw new Error(`HTTP ${resp.status}: ${resp.statusText}`);
+      }
+
       const data = await resp.json();
+      console.log('[Vision] Ответ от API:', data);
 
       if (data.analysis) {
         // Показываем результат в modal
         const resultContainer = document.getElementById('vision-result');
         const analysisText = document.getElementById('vision-analysis-text');
+        const previewContainer = document.getElementById('vision-preview');
 
         if (analysisText) analysisText.textContent = data.analysis;
         if (resultContainer) resultContainer.classList.remove('hidden');
+        if (previewContainer) previewContainer.classList.add('hidden');
 
         // Добавляем как подсказку
         this.addHintItem(`[Vision AI] ${data.analysis}`, new Date().toLocaleTimeString());
         this.showToast('Анализ завершён', 'success');
       } else if (data.error) {
+        console.error('[Vision] API вернул ошибку:', data.error);
         this.showToast(`Vision ошибка: ${data.error}`, 'error');
+      } else {
+        this.showToast('Vision AI не вернул результат', 'error');
       }
     } catch (e) {
-      console.error('Vision AI error:', e);
-      this.showToast('Ошибка Vision AI', 'error');
+      console.error('[Vision] AI error:', e);
+      this.showToast(`Ошибка Vision AI: ${e.message}`, 'error');
+    } finally {
+      // Restore button
+      const analyzeBtn = document.getElementById('btn-vision-analyze');
+      if (analyzeBtn) {
+        analyzeBtn.disabled = false;
+        analyzeBtn.textContent = 'Анализировать';
+      }
     }
   }
 
