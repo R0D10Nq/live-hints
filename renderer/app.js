@@ -1084,8 +1084,9 @@ class LiveHintsApp {
 
   setupIPCListeners() {
     // Получение PCM данных от audio capture и отправка на STT сервер
-    window.electronAPI.onPCMData((data) => {
-      this.sendAudioToSTT(data);
+    // source: 'loopback' (системный звук) или 'microphone' (кандидат)
+    window.electronAPI.onPCMData((data, source) => {
+      this.sendAudioToSTT(data, source || 'loopback');
     });
 
     // Получение транскрипта
@@ -1109,14 +1110,27 @@ class LiveHintsApp {
     });
   }
 
-  sendAudioToSTT(data) {
+  sendAudioToSTT(data, source = 'loopback') {
     if (this.isPaused) return;
 
-    if (this.wsConnection && this.wsConnection.readyState === WebSocket.OPEN) {
-      try {
-        this.wsConnection.send(data);
-      } catch (e) {
-        console.error('Ошибка отправки аудио:', e);
+    // Выбираем WebSocket в зависимости от источника
+    if (source === 'microphone') {
+      // Микрофон → порт 8764
+      if (this.wsMicrophone && this.wsMicrophone.readyState === WebSocket.OPEN && !this.micMuted) {
+        try {
+          this.wsMicrophone.send(data);
+        } catch (e) {
+          console.error('[MIC] Ошибка отправки:', e);
+        }
+      }
+    } else {
+      // Loopback → порт 8765
+      if (this.wsConnection && this.wsConnection.readyState === WebSocket.OPEN) {
+        try {
+          this.wsConnection.send(data);
+        } catch (e) {
+          console.error('[Loopback] Ошибка отправки:', e);
+        }
       }
     }
   }
@@ -1211,11 +1225,20 @@ class LiveHintsApp {
       // Создаём новую сессию
       this.currentSessionId = this.generateSessionId();
 
-      // Подключаемся к WebSocket STT серверу
+      // Подключаемся к WebSocket STT серверу (loopback)
       await this.connectToSTTServer();
 
-      // Запускаем захват аудио
-      await window.electronAPI.startAudioCapture();
+      // Если dual audio включён — подключаем микрофон
+      if (this.dualAudioEnabled) {
+        this.connectMicrophone();
+      }
+
+      // Запускаем захват аудио с опциями dual audio
+      const audioOptions = {
+        dualAudio: this.dualAudioEnabled,
+        micDeviceIndex: this.inputDeviceIndex || null,
+      };
+      await window.electronAPI.startAudioCapture(audioOptions);
     } catch (error) {
       this.showError(`Ошибка запуска: ${error.message}`);
       this.stop();
@@ -1227,11 +1250,14 @@ class LiveHintsApp {
       // Останавливаем захват аудио
       await window.electronAPI.stopAudioCapture();
 
-      // Закрываем WebSocket
+      // Закрываем WebSocket loopback
       if (this.wsConnection) {
         this.wsConnection.close();
         this.wsConnection = null;
       }
+
+      // Закрываем WebSocket микрофона
+      this.disconnectMicrophone();
 
       // Сохраняем сессию
       if (this.currentSessionId) {
@@ -1276,10 +1302,18 @@ class LiveHintsApp {
 
               this.addTranscriptItem(data.text, new Date().toISOString(), source);
 
+              // ВСЕГДА накапливаем контекст (независимо от auto-hints)
+              this.accumulateContext(data.text);
+
+              // Автоматический запрос подсказки если включён
               if (this.autoHintsEnabled) {
-                this.requestHint(data.text);
+                this.requestHint();
               }
-              this.elements.btnGetHint.disabled = false;
+
+              // Кнопка "Спросить" активна если есть контекст
+              if (this.elements.btnGetHint) {
+                this.elements.btnGetHint.disabled = false;
+              }
             }
           } catch (e) {
             console.error('Ошибка парсинга сообщения:', e);
@@ -1318,11 +1352,19 @@ class LiveHintsApp {
     });
   }
 
-  async requestHint(transcriptText) {
-    // Накапливаем контекст с учётом окна
-    this.transcriptContext.push(transcriptText);
+  // Накопление контекста транскрипта (вызывается при каждом транскрипте)
+  accumulateContext(text) {
+    this.transcriptContext.push(text);
     if (this.transcriptContext.length > this.contextWindowSize) {
       this.transcriptContext = this.transcriptContext.slice(-this.contextWindowSize);
+    }
+  }
+
+  async requestHint() {
+    // Проверяем есть ли контекст
+    if (this.transcriptContext.length === 0) {
+      if (this.debugMode) console.log('[LLM] Нет контекста для запроса');
+      return;
     }
 
     // Формируем контекст с ограничением по символам
@@ -1359,14 +1401,17 @@ class LiveHintsApp {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 сек для streaming
 
+      // Используем последний транскрипт как основной текст запроса
+      const lastText = this.transcriptContext[this.transcriptContext.length - 1] || '';
+
       // Используем streaming endpoint
       const response = await fetch('http://localhost:8766/hint/stream', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          text: transcriptText,
+          text: lastText,
           context: context,
-          profile: 'interview',
+          profile: this.currentProfile || 'interview',
           max_tokens: this.maxTokens,
           temperature: this.temperature,
         }),
@@ -2324,14 +2369,19 @@ ${session.hints || 'Нет данных'}
 
   // Ручной запрос подсказки по кнопке
   async manualRequestHint() {
-    if (!this.isRunning || this.transcriptContext.length === 0) {
-      this.showError('Нет транскрипта для анализа. Дождитесь речи.');
+    if (!this.isRunning) {
+      this.showToast('Сначала запустите сессию', 'warning');
       return;
     }
 
-    // Берём весь накопленный контекст
-    const fullContext = this.transcriptContext.join(' ');
-    await this.requestHint(fullContext);
+    if (this.transcriptContext.length === 0) {
+      this.showToast('Нет транскрипта для анализа. Дождитесь речи.', 'warning');
+      return;
+    }
+
+    // Сбрасываем hash чтобы запрос точно прошёл
+    this.lastContextHash = '';
+    await this.requestHint();
   }
 
   // Настройки
