@@ -10,7 +10,7 @@ export class AudioManager {
     this.wsConnection = null;
     this.wsMicrophone = null;
     this.micMuted = false;
-    this.dualAudioEnabled = false;  // Загружается из настроек
+    this.dualAudioEnabled = false; // Загружается из настроек
     this.inputDeviceIndex = null;
     this.loopbackDeviceIndex = null;
   }
@@ -189,7 +189,7 @@ export class AudioManager {
         }
 
         if (this.app.autoHintsEnabled) {
-          this.app.hints.requestHint(data.text);
+          this.app.hints.requestHint(data.text, source);
         }
 
         const btnGetHint = document.getElementById('btn-get-hint');
@@ -224,7 +224,11 @@ export class AudioManager {
           this._micSentCount++;
 
           if (this._micSentCount === 1) {
-            console.log('[MIC] Первый чанк аудио отправлен, размер:', data.length || data.byteLength, 'байт');
+            console.log(
+              '[MIC] Первый чанк аудио отправлен, размер:',
+              data.length || data.byteLength,
+              'байт'
+            );
           } else if (this._micSentCount % 100 === 0) {
             console.log('[MIC] Отправлено чанков:', this._micSentCount);
           }
@@ -234,7 +238,12 @@ export class AudioManager {
           console.error('[MIC] Ошибка отправки аудио:', e);
         }
       } else if (!this._micWsWarningShown && this.dualAudioEnabled) {
-        console.warn('[MIC] WebSocket не открыт или muted, состояние:', this.wsMicrophone?.readyState, 'muted:', this.micMuted);
+        console.warn(
+          '[MIC] WebSocket не открыт или muted, состояние:',
+          this.wsMicrophone?.readyState,
+          'muted:',
+          this.micMuted
+        );
         this._micWsWarningShown = true;
       }
     } else {
@@ -245,7 +254,11 @@ export class AudioManager {
           this._audioSentCount++;
 
           if (this._audioSentCount === 1) {
-            console.log('[AUDIO] Первый чанк аудио отправлен, размер:', data.length || data.byteLength, 'байт');
+            console.log(
+              '[AUDIO] Первый чанк аудио отправлен, размер:',
+              data.length || data.byteLength,
+              'байт'
+            );
           } else if (this._audioSentCount % 100 === 0) {
             console.log('[AUDIO] Отправлено чанков:', this._audioSentCount);
           }
@@ -279,13 +292,21 @@ export class AudioManager {
           const data = JSON.parse(event.data);
           if (data.type === 'transcript' && data.text) {
             console.log(`[MIC] Транскрипт: "${data.text}"`);
-            this.app.ui.addTranscriptItem(data.text, data.timestamp || new Date().toISOString(), 'candidate');
+            this.app.ui.addTranscriptItem(
+              data.text,
+              data.timestamp || new Date().toISOString(),
+              'candidate'
+            );
 
             // ВАЖНО: накапливаем контекст от микрофона тоже
             if (!this.app.transcriptContext) {
               this.app.transcriptContext = [];
             }
-            this.app.transcriptContext.push({ text: data.text, source: 'candidate', timestamp: Date.now() });
+            this.app.transcriptContext.push({
+              text: data.text,
+              source: 'candidate',
+              timestamp: Date.now(),
+            });
 
             // Ограничиваем контекст
             if (this.app.transcriptContext.length > 50) {
@@ -294,7 +315,7 @@ export class AudioManager {
 
             // Автоматический запрос подсказки если включён
             if (this.app.autoHintsEnabled) {
-              this.app.hints.requestHint(data.text);
+              this.app.hints.requestHint(data.text, 'candidate');
             }
 
             const btnGetHint = document.getElementById('btn-get-hint');

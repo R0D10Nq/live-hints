@@ -15,9 +15,9 @@ logger = logging.getLogger('VectorDB')
 DB_PATH = Path(__file__).parent / 'data' / 'chroma_db'
 QUESTIONS_PATH = Path(__file__).parent / 'data' / 'questions_db.json'
 
-# Порог схожести для instant response
-INSTANT_THRESHOLD = 0.90
-CONTEXT_THRESHOLD = 0.75
+# Порог схожести для instant response (понижен для лучшего покрытия)
+INSTANT_THRESHOLD = 0.88
+CONTEXT_THRESHOLD = 0.70
 
 
 class VectorDB:
