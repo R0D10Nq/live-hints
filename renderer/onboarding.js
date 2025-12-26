@@ -1,17 +1,24 @@
-// Live Hints - Onboarding Process
+// Live Hints - Onboarding Process (Redesigned)
 
 class OnboardingApp {
   constructor() {
     this.currentStep = 1;
     this.totalSteps = 4;
     this.settings = {
-      language: 'ru',
+      // Step 1: Profile
+      profile: 'job_interview_ru',
+      customPrompt: '',
+      // Step 2: Resume
+      resumeContent: null,
+      resumeFileName: null,
+      // Step 3: Vacancy
+      vacancyContent: null,
+      vacancyFileName: null,
+      // Step 4: Audio
       microphoneId: null,
+      microphoneIndex: null,
       microphoneGranted: false,
-      screenGranted: false,
-      selectedMonitor: null,
-      contextFilePath: null,
-      contextFileName: null,
+      dualAudioEnabled: false,
     };
 
     this.audioContext = null;
@@ -38,41 +45,40 @@ class OnboardingApp {
       btnMinimize: document.getElementById('btn-minimize'),
       btnClose: document.getElementById('btn-close'),
 
-      // Step 1: Language
-      languageSelect: document.getElementById('language-select'),
-      languagePreviewText: document.getElementById('language-preview-text'),
+      // Step 1: Profile
+      profileCards: document.getElementById('profile-cards'),
+      customPromptArea: document.getElementById('custom-prompt-area'),
+      customPrompt: document.getElementById('custom-prompt'),
 
-      // Step 2: Microphone
+      // Step 2: Resume
+      resumeUploadArea: document.getElementById('resume-upload-area'),
+      resumeFileInput: document.getElementById('resume-file-input'),
+      resumeFileInfo: document.getElementById('resume-file-info'),
+      resumeFileName: document.getElementById('resume-file-name'),
+      resumeFileSize: document.getElementById('resume-file-size'),
+      btnRemoveResume: document.getElementById('btn-remove-resume'),
+      btnPasteResume: document.getElementById('btn-paste-resume'),
+      resumePasteArea: document.getElementById('resume-paste-area'),
+      resumeText: document.getElementById('resume-text'),
+
+      // Step 3: Vacancy
+      vacancyUploadArea: document.getElementById('vacancy-upload-area'),
+      vacancyFileInput: document.getElementById('vacancy-file-input'),
+      vacancyFileInfo: document.getElementById('vacancy-file-info'),
+      vacancyFileName: document.getElementById('vacancy-file-name'),
+      vacancyFileSize: document.getElementById('vacancy-file-size'),
+      btnRemoveVacancy: document.getElementById('btn-remove-vacancy'),
+      btnPasteVacancy: document.getElementById('btn-paste-vacancy'),
+      vacancyPasteArea: document.getElementById('vacancy-paste-area'),
+      vacancyText: document.getElementById('vacancy-text'),
+
+      // Step 4: Audio
       btnRequestMic: document.getElementById('btn-request-mic'),
       micStatus: document.getElementById('mic-status'),
       micDeviceSelection: document.getElementById('mic-device-selection'),
       micSelect: document.getElementById('mic-select'),
       micVuMeter: document.getElementById('mic-vu-meter'),
-
-      // Step 3: Screen
-      btnRequestScreen: document.getElementById('btn-request-screen'),
-      screenStatus: document.getElementById('screen-status'),
-      monitorSelection: document.getElementById('monitor-selection'),
-      monitorGrid: document.getElementById('monitor-grid'),
-
-      // Step 4: Context File
-      fileUploadArea: document.getElementById('file-upload-area'),
-      contextFileInput: document.getElementById('context-file-input'),
-      fileInfo: document.getElementById('file-info'),
-      fileName: document.getElementById('file-name'),
-      fileSize: document.getElementById('file-size'),
-      btnRemoveFile: document.getElementById('btn-remove-file'),
-    };
-
-    this.languagePreviews = {
-      ru: '"Расскажите о себе" — это возможность кратко представить свой опыт и навыки, релевантные позиции...',
-      en: '"Tell me about yourself" — this is an opportunity to briefly present your experience and skills relevant to the position...',
-      de: '"Erzählen Sie mir von sich" — dies ist eine Gelegenheit, Ihre Erfahrung und Fähigkeiten kurz vorzustellen...',
-      fr: '"Parlez-moi de vous" — c\'est l\'occasion de présenter brièvement votre expérience et vos compétences...',
-      es: '"Cuéntame sobre ti" — esta es una oportunidad para presentar brevemente tu experiencia y habilidades...',
-      zh: '"请介绍一下你自己" — 这是一个简要介绍你的经验和技能的机会...',
-      ja: '"自己紹介してください" — これはあなたの経験とスキルを簡潔に紹介する機会です...',
-      ko: '"자기소개를 해주세요" — 이것은 귀하의 경험과 기술을 간략하게 소개할 수 있는 기회입니다...',
+      dualAudioCheckbox: document.getElementById('dual-audio-checkbox'),
     };
 
     this.init();
@@ -85,63 +91,90 @@ class OnboardingApp {
 
   bindEvents() {
     // Window controls
-    this.elements.btnMinimize.addEventListener('click', () => {
-      window.electronAPI.minimizeWindow();
+    this.elements.btnMinimize?.addEventListener('click', () => {
+      window.electronAPI?.minimizeWindow();
     });
 
-    this.elements.btnClose.addEventListener('click', () => {
-      window.electronAPI.closeWindow();
+    this.elements.btnClose?.addEventListener('click', () => {
+      window.electronAPI?.closeWindow();
     });
 
     // Navigation
-    this.elements.btnBack.addEventListener('click', () => this.prevStep());
-    this.elements.btnNext.addEventListener('click', () => this.nextStep());
-    this.elements.btnSkip.addEventListener('click', () => this.skipStep());
-    this.elements.btnFinish.addEventListener('click', () => this.finish());
+    this.elements.btnBack?.addEventListener('click', () => this.prevStep());
+    this.elements.btnNext?.addEventListener('click', () => this.nextStep());
+    this.elements.btnSkip?.addEventListener('click', () => this.skipStep());
+    this.elements.btnFinish?.addEventListener('click', () => this.finish());
 
-    // Step 1: Language
-    this.elements.languageSelect.addEventListener('change', (e) => {
-      this.settings.language = e.target.value;
-      this.updateLanguagePreview();
+    // Step 1: Profile cards
+    this.elements.profileCards?.querySelectorAll('.profile-card').forEach((card) => {
+      card.addEventListener('click', () => this.selectProfile(card));
     });
 
-    // Step 2: Microphone
-    this.elements.btnRequestMic.addEventListener('click', () => this.requestMicrophoneAccess());
-    this.elements.micSelect.addEventListener('change', (e) => {
+    this.elements.customPrompt?.addEventListener('input', (e) => {
+      this.settings.customPrompt = e.target.value;
+    });
+
+    // Step 2: Resume
+    this.setupFileUpload('resume');
+
+    // Step 3: Vacancy
+    this.setupFileUpload('vacancy');
+
+    // Step 4: Audio
+    this.elements.btnRequestMic?.addEventListener('click', () => this.requestMicrophoneAccess());
+    this.elements.micSelect?.addEventListener('change', (e) => {
       this.settings.microphoneId = e.target.value;
+      const selectedIndex = e.target.selectedIndex;
+      this.settings.microphoneIndex = selectedIndex > 0 ? selectedIndex - 1 : null;
       this.startVuMeter(e.target.value);
     });
 
-    // Step 3: Screen
-    this.elements.btnRequestScreen.addEventListener('click', () => this.requestScreenAccess());
-
-    // Step 4: File upload
-    this.elements.fileUploadArea.addEventListener('click', () => {
-      this.elements.contextFileInput.click();
+    this.elements.dualAudioCheckbox?.addEventListener('change', (e) => {
+      this.settings.dualAudioEnabled = e.target.checked;
     });
+  }
 
-    this.elements.fileUploadArea.addEventListener('dragover', (e) => {
+  setupFileUpload(type) {
+    const uploadArea = this.elements[`${type}UploadArea`];
+    const fileInput = this.elements[`${type}FileInput`];
+    const btnPaste = this.elements[`btnPaste${type.charAt(0).toUpperCase() + type.slice(1)}`];
+    const pasteArea = this.elements[`${type}PasteArea`];
+    const textArea = this.elements[`${type}Text`];
+    const btnRemove = this.elements[`btnRemove${type.charAt(0).toUpperCase() + type.slice(1)}`];
+
+    uploadArea?.addEventListener('click', () => fileInput?.click());
+
+    uploadArea?.addEventListener('dragover', (e) => {
       e.preventDefault();
-      this.elements.fileUploadArea.classList.add('dragover');
+      uploadArea.classList.add('dragover');
     });
 
-    this.elements.fileUploadArea.addEventListener('dragleave', () => {
-      this.elements.fileUploadArea.classList.remove('dragover');
+    uploadArea?.addEventListener('dragleave', () => {
+      uploadArea.classList.remove('dragover');
     });
 
-    this.elements.fileUploadArea.addEventListener('drop', (e) => {
+    uploadArea?.addEventListener('drop', (e) => {
       e.preventDefault();
-      this.elements.fileUploadArea.classList.remove('dragover');
+      uploadArea.classList.remove('dragover');
       const file = e.dataTransfer.files[0];
-      if (file) this.handleFileSelect(file);
+      if (file) this.handleFileSelect(file, type);
     });
 
-    this.elements.contextFileInput.addEventListener('change', (e) => {
+    fileInput?.addEventListener('change', (e) => {
       const file = e.target.files[0];
-      if (file) this.handleFileSelect(file);
+      if (file) this.handleFileSelect(file, type);
     });
 
-    this.elements.btnRemoveFile.addEventListener('click', () => this.removeFile());
+    btnPaste?.addEventListener('click', () => {
+      pasteArea?.classList.toggle('hidden');
+      uploadArea?.classList.toggle('hidden', !pasteArea?.classList.contains('hidden'));
+    });
+
+    textArea?.addEventListener('input', (e) => {
+      this.settings[`${type}Content`] = e.target.value || null;
+    });
+
+    btnRemove?.addEventListener('click', () => this.removeFile(type));
   }
 
   updateUI() {
@@ -173,18 +206,40 @@ class OnboardingApp {
     });
 
     // Update current step indicator
-    this.elements.currentStepEl.textContent = this.currentStep;
+    if (this.elements.currentStepEl) {
+      this.elements.currentStepEl.textContent = this.currentStep;
+    }
 
     // Update navigation buttons
-    this.elements.btnBack.classList.toggle('hidden', this.currentStep === 1);
-    this.elements.btnNext.classList.toggle('hidden', this.currentStep === this.totalSteps);
-    this.elements.btnFinish.classList.toggle('hidden', this.currentStep !== this.totalSteps);
+    this.elements.btnBack?.classList.toggle('hidden', this.currentStep === 1);
+    this.elements.btnNext?.classList.toggle('hidden', this.currentStep === this.totalSteps);
+    this.elements.btnFinish?.classList.toggle('hidden', this.currentStep !== this.totalSteps);
 
-    // Show skip button only on step 4 (optional)
-    this.elements.btnSkip.classList.toggle('hidden', this.currentStep !== 4);
+    // Show skip button on step 3 (vacancy is optional)
+    this.elements.btnSkip?.classList.toggle('hidden', this.currentStep !== 3);
+
+    // Disable Next on step 2 if no resume
+    if (this.currentStep === 2) {
+      const hasResume = this.settings.resumeContent && this.settings.resumeContent.trim().length > 0;
+      this.elements.btnNext?.classList.toggle('disabled', !hasResume);
+      if (this.elements.btnNext) {
+        this.elements.btnNext.disabled = !hasResume;
+      }
+    } else if (this.elements.btnNext) {
+      this.elements.btnNext.disabled = false;
+      this.elements.btnNext.classList.remove('disabled');
+    }
   }
 
   nextStep() {
+    // Validate step 2 (resume required)
+    if (this.currentStep === 2) {
+      if (!this.settings.resumeContent || this.settings.resumeContent.trim().length === 0) {
+        this.showError('Загрузите резюме для продолжения');
+        return;
+      }
+    }
+
     if (this.currentStep < this.totalSteps) {
       this.currentStep++;
       this.updateUI();
@@ -199,14 +254,31 @@ class OnboardingApp {
   }
 
   skipStep() {
-    if (this.currentStep === 4) {
-      this.finish();
+    // Step 3 (vacancy) is skippable
+    if (this.currentStep === 3) {
+      this.currentStep++;
+      this.updateUI();
     }
   }
 
-  updateLanguagePreview() {
-    const preview = this.languagePreviews[this.settings.language] || this.languagePreviews.ru;
-    this.elements.languagePreviewText.textContent = preview;
+  showError(message) {
+    // Simple alert for now
+    alert(message);
+  }
+
+  selectProfile(card) {
+    // Remove selection from all cards
+    this.elements.profileCards?.querySelectorAll('.profile-card').forEach((c) => {
+      c.classList.remove('selected');
+    });
+
+    // Select clicked card
+    card.classList.add('selected');
+    this.settings.profile = card.dataset.profile;
+
+    // Show/hide custom prompt area
+    const isCustom = this.settings.profile === 'custom';
+    this.elements.customPromptArea?.classList.toggle('hidden', !isCustom);
   }
 
   async requestMicrophoneAccess() {
@@ -392,34 +464,93 @@ class OnboardingApp {
     });
   }
 
-  handleFileSelect(file) {
-    const validTypes = ['application/pdf', 'text/plain'];
-    const validExtensions = ['.pdf', '.txt'];
+  async handleFileSelect(file, type) {
+    const validExtensions = type === 'resume'
+      ? ['.pdf', '.txt', '.docx']
+      : ['.pdf', '.txt'];
 
     const extension = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
 
-    if (!validTypes.includes(file.type) && !validExtensions.includes(extension)) {
-      alert('Пожалуйста, выберите файл формата PDF или TXT');
+    if (!validExtensions.includes(extension)) {
+      this.showError(`Поддерживаемые форматы: ${validExtensions.join(', ')}`);
       return;
     }
 
-    this.settings.contextFileName = file.name;
-    this.settings.contextFilePath = file.path || file.name;
+    // Читаем содержимое файла
+    try {
+      let content = '';
 
-    // Update UI
-    this.elements.fileUploadArea.classList.add('hidden');
-    this.elements.fileInfo.classList.remove('hidden');
-    this.elements.fileName.textContent = file.name;
-    this.elements.fileSize.textContent = this.formatFileSize(file.size);
+      if (extension === '.txt') {
+        content = await this.readTextFile(file);
+        console.log(`[Onboarding] Загружен TXT: ${content.length} символов`);
+      } else if (extension === '.pdf') {
+        // PDF через Electron API
+        if (window.electronAPI?.parseFile) {
+          content = await window.electronAPI.parseFile(file.path, 'pdf');
+          console.log(`[Onboarding] Загружен PDF: ${content.length} символов`);
+        } else {
+          this.showError('Парсинг PDF недоступен');
+          return;
+        }
+      } else if (extension === '.docx') {
+        // DOCX через Electron API
+        if (window.electronAPI?.parseFile) {
+          content = await window.electronAPI.parseFile(file.path, 'docx');
+          console.log(`[Onboarding] Загружен DOCX: ${content.length} символов`);
+        } else {
+          this.showError('Парсинг DOCX недоступен');
+          return;
+        }
+      }
+
+      // Сохраняем контент
+      this.settings[`${type}Content`] = content;
+      this.settings[`${type}FileName`] = file.name;
+
+      // Update UI
+      const uploadArea = this.elements[`${type}UploadArea`];
+      const fileInfo = this.elements[`${type}FileInfo`];
+      const fileName = this.elements[`${type}FileName`];
+      const fileSize = this.elements[`${type}FileSize`];
+
+      uploadArea?.classList.add('hidden');
+      fileInfo?.classList.remove('hidden');
+      if (fileName) fileName.textContent = file.name;
+      if (fileSize) fileSize.textContent = this.formatFileSize(file.size);
+
+      // Update validation
+      this.updateUI();
+
+    } catch (err) {
+      console.error('[Onboarding] Ошибка чтения файла:', err);
+      this.showError('Ошибка чтения файла: ' + err.message);
+    }
   }
 
-  removeFile() {
-    this.settings.contextFileName = null;
-    this.settings.contextFilePath = null;
+  readTextFile(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => resolve(e.target.result);
+      reader.onerror = (e) => reject(e);
+      reader.readAsText(file, 'utf-8');
+    });
+  }
 
-    this.elements.fileUploadArea.classList.remove('hidden');
-    this.elements.fileInfo.classList.add('hidden');
-    this.elements.contextFileInput.value = '';
+  removeFile(type) {
+    this.settings[`${type}Content`] = null;
+    this.settings[`${type}FileName`] = null;
+
+    const uploadArea = this.elements[`${type}UploadArea`];
+    const fileInfo = this.elements[`${type}FileInfo`];
+    const fileInput = this.elements[`${type}FileInput`];
+    const pasteArea = this.elements[`${type}PasteArea`];
+
+    uploadArea?.classList.remove('hidden');
+    fileInfo?.classList.add('hidden');
+    pasteArea?.classList.add('hidden');
+    if (fileInput) fileInput.value = '';
+
+    this.updateUI();
   }
 
   formatFileSize(bytes) {
@@ -429,7 +560,7 @@ class OnboardingApp {
   }
 
   async finish() {
-    // Cleanup
+    // Cleanup audio
     if (this.vuAnimationId) {
       cancelAnimationFrame(this.vuAnimationId);
     }
@@ -440,24 +571,51 @@ class OnboardingApp {
       this.audioContext.close();
     }
 
-    // Save settings
+    // Prepare settings
     const onboardingSettings = {
       onboardingCompleted: true,
-      language: this.settings.language,
+      // Profile
+      profile: this.settings.profile,
+      customPrompt: this.settings.customPrompt,
+      // Audio
       microphoneId: this.settings.microphoneId,
-      selectedMonitor: this.settings.selectedMonitor,
-      contextFilePath: this.settings.contextFilePath,
-      contextFileName: this.settings.contextFileName,
+      inputDeviceIndex: this.settings.microphoneIndex,
+      dualAudioEnabled: this.settings.dualAudioEnabled,
     };
 
-    // Save to localStorage (will be read by main app)
+    // Save to localStorage
     localStorage.setItem('live-hints-onboarding', JSON.stringify(onboardingSettings));
 
+    // Also update main settings
+    const existingSettings = JSON.parse(localStorage.getItem('live-hints-settings') || '{}');
+    const mergedSettings = {
+      ...existingSettings,
+      profile: this.settings.profile,
+      customPrompt: this.settings.customPrompt,
+      inputDeviceIndex: this.settings.microphoneIndex,
+      dualAudioEnabled: this.settings.dualAudioEnabled,
+    };
+    localStorage.setItem('live-hints-settings', JSON.stringify(mergedSettings));
+
+    // Save resume and vacancy files via IPC
+    try {
+      if (this.settings.resumeContent && window.electronAPI?.saveContextFile) {
+        await window.electronAPI.saveContextFile('resume', this.settings.resumeContent);
+        console.log('[Onboarding] Резюме сохранено');
+      }
+
+      if (this.settings.vacancyContent && window.electronAPI?.saveContextFile) {
+        await window.electronAPI.saveContextFile('vacancy', this.settings.vacancyContent);
+        console.log('[Onboarding] Вакансия сохранена');
+      }
+    } catch (err) {
+      console.error('[Onboarding] Ошибка сохранения файлов:', err);
+    }
+
     // Notify main process to open main window
-    if (window.electronAPI && window.electronAPI.finishOnboarding) {
+    if (window.electronAPI?.finishOnboarding) {
       await window.electronAPI.finishOnboarding(onboardingSettings);
     } else {
-      // Fallback: просто закрываем окно
       window.close();
     }
   }

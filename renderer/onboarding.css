@@ -232,6 +232,7 @@ body {
     opacity: 0;
     transform: translateY(10px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -654,6 +655,196 @@ body {
 .footer-actions {
   display: flex;
   gap: 12px;
+}
+
+/* Profile Cards (Step 1) */
+.profile-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.profile-card {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px;
+  background: var(--color-bg-card);
+  border: 2px solid transparent;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.profile-card:hover {
+  background: var(--color-bg-hover);
+}
+
+.profile-card.selected {
+  border-color: var(--color-primary);
+  background: rgba(99, 102, 241, 0.1);
+}
+
+.profile-icon {
+  font-size: 28px;
+  min-width: 40px;
+  text-align: center;
+}
+
+.profile-info {
+  flex: 1;
+}
+
+.profile-name {
+  font-weight: 600;
+  color: var(--color-text-primary);
+  margin-bottom: 4px;
+}
+
+.profile-desc {
+  font-size: 13px;
+  color: var(--color-text-secondary);
+}
+
+.profile-check {
+  font-size: 18px;
+  color: var(--color-primary);
+  opacity: 0;
+  transition: opacity var(--transition-fast);
+}
+
+.profile-card.selected .profile-check {
+  opacity: 1;
+}
+
+.custom-prompt-area {
+  margin-top: 20px;
+}
+
+/* Text Paste Toggle */
+.text-paste-toggle {
+  margin-top: 16px;
+  text-align: center;
+}
+
+.btn-toggle-paste {
+  background: transparent;
+  border: none;
+  color: var(--color-accent);
+  font-size: 13px;
+  cursor: pointer;
+  padding: 8px 16px;
+  transition: color var(--transition-fast);
+}
+
+.btn-toggle-paste:hover {
+  color: var(--color-primary);
+  text-decoration: underline;
+}
+
+.text-paste-area {
+  margin-top: 12px;
+}
+
+/* Form Textarea */
+.form-textarea {
+  width: 100%;
+  padding: 12px;
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  color: var(--color-text-primary);
+  font-size: 14px;
+  font-family: inherit;
+  resize: vertical;
+  min-height: 100px;
+}
+
+.form-textarea:focus {
+  outline: none;
+  border-color: var(--color-primary);
+}
+
+.form-textarea::placeholder {
+  color: var(--color-text-muted);
+}
+
+/* Required/Optional Notes */
+.required-note {
+  margin-top: 16px;
+  font-size: 13px;
+  color: var(--color-warning);
+  text-align: center;
+}
+
+/* Dual Audio Section */
+.dual-audio-section {
+  margin-top: 24px;
+  padding: 16px;
+  background: var(--color-bg-card);
+  border-radius: var(--radius-md);
+}
+
+.checkbox-container {
+  display: flex;
+  flex-direction: column;
+  cursor: pointer;
+}
+
+.checkbox-container input[type="checkbox"] {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 500;
+  color: var(--color-text-primary);
+}
+
+.checkbox-label::before {
+  content: '';
+  width: 20px;
+  height: 20px;
+  border: 2px solid var(--color-border);
+  border-radius: 4px;
+  background: var(--color-bg-panel);
+  transition: all var(--transition-fast);
+}
+
+.checkbox-container input:checked+.checkbox-label::before {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+}
+
+.checkbox-container input:checked+.checkbox-label::after {
+  content: '✓';
+  position: absolute;
+  left: 5px;
+  top: 0;
+  color: white;
+  font-size: 14px;
+}
+
+.checkbox-desc {
+  display: block;
+  margin-top: 6px;
+  margin-left: 30px;
+  font-size: 13px;
+  color: var(--color-text-secondary);
+}
+
+/* Button disabled state */
+.btn-nav.disabled,
+.btn-nav:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
 }
 
 /* Utility Classes */
