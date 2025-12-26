@@ -86,10 +86,9 @@ class AdvancedRAG:
             # Создаём директорию для персистентного хранения
             CHROMA_PERSIST_DIR.mkdir(parents=True, exist_ok=True)
             
-            # ChromaDB 1.x API - используем PersistentClient
+            # Новый API ChromaDB (>=0.4.0)
             self.chroma_client = chromadb.PersistentClient(
-                path=str(CHROMA_PERSIST_DIR),
-                settings=chromadb.Settings(anonymized_telemetry=False)
+                path=str(CHROMA_PERSIST_DIR)
             )
             
             # Создаём или получаем коллекцию

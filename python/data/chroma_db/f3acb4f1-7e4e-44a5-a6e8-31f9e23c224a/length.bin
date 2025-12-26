@@ -1,0 +1,13 @@
+Генераторы, которые используют `async def` и могут делать `await` внутри, а также используют `yield`.
+
+Итерироваться по ним нужно через `async for`.
+
+```python
+async def async_gen():
+    for i in range(3):
+        await asyncio.sleep(1)
+        yield i
+
+async for item in async_gen():
+    print(item)
+```�������

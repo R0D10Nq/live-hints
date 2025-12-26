@@ -356,3 +356,83 @@ describe('PipelineEvents', () => {
     expect(PipelineEvents.ERROR).toBe('error');
   });
 });
+
+describe('HintPipeline ошибки', () => {
+  let pipeline;
+
+  beforeEach(() => {
+    global.WebSocket = MockWebSocket;
+    pipeline = new HintPipeline({
+      sttUrl: 'ws://localhost:8765',
+      llmUrl: 'http://localhost:8766',
+      hintDebounceMs: 10,
+    });
+    global.fetch.mockReset();
+  });
+
+  afterEach(async () => {
+    global.WebSocket = MockWebSocket;
+    if (pipeline.wsConnection) {
+      pipeline.wsConnection = null;
+    }
+    pipeline.state = PipelineState.IDLE;
+  });
+
+  test('должен обрабатывать ошибку fetch при генерации подсказки', async () => {
+    global.fetch.mockRejectedValueOnce(new Error('Network error'));
+
+    await pipeline.start();
+    pipeline.transcriptBuffer = ['Достаточно длинный текст для генерации'];
+    pipeline.lastHintTime = 0;
+
+    await pipeline.generateHint();
+  });
+
+  test('не должен генерировать подсказку если прошло мало времени', async () => {
+    await pipeline.start();
+    pipeline.transcriptBuffer = ['Достаточно длинный текст'];
+    pipeline.lastHintTime = Date.now();
+
+    await pipeline.generateHint();
+
+    expect(global.fetch).not.toHaveBeenCalled();
+  });
+
+  test('должен обрабатывать onmessage с транскриптом', async () => {
+    await pipeline.start();
+
+    const transcriptPromise = new Promise((resolve) => {
+      pipeline.on(PipelineEvents.TRANSCRIPT, resolve);
+    });
+
+    pipeline.wsConnection.simulateMessage({ type: 'transcript', text: 'Привет' });
+
+    const transcript = await transcriptPromise;
+    expect(transcript.text).toBe('Привет');
+  });
+
+  test('должен эмитить ERROR при закрытии WebSocket в состоянии RUNNING', async () => {
+    await pipeline.start();
+    expect(pipeline.state).toBe(PipelineState.RUNNING);
+
+    const errorPromise = new Promise((resolve) => {
+      pipeline.on(PipelineEvents.ERROR, resolve);
+    });
+
+    pipeline.wsConnection.close();
+
+    const error = await errorPromise;
+    expect(error.code).toBe('WS_CLOSED');
+    expect(pipeline.state).toBe(PipelineState.ERROR);
+  });
+
+  test('не должен генерировать если текст короткий', async () => {
+    await pipeline.start();
+    pipeline.transcriptBuffer = ['Ко'];
+    pipeline.lastHintTime = 0;
+
+    await pipeline.generateHint();
+
+    expect(global.fetch).not.toHaveBeenCalled();
+  });
+});
