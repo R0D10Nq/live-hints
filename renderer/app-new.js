@@ -272,20 +272,21 @@ class LiveHintsApp {
 
   setupIPCListeners() {
     // PCM данные от audio_capture.py
-    window.electronAPI.onPCMData((data) => {
+    // source: 'loopback' (системный звук) или 'microphone' (кандидат)
+    window.electronAPI.onPCMData((data, source) => {
       if (!this._pcmLogCount) this._pcmLogCount = 0;
       this._pcmLogCount++;
 
       if (this._pcmLogCount === 1) {
-        console.log('[IPC] Первый PCM чанк получен, размер:', data?.length || data?.byteLength, 'тип:', typeof data, Array.isArray(data) ? 'array' : (data?.constructor?.name || 'unknown'));
+        console.log('[IPC] Первый PCM чанк получен, source:', source, 'размер:', data?.length || data?.byteLength);
       } else if (this._pcmLogCount % 100 === 0) {
-        console.log('[IPC] PCM чанков получено:', this._pcmLogCount);
+        console.log('[IPC] PCM чанков получено:', this._pcmLogCount, 'source:', source);
       }
 
       // Преобразуем Buffer в ArrayBuffer для WebSocket
       if (data && data.length > 0) {
         const arrayBuffer = data.buffer ? data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength) : data;
-        this.audio.sendAudio(arrayBuffer);
+        this.audio.sendAudio(arrayBuffer, source || 'loopback');
       }
     });
 
@@ -402,6 +403,10 @@ class LiveHintsApp {
             return `<option value="${name}" ${selected}>${name}${size}</option>`;
           })
           .join('');
+        // Сохраняем текущую модель для передачи в запросах
+        if (data.current) {
+          this.hints.currentModel = data.current;
+        }
       } else {
         modelSelect.innerHTML = '<option value="">Нет моделей</option>';
       }
@@ -415,6 +420,7 @@ class LiveHintsApp {
     if (!modelName) return;
     try {
       await fetch(`${SERVERS.LLM}/model/${encodeURIComponent(modelName)}`, { method: 'POST' });
+      this.hints.currentModel = modelName; // Сохраняем модель для передачи в запросах
       this.ui.showToast(`Модель: ${modelName}`, 'success');
     } catch (e) {
       this.ui.showToast('Ошибка смены модели', 'error');
@@ -657,6 +663,12 @@ class LiveHintsApp {
       this.ui.updateToggleButton(true);
       this.ui.clearFeeds();
 
+      // Очищаем контекст предыдущей сессии
+      this.hints.clearContext();
+      console.log('[APP] Контекст очищен для новой сессии');
+
+      // Очищаем кэш на сервере
+      this.clearServerCache();
 
       this.sessions.create();
 
@@ -665,10 +677,22 @@ class LiveHintsApp {
       await this.audio.connectToSTT();
       console.log('[APP] STT подключен');
 
-      // Запускаем захват аудио
+      // Если dual audio включён — подключаем микрофон к STT
+      if (this.audio.dualAudioEnabled) {
+        console.log('[APP] Dual Audio включён, подключаем микрофон...');
+        this.audio.connectMicrophone();
+      } else {
+        console.log('[APP] Single mode (только loopback)');
+      }
+
+      // Запускаем захват аудио с настройками dual audio
       console.log('[APP] Запуск захвата аудио...');
-      const result = await window.electronAPI.startAudioCapture();
-      console.log('[APP] Результат захвата:', result);
+      const audioOptions = {
+        dualAudio: this.audio.dualAudioEnabled,
+        micDeviceIndex: this.audio.inputDeviceIndex || null,
+      };
+      const result = await window.electronAPI.startAudioCapture(audioOptions);
+      console.log('[APP] Результат захвата:', result, 'dualAudio:', audioOptions.dualAudio);
 
       if (!result.success) {
         throw new Error(result.error || 'Не удалось запустить захват аудио');
@@ -824,8 +848,36 @@ class LiveHintsApp {
         maxTokens: settings.maxTokens,
         temperature: settings.temperature,
       });
+
+      // Загружаем контекст пользователя из онбординга
+      this.loadUserContext();
     } catch {
       // Ignore errors
+    }
+  }
+
+  loadUserContext() {
+    try {
+      const onboarding = JSON.parse(localStorage.getItem('live-hints-onboarding')) || {};
+      if (onboarding.contextFileContent) {
+        this.hints.setUserContext(onboarding.contextFileContent);
+        console.log(`[App] Загружен контекст пользователя: ${onboarding.contextFileContent.length} символов`);
+      }
+    } catch (err) {
+      console.warn('[App] Ошибка загрузки контекста:', err);
+    }
+  }
+
+  async clearServerCache() {
+    try {
+      const response = await fetch('http://localhost:8766/cache/clear', {
+        method: 'POST',
+      });
+      if (response.ok) {
+        console.log('[APP] Кэш сервера очищен');
+      }
+    } catch (err) {
+      console.warn('[APP] Не удалось очистить кэш сервера:', err.message);
     }
   }
 
