@@ -175,3 +175,5 @@ python/data/chroma_db/
 # Session/cache data
 data/session_memory.json
 python/data/questions_db.json
+python/llm/__pycache__/*
+python/stt/__pycache__/*

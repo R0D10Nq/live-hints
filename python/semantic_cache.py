@@ -11,8 +11,8 @@ import numpy as np
 
 logger = logging.getLogger('SemanticCache')
 
-# Порог схожести для cache hit (82% — немного понижен для лучшего покрытия)
-SIMILARITY_THRESHOLD = 0.82
+# Порог схожести для cache hit (77% — немного понижен для лучшего покрытия)
+SIMILARITY_THRESHOLD = 0.77
 
 # Максимальный размер кэша (увеличен для большего покрытия)
 MAX_CACHE_SIZE = 200
