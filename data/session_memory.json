@@ -1,9 +1,13 @@
 {
   "key_facts": [],
   "discussed_topics": [
-    "python"
+    "python",
+    "архитектура",
+    "база данных",
+    "git",
+    "sql"
   ],
   "candidate_strengths": [],
   "candidate_weaknesses": [],
-  "last_updated": "2025-12-24T02:46:07.218114"
+  "last_updated": "2025-12-26T23:53:58.839935"
 }

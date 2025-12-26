@@ -878,43 +878,204 @@ body {
 
 .hints-feed {
   flex: 1;
-  overflow-y: auto;
+  overflow: hidden;
   padding: 16px;
+  display: flex;
+  flex-direction: column;
+  position: relative;
 }
 
+/* Карточка подсказки - страница книги */
 .hint-card {
-  padding: 16px;
-  background: var(--color-bg-panel);
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: linear-gradient(135deg, var(--color-bg-panel) 0%, rgba(30, 32, 38, 0.95) 100%);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  margin-bottom: 12px;
-  transition: all var(--transition-fast);
+  border-radius: var(--radius-lg);
+  box-shadow:
+    0 4px 20px rgba(0, 0, 0, 0.3),
+    0 0 0 1px rgba(255, 255, 255, 0.05) inset;
+  overflow: hidden;
+  transition: transform 0.3s ease, opacity 0.3s ease;
 }
 
-.hint-card:hover {
-  border-color: var(--color-primary);
+/* Анимации перелистывания */
+.hint-page {
+  will-change: transform, opacity;
 }
 
-.hint-card.active {
-  border-color: var(--color-primary);
-  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2);
+.hint-page.slide-left {
+  transform: translateX(30px);
+  opacity: 0;
+}
+
+.hint-page.slide-right {
+  transform: translateX(-30px);
+  opacity: 0;
+}
+
+.hint-page-active {
+  transform: translateX(0);
+  opacity: 1;
+}
+
+/* Шапка карточки */
+.hint-card-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  background: rgba(99, 102, 241, 0.08);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.hint-number {
+  display: flex;
+  align-items: baseline;
+  gap: 2px;
+  font-family: 'SF Mono', 'Consolas', monospace;
+}
+
+.hint-number-current {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--color-primary);
+}
+
+.hint-number-separator {
+  font-size: 14px;
+  color: var(--color-text-muted);
+  margin: 0 2px;
+}
+
+.hint-number-total {
+  font-size: 14px;
+  color: var(--color-text-muted);
+}
+
+/* Бейдж типа вопроса */
+.hint-type-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: var(--radius-sm);
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.hint-type-badge.type-technical {
+  background: rgba(59, 130, 246, 0.15);
+  color: #60a5fa;
+}
+
+.hint-type-badge.type-experience {
+  background: rgba(34, 197, 94, 0.15);
+  color: #4ade80;
+}
+
+.hint-type-badge.type-general {
+  background: rgba(168, 85, 247, 0.15);
+  color: #c084fc;
+}
+
+/* Мета бейджи */
+.hint-meta-badges {
+  display: flex;
+  gap: 6px;
+  margin-left: auto;
+}
+
+.hint-badge {
+  padding: 3px 8px;
+  border-radius: var(--radius-sm);
+  font-size: 10px;
+  font-weight: 500;
+}
+
+.hint-badge-cache {
+  background: rgba(34, 197, 94, 0.15);
+  color: #4ade80;
+}
+
+.hint-badge-latency {
+  background: rgba(251, 191, 36, 0.15);
+  color: #fbbf24;
+}
+
+/* Контент подсказки */
+.hint-content-wrapper {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px;
 }
 
 .hint-content {
-  font-size: 14px;
-  line-height: 1.7;
+  font-size: 15px;
+  line-height: 1.8;
   color: var(--color-text-primary);
   white-space: pre-wrap;
 }
 
-.hint-meta {
+.hint-content strong {
+  color: var(--color-primary);
+  font-weight: 600;
+}
+
+.hint-content code {
+  background: rgba(99, 102, 241, 0.1);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-family: 'SF Mono', 'Consolas', monospace;
+  font-size: 13px;
+  color: #a5b4fc;
+}
+
+.hint-content ul,
+.hint-content ol {
+  margin: 8px 0;
+  padding-left: 20px;
+}
+
+.hint-content li {
+  margin: 4px 0;
+}
+
+/* Футер карточки */
+.hint-card-footer {
   display: flex;
+  align-items: center;
   justify-content: space-between;
-  margin-top: 12px;
-  padding-top: 8px;
+  padding: 10px 16px;
+  background: rgba(0, 0, 0, 0.2);
   border-top: 1px solid var(--color-border);
+}
+
+.hint-timestamp {
   font-size: 11px;
   color: var(--color-text-muted);
+}
+
+.hint-copy-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background: transparent;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  font-size: 14px;
+}
+
+.hint-copy-btn:hover {
+  background: var(--color-bg-hover);
+  border-color: var(--color-primary);
 }
 
 /* Streaming Hint */

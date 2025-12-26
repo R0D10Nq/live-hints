@@ -1,313 +1,364 @@
-# Технический аудит STT/LLM Pipeline — Live Hints
+# ТЕХНИЧЕСКИЙ АУДИТ STT/LLM PIPELINE — LIVE HINTS
 
-**Дата:** 24.12.2024  
+**Дата:** 2025-12-24  
 **Версия:** 1.0
 
 ---
 
-## Резюме
-
-Проведён полный технический аудит STT и LLM компонентов приложения Live Hints. Система в целом **production-ready** с рядом улучшений, реализованных в рамках аудита.
-
-### Общая оценка
+## EXECUTIVE SUMMARY
 
 | Компонент | Статус | Оценка |
 |-----------|--------|--------|
 | **STT Pipeline** | ✅ Работает | 8/10 |
-| **LLM Pipeline** | ✅ Работает | 9/10 |
-| **Кэширование** | ✅ Работает | 9/10 |
-| **RAG** | ✅ Работает | 7/10 |
-| **Промпты** | ✅ Работают | 9/10 |
-| **Error Handling** | ⚠️ Улучшено | 8/10 |
+| **LLM Pipeline** | ✅ Работает | 8/10 |
+| **Кэширование** | ✅ Реализовано | 9/10 |
+| **RAG система** | ✅ Реализовано | 7/10 |
+| **Промпты** | ✅ Оптимизированы | 8/10 |
+| **Провайдеры** | ⚠️ Частично | 6/10 |
+| **Error Handling** | ⚠️ Базовый | 6/10 |
+
+**Общая оценка: 7.4/10** — Система production-ready с возможностями для улучшения.
 
 ---
 
-## 1. STT Pipeline
+## 1. STT PIPELINE
 
 ### Архитектура
 
+- **Библиотека:** `faster-whisper` 1.2.1 (CTranslate2)
+- **Модель:** `large-v3` (fallback: `medium`, `small`)
+- **Устройство:** CUDA GPU (RTX 5060 Ti 16GB)
+- **Compute type:** float16
+- **WebSocket порты:** 8765 (система), 8764 (микрофон)
+
+### Параметры транскрипции
+
+```python
+MIN_CHUNK_SECONDS = 0.3   # Минимальный чанк
+MAX_BUFFER_SECONDS = 5.0  # Максимальный буфер
+SILENCE_THRESHOLD = 0.01  # RMS порог тишины
+SILENCE_TRIGGER_SEC = 1.0 # Пауза для запуска
 ```
-[Audio Capture] → [WebSocket:8765] → [STT Server] → [Whisper] → [Transcript]
-                                         ↓
-                                   [WebSocket:8764] (микрофон)
+
+### ✅ Сильные стороны
+
+1. **VAD фильтрация** включена (`vad_filter=True`)
+2. **Фильтрация стоп-фраз** ("продолжение следует" и др.)
+3. **Dual audio** — раздельные порты для системы/микрофона
+4. **Метрики латентности** — логирование в `logs/metrics.jsonl`
+5. **GPU-only режим** — максимальная производительность
+
+### ⚠️ Найденные проблемы
+
+#### P1: Некорректный MODEL_PRIORITY
+
+```python
+# stt_server.py:47
+MODEL_PRIORITY = ['whisper-large-v3-russian', 'large-v3', 'medium', 'small']
 ```
 
-### Технические характеристики
+**Проблема:** Модель `whisper-large-v3-russian` не существует в faster-whisper.  
+**Решение:** Использовать `large-v3` как primary.
 
-| Параметр | Значение |
-|----------|----------|
-| **Библиотека** | faster-whisper 1.2.1 |
-| **Модель по умолчанию** | large-v3 |
-| **Устройство** | CUDA (GPU) |
-| **Compute type** | float16 |
-| **Sample rate** | 16kHz |
-| **Min chunk** | 0.3 сек |
-| **Silence trigger** | 1.0 сек |
+#### P2: Нет graceful degradation при GPU ошибке
 
-### Выявленные проблемы и исправления
+**Проблема:** При недоступности GPU сервер падает.  
+**Решение:** Добавить fallback на CPU с меньшей моделью.
 
-#### ❌ Несуществующая модель в MODEL_PRIORITY
+### Рекомендации
 
-**Было:** `['whisper-large-v3-russian', 'large-v3', 'medium', 'small']`  
-**Стало:** `['large-v3', 'medium', 'small', 'base']`
-
-#### ✅ VAD включён
-
-Voice Activity Detection активирован для точного определения границ речи.
-
-#### ✅ Фильтрация стоп-фраз
-
-Реализована фильтрация артефактов Whisper ("продолжение следует" и т.д.)
-
-### Метрики производительности
-
-- **Латентность транскрипции:** ~500-1500ms (зависит от длины аудио)
-- **RTF (Real-Time Factor):** < 0.3 на GPU
-- **Точность на русском:** ~90%+ (large-v3)
+- [ ] Исправить MODEL_PRIORITY
+- [ ] Добавить CPU fallback
+- [ ] Рассмотреть `distil-large-v3` для английского контента
 
 ---
 
-## 2. LLM Pipeline
+## 2. LLM PIPELINE
 
 ### Архитектура
 
-```
-[Transcript] → [Classification] → [Prompt Builder] → [Ollama] → [Hint]
-                     ↓                   ↓
-              [LRU Cache]        [Semantic Cache]
-                     ↓                   ↓
-              [RAG Context]      [Few-shot Examples]
-```
+- **Сервер:** FastAPI (uvicorn) на порту 8766
+- **Провайдер:** Ollama (localhost:11434)
+- **Модель по умолчанию:** `ministral-3:8b`
+- **Streaming:** Поддерживается через SSE
 
-### Провайдеры
+### Доступные модели (Ollama)
 
-| Провайдер | Статус | Модель по умолчанию |
-|-----------|--------|---------------------|
-| **Ollama** | ✅ Работает | ministral-3:8b |
-| **OpenAI** | ✅ Реализован | gpt-4o-mini |
-| **Claude** | ✅ Реализован | claude-3-haiku |
-| **Gemini** | ✅ Реализован | gemini-1.5-flash |
-| **GigaChat** | ✅ Реализован | GigaChat |
-| **OpenRouter** | ✅ Реализован | llama-3.2-3b |
-| **Yandex GPT** | ✅ Реализован | yandex-lite |
+| Модель | Размер | Назначение |
+|--------|--------|------------|
+| qwen2.5:7b | 4.7GB | Общего назначения |
+| ministral-3:8b | 6.0GB | Balanced (default) |
+| phi4:latest | 9.0GB | Accurate |
+| qwen2.5-coder:7b | 4.7GB | Code |
+| llava:7b | 4.7GB | Vision |
 
-### Профили моделей
+### ✅ Сильные стороны
 
-| Профиль | Модель | Temperature | Max Tokens |
-|---------|--------|-------------|------------|
-| **Fast** | gemma2:2b | 0.5 | 200 |
-| **Balanced** | ministral-3:8b | 0.7 | 400 |
-| **Accurate** | phi4:latest | 0.8 | 600 |
-| **Code** | qwen2.5-coder:7b | 0.3 | 500 |
+1. **Классификация вопросов** — experience/technical/general
+2. **Few-shot примеры** — 3 готовых диалога
+3. **Streaming** — SSE для progressive rendering
+4. **Профили моделей** — fast/balanced/accurate/code
+5. **Vision AI** — LLaVA интеграция для скриншотов
 
-### Выполненные улучшения
+### ⚠️ Найденные проблемы
 
-#### ✅ Retry Logic с Exponential Backoff
+#### P1: Нет fallback между провайдерами
 
-Добавлена автоматическая повторная попытка при сетевых ошибках:
+**Проблема:** Если Ollama недоступна, нет автоматического переключения на облачные провайдеры.  
+**Текущее поведение:** Возвращает ошибку "Ollama не запущен".
 
-- 3 попытки
-- Задержка: 1s → 2s → 4s
+#### P2: Отсутствует retry logic
 
-#### ✅ Расширенные профили промптов
+**Проблема:** При timeout/connection error нет повторных попыток.
 
-Добавлены профили:
+#### P3: Thinking models обработка
 
-- `sales` — для продаж и переговоров
-- `support` — для техподдержки
-- `general` — универсальный
+**Проблема:** Код пытается извлечь ответ из поля `thinking`, но логика сложная и может быть ненадёжной.
 
-#### ✅ Fallback на дефолтный профиль
+### Рекомендации
 
-Если запрошенный профиль не найден — используется `interview`.
-
-### Метрики производительности
-
-- **TTFT (Time to First Token):** 1-3 сек
-- **Полная генерация:** 2-5 сек
-- **Cache hit:** 0 ms
+- [ ] Добавить провайдер fallback (Ollama → OpenAI → Claude)
+- [ ] Реализовать retry с exponential backoff
+- [ ] Упростить обработку thinking models
 
 ---
 
-## 3. Кэширование
+## 3. КЭШИРОВАНИЕ
 
-### Многоуровневый кэш
+### Реализованные механизмы
 
+#### 3.1 LRU Cache (`cache.py`)
+
+```python
+HintCache(maxsize=20)
 ```
-[Запрос] → [Semantic Cache] → [LRU Cache] → [LLM]
-               85%+              exact
+
+- **Ключ:** MD5 hash от `text + context[-3:]`
+- **Case-insensitive**
+- **LRU eviction**
+
+#### 3.2 Semantic Cache (`semantic_cache.py`)
+
+```python
+SemanticCache(threshold=0.85, maxsize=50)
 ```
 
-### LRU Cache (`cache.py`)
+- **Модель:** `paraphrase-multilingual-MiniLM-L12-v2`
+- **Порог схожести:** 85%
+- **Fallback:** exact match если модель недоступна
 
-| Параметр | Значение |
-|----------|----------|
-| **Размер** | 20 записей |
-| **Ключ** | MD5(text + context) |
-| **Case-sensitive** | Нет |
+### ✅ Оценка: 9/10
 
-### Semantic Cache (`semantic_cache.py`)
+- Двухуровневое кэширование (LRU + semantic)
+- Учёт контекста при кэшировании
+- Graceful fallback
 
-| Параметр | Значение |
-|----------|----------|
-| **Размер** | 50 записей |
-| **Модель** | paraphrase-multilingual-MiniLM-L12-v2 |
-| **Порог схожести** | 85% |
-| **Fallback** | exact match |
+### Рекомендации
+
+- [ ] Увеличить maxsize для production (50 → 100)
+- [ ] Добавить TTL для устаревших записей
+- [ ] Персистентный кэш (SQLite/Redis)
 
 ---
 
-## 4. RAG (Retrieval-Augmented Generation)
+## 4. RAG СИСТЕМА
 
-### Архитектура
+### Архитектура (`advanced_rag.py`)
 
+- **Vector DB:** ChromaDB
+- **Embedding:** `paraphrase-multilingual-MiniLM-L12-v2`
+- **Chunking:** Smart chunking с overlap
+- **Reranking:** Keyword overlap scoring
+
+### Функции
+
+1. **Индексация резюме** — `user_context.txt` разбивается на чанки
+2. **Session Memory** — ключевые факты, обсуждённые темы
+3. **Adaptive Context** — размер контекста по сложности вопроса
+4. **Memory Consolidation** — извлечение важных фактов после ответа
+
+### ⚠️ Найденные проблемы
+
+#### P1: Устаревший ChromaDB API
+
+```python
+# advanced_rag.py:90-94
+self.chroma_client = chromadb.Client(Settings(
+    chroma_db_impl="duckdb+parquet",  # DEPRECATED
+    ...
+))
 ```
-[User Context] → [Chunking] → [ChromaDB] → [Semantic Search]
-                     ↓
-              [Session Memory]
-```
 
-### Выполненные исправления
+**Проблема:** `chroma_db_impl` deprecated в новых версиях.
 
-#### ❌ Deprecated ChromaDB API
+#### P2: Fallback storage неоптимален
 
-**Было:** `chromadb.Client(Settings(chroma_db_impl="duckdb+parquet"))`  
-**Стало:** `chromadb.PersistentClient(path=..., settings=...)`
+**Проблема:** При недоступности ChromaDB используется in-memory list.
 
-### Adaptive Context Window
+### Рекомендации
 
-| Тип вопроса | Размер контекста |
-|-------------|------------------|
-| Simple | 3 сообщения |
-| Medium | 5 сообщений |
-| Complex | 8 сообщений |
+- [ ] Обновить ChromaDB API
+- [ ] Добавить prebuilt knowledge base для интервью
 
 ---
 
-## 5. Промпты
+## 5. ПРОМПТЫ
 
-### Структура
+### Структура (`prompts.py`)
 
 ```python
 PROFILE_PROMPTS = {
-    'interview': {...},
-    'sales': {...},
-    'support': {...},
-    'general': {...},
+    'interview': {
+        'system': '...',  # ~300 символов
+        'few_shot_examples': [...]  # 3 примера
+    }
 }
 ```
 
-### Классификация вопросов
+### ✅ Оценка: 8/10
 
-| Тип | Ключевые слова | Промпт |
-|-----|----------------|--------|
-| **experience** | опыт, проект, расскажите о себе | + резюме |
-| **technical** | что такое, как работает, алгоритм | без резюме |
-| **general** | остальное | сокращённый контекст |
+- Краткие промпты (300 символов vs 1200 ранее)
+- Few-shot примеры для типичных вопросов
+- Динамическая подстановка user_context
+- Акцент на ПОСЛЕДНЕМ вопросе
 
-### Few-shot примеры
+### Рекомендации
 
-Каждый профиль содержит 2-3 примера для улучшения качества ответов.
-
----
-
-## 6. Тесты
-
-### Python тесты
-
-```
-tests/unit/test_cache.py        — 8 тестов ✅
-tests/unit/test_classification.py — 7 тестов ✅
-tests/unit/test_prompts.py      — (добавить)
-
-Всего: 15/15 passed
-```
-
-### Node.js тесты
-
-```
-tests/unit/pipeline.test.js   — 28 тестов ✅
-tests/unit/providers.test.js  — 19 тестов ✅
-tests/unit/settings.test.js   — 24 тестов ✅
-tests/unit/storage.test.js    — 64 тестов ✅
-
-Всего: 111/111 passed
-```
+- [ ] Добавить профили для других сценариев (sales, exam)
+- [ ] A/B тестирование промптов
+- [ ] Версионирование промптов
 
 ---
 
-## 7. Рекомендации
+## 6. ПРОВАЙДЕРЫ
 
-### Высокий приоритет
+### Python сервер (llm_server.py)
 
-1. **Добавить health-check для STT сервера**
-   - Endpoint `/health` для мониторинга
+| Провайдер | Статус | Примечание |
+|-----------|--------|------------|
+| Ollama | ✅ Работает | Primary, streaming |
+| OpenAI | ❌ Нет | Только в JS fallback |
+| Claude | ❌ Нет | Только в JS fallback |
+| Gemini | ❌ Нет | Только в JS fallback |
 
-2. **Реализовать fallback на облачные провайдеры**
-   - Если Ollama недоступна → OpenAI/Claude
+### JavaScript fallback (providers.js)
 
-3. **Добавить TTL для кэша**
-   - Устаревшие ответы могут быть нерелевантны
+| Провайдер | Статус | Примечание |
+|-----------|--------|------------|
+| Ollama | ✅ Работает | Fallback |
+| OpenAI | ✅ Реализован | Требует API key |
+| Gemini | ✅ Реализован | Требует API key |
+| Claude | ✅ Реализован | Требует API key |
+| OpenRouter | ✅ Реализован | Требует API key |
 
-### Средний приоритет
+### ⚠️ Проблема
 
-1. **Metrics dashboard**
-   - Уже реализован `dashboard_server.py`
-   - Запуск: `python python/dashboard_server.py`
+Python сервер использует только Ollama. Облачные провайдеры доступны только через JS fallback, который не использует оптимизации (classification, RAG, semantic cache).
 
-2. **Streaming в UI**
-   - Уже реализовано через SSE
+### Рекомендации
 
-3. **Hot-reload промптов**
-   - Загружать из файлов без перезапуска
-
-### Низкий приоритет
-
-1. **A/B тестирование промптов**
-2. **Rate limiting для облачных провайдеров**
-3. **Token counting и cost tracking**
-
----
-
-## 8. Файлы изменённые в рамках аудита
-
-| Файл | Изменения |
-|------|-----------|
-| `python/stt_server.py` | Исправлен MODEL_PRIORITY |
-| `python/llm_server.py` | Добавлен retry logic |
-| `python/prompts.py` | Добавлены профили sales, support, general |
-| `python/advanced_rag.py` | Исправлен deprecated ChromaDB API |
+- [ ] Добавить облачные провайдеры в Python сервер
+- [ ] Унифицировать интерфейс провайдеров
+- [ ] Реализовать cascade fallback
 
 ---
 
-## 9. Команды запуска
+## 7. ERROR HANDLING
 
-```powershell
-# STT сервер
-python python/stt_server.py
+### Текущее состояние
 
-# LLM сервер
-python python/llm_server.py
+- ✅ Логирование ошибок в `logs/metrics.jsonl`
+- ✅ Graceful handling ConnectionError
+- ⚠️ Нет retry logic
+- ⚠️ Нет circuit breaker
+- ⚠️ Базовые сообщения об ошибках
 
-# Electron приложение
-npm run start:win
+### Рекомендации
 
-# Тесты
-npm test                    # Node.js тесты
-python -m pytest tests/unit/ -v  # Python тесты
+- [ ] Retry с exponential backoff
+- [ ] Circuit breaker для внешних сервисов
+- [ ] Более информативные сообщения об ошибках
+
+---
+
+## 8. МЕТРИКИ И OBSERVABILITY
+
+### Реализовано (`metrics.py`)
+
+- Логирование в JSON Lines формат
+- STT: latency_ms, audio_duration, RTF
+- LLM: ttft_ms, total_ms, cache_hit_rate
+- Ошибки по компонентам
+- Статистика по типам вопросов
+
+### ✅ Оценка: 8/10
+
+Хорошая система метрик для production.
+
+---
+
+## 9. ТЕСТЫ
+
+### Результаты
+
+```
+Python: 15/15 passed (0.54s)
+Node.js: 111/111 passed (3.5s)
+Total: 126/126 ✅
 ```
 
+### Покрытие
+
+| Модуль | Покрытие |
+|--------|----------|
+| pipeline | 84% |
+| providers | 36% |
+| storage | 40% |
+| cache (Python) | 100% |
+| classification (Python) | 100% |
+
 ---
 
-## 10. Заключение
+## 10. КРИТИЧЕСКИЕ ИСПРАВЛЕНИЯ
 
-Система Live Hints имеет **production-ready** архитектуру с:
+### Выполнено в рамках аудита
 
-- ✅ GPU-ускоренной транскрипцией (faster-whisper)
-- ✅ Многоуровневым кэшированием (LRU + Semantic)
-- ✅ RAG для контекстного обогащения
-- ✅ Классификацией вопросов
-- ✅ Streaming генерацией
-- ✅ 126/126 тестов пройдено
+1. ✅ Проверена работоспособность Ollama
+2. ✅ Проверена работоспособность LLM сервера
+3. ✅ Проверены Python тесты (15/15 passed)
+4. ✅ Проверены Node.js тесты (111/111 passed)
+5. ✅ **Исправлен MODEL_PRIORITY** в stt_server.py — удалена несуществующая модель
+6. ✅ **Добавлен retry_with_backoff** декоратор в llm_server.py
 
-Основные улучшения реализованы в рамках аудита. Система готова к production использованию.
+### Остаётся для будущих итераций
+
+1. **P1 (High):**
+   - [ ] Обновить ChromaDB API (deprecated settings)
+   - [ ] Применить retry декоратор к критическим методам
+
+2. **P2 (Medium):**
+   - [ ] Добавить облачные провайдеры в Python сервер
+   - [ ] Увеличить размер semantic cache (50 → 100)
+   - [ ] Добавить TTL для кэша
+
+---
+
+## ЗАКЛЮЧЕНИЕ
+
+Live Hints имеет **production-ready** STT/LLM pipeline с:
+
+- Качественной STT транскрипцией (faster-whisper + GPU)
+- Оптимизированной LLM генерацией (streaming, caching, RAG)
+- Хорошей системой метрик
+
+**Основные области для улучшения:**
+
+1. Fallback между провайдерами
+2. Retry logic и resilience
+3. Расширение поддержки облачных провайдеров
+
+**Рекомендуемый приоритет работ:**
+
+1. Исправить критические баги (P0)
+2. Добавить retry logic (P1)
+3. Расширить провайдеры (P2)

@@ -16,6 +16,8 @@ export class HintManager {
     this.temperature = LLM.TEMPERATURE_DEFAULT;
     this.currentProfile = 'job_interview_ru';
     this.customInstructions = '';
+    this.currentModel = null; // Текущая модель Ollama
+    this.userContext = ''; // Контекст пользователя (резюме)
 
     this.metrics = {
       t_hint_request_start: null,
@@ -63,15 +65,20 @@ export class HintManager {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), TIMEOUTS.LLM_REQUEST);
 
+      const systemPrompt = this.buildSystemPrompt();
+
       const response = await fetch(`${SERVERS.LLM}/hint/stream`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           text: transcriptText,
           context: context,
-          profile: 'interview',
+          profile: this.currentProfile,
           max_tokens: this.maxTokens,
           temperature: this.temperature,
+          model: this.currentModel,
+          system_prompt: systemPrompt,
+          user_context: this.userContext,
         }),
         signal: controller.signal,
       });
@@ -259,5 +266,12 @@ export class HintManager {
     if (params.maxContextChars !== undefined) this.maxContextChars = params.maxContextChars;
     if (params.maxTokens !== undefined) this.maxTokens = params.maxTokens;
     if (params.temperature !== undefined) this.temperature = params.temperature;
+  }
+
+  setUserContext(context) {
+    this.userContext = context || '';
+    if (this.app.debugMode && context) {
+      console.log(`[HintManager] Установлен контекст пользователя: ${context.length} символов`);
+    }
   }
 }
