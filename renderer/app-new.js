@@ -440,10 +440,11 @@ class LiveHintsApp {
   setupVisionAI() {
     const visionEnabled = document.getElementById('vision-enabled');
     const captureBtn = document.getElementById('btn-capture-screen');
+    const btnScreenshot = document.getElementById('btn-screenshot');
     const visionModal = document.getElementById('vision-modal');
     const closeVision = document.getElementById('btn-close-vision');
     const captureFullscreen = document.getElementById('btn-capture-fullscreen');
-    const visionSend = document.getElementById('btn-vision-send');
+    const visionSend = document.getElementById('btn-vision-analyze');
     const visionRetake = document.getElementById('btn-vision-retake');
     const visionCancel = document.getElementById('btn-vision-cancel');
 
@@ -454,6 +455,14 @@ class LiveHintsApp {
       visionEnabled.addEventListener('change', (e) => {
         this.visionEnabled = e.target.checked;
         this.saveSettings({ visionEnabled: e.target.checked });
+      });
+    }
+
+    // Кнопка скриншота в header - сразу делает скриншот
+    if (btnScreenshot) {
+      btnScreenshot.addEventListener('click', () => {
+        console.log('[Vision] Клик по btn-screenshot');
+        this.captureScreen();
       });
     }
 
@@ -481,7 +490,7 @@ class LiveHintsApp {
 
     if (visionRetake) {
       visionRetake.addEventListener('click', () => {
-        const previewContainer = document.getElementById('vision-preview-container');
+        const previewContainer = document.getElementById('vision-preview');
         if (previewContainer) previewContainer.classList.add('hidden');
         this.capturedScreenshot = null;
       });
@@ -501,7 +510,7 @@ class LiveHintsApp {
 
   showVisionModal() {
     const modal = document.getElementById('vision-modal');
-    const previewContainer = document.getElementById('vision-preview-container');
+    const previewContainer = document.getElementById('vision-preview');
     const resultContainer = document.getElementById('vision-result');
 
     if (modal) modal.classList.remove('hidden');
@@ -517,25 +526,35 @@ class LiveHintsApp {
 
   async captureScreen() {
     try {
-      this.hideVisionModal();
-      await new Promise((r) => setTimeout(r, 200));
+      console.log('[Vision] Начинаем захват экрана');
+      this.ui.showToast('Захват экрана...', 'info');
 
-      const imageData = await window.electronAPI?.captureScreen();
+      this.hideVisionModal();
+      await new Promise((r) => setTimeout(r, 300));
+
+      if (!window.electronAPI?.captureScreen) {
+        this.ui.showToast('API захвата экрана недоступен', 'error');
+        return;
+      }
+
+      const imageData = await window.electronAPI.captureScreen();
+      console.log('[Vision] Результат захвата:', imageData ? `${imageData.length} символов` : 'null');
 
       if (imageData) {
         this.capturedScreenshot = imageData;
         const previewImg = document.getElementById('vision-preview-img');
-        const previewContainer = document.getElementById('vision-preview-container');
+        const previewContainer = document.getElementById('vision-preview');
 
         if (previewImg) previewImg.src = `data:image/png;base64,${imageData}`;
         if (previewContainer) previewContainer.classList.remove('hidden');
         this.showVisionModal();
+        this.ui.showToast('Скриншот готов', 'success');
       } else {
         this.ui.showToast('Ошибка захвата экрана', 'error');
       }
     } catch (e) {
-      console.error('Capture error:', e);
-      this.ui.showToast('Ошибка захвата', 'error');
+      console.error('[Vision] Capture error:', e);
+      this.ui.showToast(`Ошибка захвата: ${e.message}`, 'error');
     }
   }
 
@@ -545,7 +564,14 @@ class LiveHintsApp {
       return;
     }
 
-    this.ui.showToast('Анализ изображения...', 'info');
+    console.log('[Vision] Отправка в Vision AI...');
+    this.ui.showToast('Отправка в Vision AI...', 'info');
+
+    const analyzeBtn = document.getElementById('btn-vision-analyze');
+    if (analyzeBtn) {
+      analyzeBtn.disabled = true;
+      analyzeBtn.textContent = 'Анализ...';
+    }
 
     try {
       const resp = await fetch(`${SERVERS.LLM}/vision/analyze`, {
@@ -558,23 +584,38 @@ class LiveHintsApp {
         }),
       });
 
+      if (!resp.ok) {
+        throw new Error(`HTTP ${resp.status}: ${resp.statusText}`);
+      }
+
       const data = await resp.json();
+      console.log('[Vision] Ответ от API:', data);
 
       if (data.analysis) {
         const resultContainer = document.getElementById('vision-result');
         const analysisText = document.getElementById('vision-analysis-text');
+        const previewContainer = document.getElementById('vision-preview');
 
         if (analysisText) analysisText.textContent = data.analysis;
         if (resultContainer) resultContainer.classList.remove('hidden');
+        if (previewContainer) previewContainer.classList.add('hidden');
 
         this.ui.addHintItem(`[Vision AI] ${data.analysis}`, new Date().toLocaleTimeString());
         this.ui.showToast('Анализ завершён', 'success');
       } else if (data.error) {
+        console.error('[Vision] API вернул ошибку:', data.error);
         this.ui.showToast(`Vision ошибка: ${data.error}`, 'error');
+      } else {
+        this.ui.showToast('Vision AI не вернул результат', 'error');
       }
     } catch (e) {
-      console.error('Vision AI error:', e);
-      this.ui.showToast('Ошибка Vision AI', 'error');
+      console.error('[Vision] AI error:', e);
+      this.ui.showToast(`Ошибка Vision AI: ${e.message}`, 'error');
+    } finally {
+      if (analyzeBtn) {
+        analyzeBtn.disabled = false;
+        analyzeBtn.textContent = 'Анализировать';
+      }
     }
   }
 
