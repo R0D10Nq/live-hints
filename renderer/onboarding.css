@@ -314,9 +314,9 @@ body {
 }
 
 .orbit-node.completed .node-core {
-  background: var(--shard);
-  border-color: var(--shard);
-  color: var(--void);
+  background: var(--ink);
+  border-color: var(--ghost-dim);
+  color: var(--ghost);
 }
 
 .node-label {
@@ -333,7 +333,7 @@ body {
 }
 
 .orbit-node.completed .node-label {
-  color: var(--shard);
+  color: var(--ghost);
 }
 
 /* Step Container */
@@ -856,7 +856,9 @@ body {
 }
 
 .text-toggle {
-  margin-top: 16px;
+  margin-top: 24px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
   text-align: center;
 }
 
@@ -921,22 +923,34 @@ body {
 
 .form-select {
   flex: 1;
-  padding: 12px 16px;
+  padding: 12px 40px 12px 16px;
   background: var(--void-card);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: var(--radius-md);
   color: var(--fog);
   font-size: 14px;
   cursor: pointer;
   appearance: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%236b7288' viewBox='0 0 16 16'%3E%3Cpath d='M8 11L3 6h10l-5 5z'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%239ca3af' viewBox='0 0 16 16'%3E%3Cpath d='M8 11L3 6h10l-5 5z'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
-  background-position: right 12px center;
+  background-position: right 16px center;
+  transition: all 0.2s ease;
 }
 
 .form-select:focus {
   outline: none;
-  border-color: var(--shard);
+  border-color: var(--ember);
+  box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.15);
+}
+
+.form-select:hover {
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.form-select option {
+  background: var(--void-card);
+  color: var(--fog);
+  padding: 8px;
 }
 
 .checkbox-modern {
