@@ -19,6 +19,7 @@ class OnboardingController {
         this.bindEvents();
         this.initParticles();
         this.initAudioVisualizer();
+        this.initMicrophoneSelect();
         this.updateProgress();
     }
 
@@ -127,6 +128,41 @@ class OnboardingController {
         };
 
         animate();
+    }
+
+    async initMicrophoneSelect() {
+        const select = document.getElementById('mic-select');
+        if (!select) return;
+
+        try {
+            // Очищаем список, оставляем только плейсхолдер
+            select.innerHTML = '<option value="">Выберите микрофон...</option>';
+
+            // Запрашиваем разрешение на доступ к микрофону
+            await navigator.mediaDevices.getUserMedia({ audio: true });
+
+            // Получаем список устройств
+            const devices = await navigator.mediaDevices.enumerateDevices();
+            const mics = devices.filter(d => d.kind === 'audioinput');
+
+            if (mics.length === 0) {
+                const option = document.createElement('option');
+                option.value = '';
+                option.textContent = 'Микрофоны не найдены';
+                select.appendChild(option);
+                return;
+            }
+
+            mics.forEach((mic, index) => {
+                const option = document.createElement('option');
+                option.value = mic.deviceId;
+                option.textContent = mic.label || `Микрофон ${index + 1}`;
+                select.appendChild(option);
+            });
+        } catch (err) {
+            console.error('Ошибка доступа к микрофону:', err);
+            select.innerHTML = '<option value="">Нет доступа к микрофону</option>';
+        }
     }
 
     selectMode(card) {
