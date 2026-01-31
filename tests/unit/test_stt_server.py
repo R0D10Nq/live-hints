@@ -4,19 +4,18 @@
 import pytest
 import json
 import asyncio
-import numpy as np
 from unittest.mock import patch, MagicMock, AsyncMock
 
 
 class TestSTTServer:
-    """Тесты для STTServer"""
+    """Тесты для DynamicSTTServer"""
     
     @patch('stt_server.StreamingTranscriber')
     def test_init(self, mock_transcriber):
         """Инициализация сервера"""
-        from stt_server import STTServer
+        from stt_server import DynamicSTTServer
         
-        server = STTServer()
+        server = DynamicSTTServer()
         
         assert server.transcriber is None
         assert server.clients == set()
@@ -27,13 +26,12 @@ class TestSTTServer:
         mock_instance = MagicMock()
         mock_transcriber.return_value = mock_instance
         
-        from stt_server import STTServer
-        server = STTServer()
-        
+        from stt_server import DynamicSTTServer
+        server = DynamicSTTServer()
         server.init_model()
         
-        assert server.transcriber is not None
         mock_transcriber.assert_called_once()
+        assert server.transcriber == mock_instance
     
     @patch('stt_server.StreamingTranscriber')
     def test_init_model_only_once(self, mock_transcriber):
@@ -41,8 +39,8 @@ class TestSTTServer:
         mock_instance = MagicMock()
         mock_transcriber.return_value = mock_instance
         
-        from stt_server import STTServer
-        server = STTServer()
+        from stt_server import DynamicSTTServer
+        server = DynamicSTTServer()
         
         server.init_model()
         server.init_model()
@@ -55,11 +53,12 @@ class TestMain:
     """Тесты для main функции"""
     
     @pytest.mark.asyncio
-    @patch('stt_server.STTServer')
+    @patch('stt_server.DynamicSTTServer')
+    @patch('sys.argv', ['stt_server.py', '--mode', 'auto'])
     async def test_main_creates_server(self, mock_server_class):
         """main создаёт и запускает сервер"""
         mock_server = MagicMock()
-        mock_server.start = AsyncMock()
+        mock_server.start_server = AsyncMock()
         mock_server_class.return_value = mock_server
         
         from stt_server import main
@@ -70,4 +69,4 @@ class TestMain:
         except asyncio.TimeoutError:
             pass
         
-        mock_server.start.assert_called_once()
+        mock_server.start_server.assert_called_once()

@@ -8,6 +8,9 @@ omit =
     python/semantic_cache.py
     python/vector_db.py
     python/stt_server.py
+    python/device_monitor.py
+    python/dynamic_audio_capture.py
+    python/stt_server_dynamic.py
     python/*_new.py
     python/__pycache__/*
 

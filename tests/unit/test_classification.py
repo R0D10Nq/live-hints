@@ -79,6 +79,18 @@ def test_build_contextual_prompt_short():
     assert len(gen_prompt) < 2000
 
 
+def test_build_contextual_prompt_with_vacancy():
+    """Тест разделения контекста с вакансией (строки 70-72)"""
+    context = """Опыт работы с Python 5 лет
+## Вакансия:
+Требуется Senior Python Developer с опытом Django"""
+    
+    # Для вопросов про опыт должен разделить контекст
+    prompt = build_contextual_prompt('experience', context)
+    assert 'Python 5 лет' in prompt
+    assert 'Senior Python Developer' in prompt
+
+
 def test_get_max_tokens_for_type():
     """Тест get_max_tokens_for_type"""
     from classification import get_max_tokens_for_type
