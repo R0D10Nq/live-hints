@@ -85,6 +85,10 @@ class OnboardingController {
         document.getElementById('resume-remove')?.addEventListener('click', () => this.removeFile('resume'));
         document.getElementById('vacancy-remove')?.addEventListener('click', () => this.removeFile('vacancy'));
 
+        // File replace buttons
+        document.getElementById('resume-replace')?.addEventListener('click', () => this.replaceFile('resume'));
+        document.getElementById('vacancy-replace')?.addEventListener('click', () => this.replaceFile('vacancy'));
+
         // Keyboard navigation
         document.addEventListener('keydown', (e) => {
             if (e.key === 'ArrowRight' || e.key === 'Enter') {
@@ -273,6 +277,14 @@ class OnboardingController {
         if (type === 'vacancy') this.hasVacancy = false;
 
         this.triggerHaptic();
+    }
+
+    replaceFile(type) {
+        // Открываем диалог выбора файла
+        const inputEl = document.getElementById(`${type}-input`);
+        if (inputEl) {
+            inputEl.click();
+        }
     }
 
     formatFileSize(bytes) {

@@ -802,19 +802,44 @@ body {
 .file-remove {
   width: 32px;
   height: 32px;
-  background: transparent;
+  background: var(--ink);
   border: 1px solid var(--ghost-dim);
-  border-radius: var(--radius-xs);
+  border-radius: var(--radius-sm);
   color: var(--ghost);
-  cursor: pointer;
   font-size: 18px;
+  cursor: pointer;
   transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .file-remove:hover {
   background: var(--danger);
   border-color: var(--danger);
   color: white;
+}
+
+.file-replace {
+  width: 32px;
+  height: 32px;
+  background: var(--ink);
+  border: 1px solid var(--ghost-dim);
+  border-radius: var(--radius-sm);
+  color: var(--shard);
+  font-size: 16px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 8px;
+}
+
+.file-replace:hover {
+  background: var(--shard);
+  border-color: var(--shard);
+  color: var(--void);
 }
 
 .text-toggle {

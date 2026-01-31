@@ -150,7 +150,8 @@
               <span class="file-name" id="resume-filename">resume.pdf</span>
               <span class="file-size" id="resume-filesize">2.4 MB</span>
             </div>
-            <button class="file-remove" id="resume-remove">×</button>
+            <button class="file-replace" id="resume-replace" title="Заменить файл">↻</button>
+            <button class="file-remove" id="resume-remove" title="Удалить">×</button>
           </div>
         </div>
 
@@ -181,6 +182,18 @@
           <div class="upload-title">Загрузите описание вакансии</div>
           <div class="upload-hint">PDF, TXT — или пропустите этот шаг</div>
           <input type="file" id="vacancy-input" accept=".txt,.pdf" hidden>
+        </div>
+
+        <div class="file-result hidden" id="vacancy-result">
+          <div class="file-info-card">
+            <div class="file-icon">📄</div>
+            <div class="file-meta">
+              <span class="file-name" id="vacancy-filename">vacancy.pdf</span>
+              <span class="file-size" id="vacancy-filesize">1.2 MB</span>
+            </div>
+            <button class="file-replace" id="vacancy-replace" title="Заменить файл">↻</button>
+            <button class="file-remove" id="vacancy-remove" title="Удалить">×</button>
+          </div>
         </div>
 
         <div class="text-toggle">
