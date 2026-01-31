@@ -81,6 +81,10 @@ class OnboardingController {
             document.getElementById('vacancy-text-area')?.classList.toggle('hidden');
         });
 
+        // File remove buttons
+        document.getElementById('resume-remove')?.addEventListener('click', () => this.removeFile('resume'));
+        document.getElementById('vacancy-remove')?.addEventListener('click', () => this.removeFile('vacancy'));
+
         // Keyboard navigation
         document.addEventListener('keydown', (e) => {
             if (e.key === 'ArrowRight' || e.key === 'Enter') {
@@ -153,7 +157,18 @@ class OnboardingController {
                 return;
             }
 
-            mics.forEach((mic, index) => {
+            // Фильтруем дубликаты по label
+            const uniqueMics = [];
+            const seenLabels = new Set();
+            mics.forEach((mic) => {
+                const label = mic.label || `Микрофон ${uniqueMics.length + 1}`;
+                if (!seenLabels.has(label)) {
+                    seenLabels.add(label);
+                    uniqueMics.push(mic);
+                }
+            });
+
+            uniqueMics.forEach((mic, index) => {
                 const option = document.createElement('option');
                 option.value = mic.deviceId;
                 option.textContent = mic.label || `Микрофон ${index + 1}`;
@@ -240,6 +255,26 @@ class OnboardingController {
         this.triggerHaptic();
     }
 
+    removeFile(type) {
+        const resultEl = document.getElementById(`${type}-result`);
+        const inputEl = document.getElementById(`${type}-input`);
+
+        if (resultEl) {
+            resultEl.classList.add('hidden');
+            resultEl.animate([
+                { opacity: 1, transform: 'translateY(0)' },
+                { opacity: 0, transform: 'translateY(-10px)' }
+            ], { duration: 200, easing: 'ease-in' });
+        }
+
+        if (inputEl) inputEl.value = '';
+
+        if (type === 'resume') this.hasResume = false;
+        if (type === 'vacancy') this.hasVacancy = false;
+
+        this.triggerHaptic();
+    }
+
     formatFileSize(bytes) {
         if (bytes < 1024) return bytes + ' B';
         if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
@@ -298,17 +333,13 @@ class OnboardingController {
     }
 
     updateButtons() {
-        // Back button
+        // Back button - скрыта только на первом шаге
         this.btnBack?.classList.toggle('hidden', this.currentStep === 1);
 
-        // Next/Finish buttons
+        // Next/Finish buttons - Запустить только на последнем шаге
         const isLast = this.currentStep === this.totalSteps;
         this.btnNext?.classList.toggle('hidden', isLast);
         this.btnFinish?.classList.toggle('hidden', !isLast);
-
-        // Skip button (only on step 2 and 3)
-        const canSkip = this.currentStep === 2 || this.currentStep === 3;
-        this.btnSkip?.classList.toggle('hidden', !canSkip);
     }
 
     triggerHaptic() {
