@@ -278,14 +278,11 @@
                   <button class="profile-btn" data-profile="instant" title="Быстрые ответы">
                     Моментальный
                   </button>
-                  <button class="profile-btn" data-profile="fast" title="Быстрые ответы">
+                  <button class="profile-btn active" data-profile="fast" title="Быстрые ответы">
                     Быстрый
                   </button>
-                  <button class="profile-btn active" data-profile="balanced" title="Баланс">
+                  <button class="profile-btn" data-profile="balanced" title="Баланс">
                     Баланс
-                  </button>
-                  <button class="profile-btn" data-profile="accurate" title="Точные ответы">
-                    Точный
                   </button>
                   <button class="profile-btn" data-profile="code" title="Код">
                     Код
@@ -294,9 +291,12 @@
               </div>
 
               <div class="settings-group">
-                <label class="settings-label">Профиль</label>
+                <label class="settings-label">Режим работы</label>
                 <select id="ai-profile" class="settings-select" data-testid="ai-profile-select">
-                  <option value="job_interview_ru" selected>Собеседование (RU)</option>
+                  <option value="job_interview_ru" selected>Собеседование</option>
+                  <option value="business_meeting">Бизнес-встреча</option>
+                  <option value="daily_sync">Дейлик/Созвон</option>
+                  <option value="presentation">Презентация</option>
                   <option value="custom">Свой промпт</option>
                 </select>
               </div>

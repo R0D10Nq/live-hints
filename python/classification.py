@@ -52,11 +52,17 @@ def get_temperature_for_type(question_type: str) -> float:
     }.get(question_type, 0.7)
 
 
-def build_contextual_prompt(question_type: str, user_context: str) -> str:
+def build_contextual_prompt(question_type: str, user_context: str, profile: str = 'job_interview_ru') -> str:
     """
-    Строит развёрнутый промпт в зависимости от типа вопроса.
-    Цель: качественные ответы на 1-2 минуты речи.
+    Строит развёрнутый промпт в зависимости от типа вопроса и профиля.
+    Для собеседований использует STAR формат, для других - системный промпт из профиля.
     """
+    # Для профилей не собеседований используем системный промпт из prompts.py
+    if profile in ['business_meeting', 'daily_sync', 'presentation', 'custom']:
+        from prompts import get_system_prompt
+        return get_system_prompt(profile, user_context)
+    
+    # Для собеседований используем STAR формат (старая логика)
     # Разделяем резюме и вакансию если они объединены
     resume_part = user_context
     vacancy_part = ''
@@ -74,7 +80,7 @@ def build_contextual_prompt(question_type: str, user_context: str) -> str:
             '## ВАЖНО: Отвечай на ПОСЛЕДНИЙ вопрос интервьюера!\n\n'
             '## Формат ответа (STAR) — 200-300 слов (1.5-2 минуты речи):\n\n'
             '1. **Краткий тезис** — что делал, где, в какой роли (1-2 предложения)\n'
-            '2. **Ситуация** — контекст проекта, проблема которую решал\n'
+            '2. **Ситуация** — контекст проекта, проблему которую решал\n'
             '3. **Действия** — конкретные шаги, технологии, твоя роль в команде\n'
             '4. **Результат** — метрики (%, время, деньги), чему научился\n\n'
             '## Требования к стилю:\n'

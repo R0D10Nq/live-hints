@@ -56,7 +56,7 @@ export const STORAGE = {
 };
 
 // Профили LLM
-export const PROFILES = ['instant', 'fast', 'balanced', 'accurate', 'code'];
+export const PROFILES = ['instant', 'fast', 'balanced', 'code'];
 
 // Типы вопросов
 export const QUESTION_TYPE_LABELS = {

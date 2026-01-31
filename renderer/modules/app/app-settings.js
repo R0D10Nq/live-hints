@@ -189,10 +189,24 @@ export class AppSettings {
   loadUserContext() {
     try {
       const onboarding = JSON.parse(localStorage.getItem('live-hints-onboarding')) || {};
-      if (onboarding.contextFileContent) {
-        this.app.hints.setUserContext(onboarding.contextFileContent);
+      const settings = JSON.parse(localStorage.getItem('live-hints-settings')) || {};
+
+      // Определяем контекст на основе профиля
+      let context = '';
+      const profile = settings.profile || onboarding.profile || 'job_interview_ru';
+
+      if (['business_meeting', 'daily_sync', 'presentation'].includes(profile)) {
+        // Для этих режимов используем modeContext если есть
+        context = onboarding.modeContext || '';
+      } else {
+        // Для собеседования используем резюме
+        context = onboarding.contextFileContent || '';
+      }
+
+      if (context) {
+        this.app.hints.setUserContext(context);
         console.log(
-          `[App] Загружен контекст пользователя: ${onboarding.contextFileContent.length} символов`
+          `[App] Загружен контекст для профиля ${profile}: ${context.length} символов`
         );
       }
     } catch (err) {

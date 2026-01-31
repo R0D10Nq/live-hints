@@ -9,6 +9,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // STT управление
   startSTT: () => ipcRenderer.invoke('stt:start'),
   stopSTT: () => ipcRenderer.invoke('stt:stop'),
+  switchSTTMode: (mode) => ipcRenderer.invoke('stt:switch-mode', mode),
 
   // Аудио захват с поддержкой dual audio
   startAudioCapture: (options) => ipcRenderer.invoke('audio:start-capture', options),
