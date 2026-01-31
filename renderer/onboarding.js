@@ -81,6 +81,16 @@ class OnboardingController {
             document.getElementById('vacancy-text-area')?.classList.toggle('hidden');
         });
 
+        // Textarea validation
+        document.querySelector('#resume-text-area textarea')?.addEventListener('input', () => {
+            this.updateButtons();
+        });
+
+        // Mic select validation
+        document.getElementById('mic-select')?.addEventListener('change', () => {
+            this.updateButtons();
+        });
+
         // File remove buttons
         document.getElementById('resume-remove')?.addEventListener('click', () => this.removeFile('resume'));
         document.getElementById('vacancy-remove')?.addEventListener('click', () => this.removeFile('vacancy'));
@@ -198,6 +208,9 @@ class OnboardingController {
 
         // Haptic feedback
         this.triggerHaptic();
+
+        // Обновляем валидацию кнопки Далее
+        this.updateButtons();
     }
 
     hoverCard(card, entering) {
@@ -257,6 +270,9 @@ class OnboardingController {
         if (type === 'vacancy') this.hasVacancy = true;
 
         this.triggerHaptic();
+
+        // Обновляем валидацию кнопки Далее
+        this.updateButtons();
     }
 
     removeFile(type) {
@@ -277,6 +293,9 @@ class OnboardingController {
         if (type === 'vacancy') this.hasVacancy = false;
 
         this.triggerHaptic();
+
+        // Обновляем валидацию кнопки Далее
+        this.updateButtons();
     }
 
     replaceFile(type) {
@@ -352,6 +371,32 @@ class OnboardingController {
         const isLast = this.currentStep === this.totalSteps;
         this.btnNext?.classList.toggle('hidden', isLast);
         this.btnFinish?.classList.toggle('hidden', !isLast);
+
+        // Проверяем валидацию текущего шага
+        const isValid = this.validateStep();
+        if (this.btnNext) this.btnNext.disabled = !isValid;
+        if (this.btnFinish) this.btnFinish.disabled = !isValid;
+    }
+
+    validateStep() {
+        switch (this.currentStep) {
+            case 1:
+                // Шаг 1: должен быть выбран режим
+                return !!this.selectedMode;
+            case 2:
+                // Шаг 2: резюме или текст
+                const resumeText = document.querySelector('#resume-text-area textarea')?.value;
+                return this.hasResume || (resumeText && resumeText.trim().length > 0);
+            case 3:
+                // Шаг 3: вакансия опциональна, всегда валидно
+                return true;
+            case 4:
+                // Шаг 4: должен быть выбран микрофон
+                const micSelect = document.getElementById('mic-select');
+                return micSelect && micSelect.value !== '';
+            default:
+                return true;
+        }
     }
 
     triggerHaptic() {

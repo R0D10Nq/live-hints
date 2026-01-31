@@ -753,6 +753,19 @@ body {
   box-shadow: 0 8px 30px rgba(245, 158, 11, 0.4);
 }
 
+.btn:disabled,
+.btn-primary:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  transform: none !important;
+  box-shadow: none;
+}
+
+.btn:disabled:hover::before,
+.btn-primary:disabled:hover::before {
+  opacity: 0;
+}
+
 .btn-success {
   background: linear-gradient(135deg, var(--shard), #059669);
   color: var(--void);
@@ -892,8 +905,18 @@ body {
 
 .audio-controls {
   display: flex;
+  flex-wrap: wrap;
   gap: 12px;
   margin-bottom: 24px;
+}
+
+.audio-controls .form-select {
+  flex: 1;
+  min-width: 200px;
+}
+
+.audio-controls .btn {
+  white-space: nowrap;
 }
 
 .form-select {
