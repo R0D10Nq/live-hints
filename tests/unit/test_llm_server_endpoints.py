@@ -159,6 +159,10 @@ class TestHintEndpoint:
             'profile': 'interview'
         })
         
+        if response.status_code != 200:
+            print(f"Response status: {response.status_code}")
+            print(f"Response body: {response.text}")
+        
         assert response.status_code == 200
         assert response.json()['hint'] == 'Test hint'
         assert response.json()['latency_ms'] == 1000

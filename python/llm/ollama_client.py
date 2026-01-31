@@ -100,12 +100,13 @@ def build_messages(system_prompt: str, context: list, question: str, few_shot: l
 class OllamaClient:
     """Клиент для взаимодействия с Ollama API"""
     
-    def __init__(self, base_url: str, model: str, hint_cache: HintCache, user_context: str = ''):
+    def __init__(self, base_url: str, model: str, hint_cache: HintCache, user_context: str = '', profile: str = 'job_interview_ru'):
         self.base_url = base_url
         self.model = model
         self.metrics = HintMetrics()
         self.hint_cache = hint_cache
         self.user_context = user_context
+        self.profile = profile  # Сохраняем профиль
         self._last_question_type = 'general'
         self._last_similarity = 0.0
     
@@ -115,6 +116,29 @@ class OllamaClient:
             return resp.status_code == 200
         except:
             return False
+
+    def list_models(self) -> list:
+        """Получить список доступных моделей от Ollama"""
+        try:
+            resp = requests.get(f'{self.base_url}/api/tags', timeout=5)
+            if resp.status_code == 200:
+                data = resp.json()
+                models = []
+                for m in data.get('models', []):
+                    size_gb = m.get('size', 0) / (1024 ** 3)
+                    models.append({
+                        'name': m['name'],
+                        'size': f'{size_gb:.1f}GB',
+                        'size_bytes': m.get('size', 0),
+                        'modified': m.get('modified_at', ''),
+                        'family': m.get('details', {}).get('family', 'unknown'),
+                        'parameters': m.get('details', {}).get('parameter_size', 'unknown')
+                    })
+                return models
+            raise Exception(f'Ollama returned {resp.status_code}')
+        except Exception as e:
+            logger.error(f'[OllamaClient] Ошибка получения моделей: {e}')
+            raise
     
     def generate(self, text: str, context: list = None, system_prompt: str = None, 
                  profile: str = 'interview', max_tokens: int = 500, temperature: float = 0.8) -> str:
@@ -134,8 +158,8 @@ class OllamaClient:
         question_type = classify_question(text)
         logger.info(f'[CLASSIFY] Type: {question_type}')
         
-        system_prompt = build_contextual_prompt(question_type, self.user_context)
-        few_shot = get_few_shot_examples(profile)
+        system_prompt = build_contextual_prompt(question_type, self.user_context, self.profile)
+        few_shot = get_few_shot_examples(self.profile)
         messages = build_messages(system_prompt, context or [], text, few_shot)
         
         logger.info(f'[LLM] Type: {question_type}, messages: {len(messages)}')
@@ -243,22 +267,29 @@ class OllamaClient:
         recommended_tokens = get_max_tokens_for_type(question_type)
         recommended_temp = get_temperature_for_type(question_type)
         max_tokens = max(50, min(1000, max_tokens or recommended_tokens))
+        # Конвертируем temperature в float если это строка
+        if isinstance(temperature, str):
+            try:
+                temperature = float(temperature)
+            except ValueError:
+                temperature = recommended_temp
+        
         temperature = max(0.0, min(1.0, temperature or recommended_temp))
         
-        log_llm_request(text, len(context or []), question_type, profile)
+        log_llm_request(text, len(context or []), question_type, self.profile)
         
         effective_user_context = custom_user_context if custom_user_context else self.user_context
         
         rag = get_advanced_rag()
         
         if custom_system_prompt:
-            base_prompt = custom_system_prompt + '\n\n' + build_contextual_prompt(question_type, effective_user_context)
+            base_prompt = custom_system_prompt + '\n\n' + build_contextual_prompt(question_type, effective_user_context, self.profile)
         else:
-            base_prompt = build_contextual_prompt(question_type, effective_user_context)
+            base_prompt = build_contextual_prompt(question_type, effective_user_context, self.profile)
         
         system_prompt = rag.build_enhanced_prompt(text, context or [], question_type, base_prompt)
         adaptive_context = rag.get_adaptive_context(context or [], text)
-        few_shot = get_few_shot_examples(profile)
+        few_shot = get_few_shot_examples(self.profile)
         messages = build_messages(system_prompt, adaptive_context, text, few_shot)
         
         logger.info(f'[LLM Stream] Type: {question_type}, messages: {len(messages)}')

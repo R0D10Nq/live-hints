@@ -34,7 +34,7 @@ HTTP_HOST = 'localhost'
 HTTP_PORT = 8766
 
 OLLAMA_URL = os.getenv('OLLAMA_URL', 'http://localhost:11434')
-DEFAULT_MODEL = os.getenv('OLLAMA_MODEL', 'qwen2.5:7b')
+DEFAULT_MODEL = os.getenv('OLLAMA_MODEL', 'qwen3:8b')
 
 MAX_RETRIES = 3
 RETRY_DELAY_BASE = 1.0
@@ -158,7 +158,16 @@ app.add_middleware(
     allow_headers=['*']
 )
 
-# Регистрация endpoint-ов
+# Обработчик ошибок валидации - возвращаем 400 вместо 422
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request, exc):
+    return JSONResponse(
+        status_code=400,
+        content={'detail': 'Validation error', 'errors': exc.errors()}
+    )
 from llm.routes import LLMRouter
 router = LLMRouter(app, ollama, hint_cache)
 
@@ -169,7 +178,7 @@ from classification import classify_question
 from metrics import log_cache_hit, log_llm_response
 from semantic_cache import get_semantic_cache
 from vector_db import get_vector_db
-from llm import get_available_vision_model, analyze_image
+from llm import get_available_vision_model, analyze_image, get_gpu_info
 
 
 @app.get('/health')
@@ -185,8 +194,9 @@ async def health():
 
 
 @app.post('/hint')
-async def generate_hint(request: HintRequest):
+async def generate_hint(hint_request: HintRequest):
     """Генерация подсказки (синхронно)"""
+    request = hint_request
     if not request.text or len(request.text.strip()) < 5:
         raise HTTPException(400, 'Текст слишком короткий')
     
@@ -213,8 +223,9 @@ async def generate_hint(request: HintRequest):
 
 
 @app.post('/hint/stream')
-async def generate_hint_stream(request: HintRequest):
+async def generate_hint_stream(hint_request: HintRequest):
     """Streaming генерация подсказки"""
+    request = hint_request
     if not request.text or len(request.text.strip()) < 5:
         raise HTTPException(400, 'Текст слишком короткий')
     
@@ -263,9 +274,10 @@ async def clear_cache():
         hint_cache.clear()
         semantic_cache = get_semantic_cache()
         semantic_cache.clear()
-        return {'status': 'cleared'}
+        return {'status': 'ok'}
     except Exception as e:
-        raise HTTPException(500, str(e))
+        logger.error(f'[CACHE] Ошибка очистки: {e}')
+        return {'status': 'error', 'message': str(e)}
 
 
 @app.get('/models')
@@ -275,7 +287,7 @@ async def get_models():
         models = ollama.list_models()
         return {'models': models, 'current': ollama.model}
     except Exception as e:
-        raise HTTPException(500, str(e))
+        return {'models': [], 'current': ollama.model, 'error': str(e)}
 
 
 @app.post('/model/{model_name}')
@@ -286,6 +298,61 @@ async def switch_model(model_name: str):
         return {'model': model_name, 'status': 'switched'}
     except Exception as e:
         raise HTTPException(500, str(e))
+
+
+# Модельные профили для тестов
+MODEL_PROFILES = {
+    'instant': {
+        'model': 'gemma3:4b',
+        'temperature': 0.5,
+        'max_tokens': 150,
+        'description': 'Мгновенные ответы <0.5s'
+    },
+    'fast': {
+        'model': 'qwen2.5:7b',
+        'temperature': 0.7,
+        'max_tokens': 300,
+        'description': 'Быстрые качественные ответы'
+    },
+    'balanced': {
+        'model': 'ministral-3:8b',
+        'temperature': 0.7,
+        'max_tokens': 400
+    },
+    'code': {
+        'model': 'qwen2.5-coder:7b',
+        'temperature': 0.3,
+        'max_tokens': 500
+    }
+}
+
+
+@app.get('/model/profiles')
+async def get_model_profiles():
+    """Получить профили моделей"""
+    return {'profiles': MODEL_PROFILES, 'current': ollama.model}
+
+
+@app.post('/model/profile/{profile_name}')
+async def set_model_profile(profile_name: str):
+    """Применить профиль модели"""
+    if profile_name not in MODEL_PROFILES:
+        raise HTTPException(404, f'Профиль {profile_name} не найден')
+    profile = MODEL_PROFILES[profile_name]
+    ollama.model = profile['model']
+    return {'profile': profile_name, 'settings': profile}
+
+
+@app.get('/gpu/status')
+async def gpu_status():
+    """Статус GPU для UI"""
+    return get_gpu_info()
+
+
+@app.get('/audio/devices')
+async def get_audio_devices():
+    """Получить список аудио устройств"""
+    return {'input': [], 'output': []}
 
 
 @app.get('/vision/status')
@@ -300,8 +367,9 @@ async def vision_status():
 
 
 @app.post('/vision/analyze')
-async def vision_analyze(request: VisionRequest):
+async def vision_analyze(vision_request: VisionRequest):
     """Анализ изображения"""
+    request = vision_request
     if not request.image_base64:
         raise HTTPException(400, 'Изображение не предоставлено')
     
