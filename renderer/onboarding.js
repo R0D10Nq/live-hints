@@ -91,6 +91,11 @@ class OnboardingController {
             this.updateButtons();
         });
 
+        // Test microphone button
+        document.getElementById('btn-test-mic')?.addEventListener('click', () => {
+            this.testMicrophone();
+        });
+
         // File remove buttons
         document.getElementById('resume-remove')?.addEventListener('click', () => this.removeFile('resume'));
         document.getElementById('vacancy-remove')?.addEventListener('click', () => this.removeFile('vacancy'));
@@ -125,27 +130,56 @@ class OnboardingController {
     }
 
     initAudioVisualizer() {
-        const viz = document.getElementById('audio-viz');
-        if (!viz) return;
+        this.audioViz = document.getElementById('audio-viz');
+        if (!this.audioViz) return;
 
-        const bars = viz.querySelectorAll('.wave-bar');
+        this.waveBars = this.audioViz.querySelectorAll('.wave-bar');
+        this.isTestingMic = false;
+        this.vizAnimationId = null;
 
-        const animate = () => {
-            if (this.currentStep !== 4) {
-                requestAnimationFrame(animate);
-                return;
+        // Начальное состояние — плоские линии
+        this.waveBars.forEach(bar => {
+            bar.style.height = '10%';
+            bar.style.opacity = '0.3';
+        });
+    }
+
+    testMicrophone() {
+        if (this.isTestingMic) {
+            // Останавливаем тест
+            this.isTestingMic = false;
+            if (this.vizAnimationId) {
+                cancelAnimationFrame(this.vizAnimationId);
             }
-
-            bars.forEach((bar, i) => {
-                const height = 20 + Math.random() * 60;
-                bar.style.height = height + '%';
-                bar.classList.toggle('active', height > 60);
+            this.waveBars.forEach(bar => {
+                bar.style.height = '10%';
+                bar.style.opacity = '0.3';
+                bar.classList.remove('active');
             });
+            document.getElementById('btn-test-mic').innerHTML = '<span class="btn-icon">●</span> Тест микрофона';
+        } else {
+            // Запускаем тест
+            this.isTestingMic = true;
+            document.getElementById('btn-test-mic').innerHTML = '<span class="btn-icon">■</span> Остановить';
+            this.animateVisualizer();
+        }
+    }
 
-            setTimeout(() => requestAnimationFrame(animate), 100);
-        };
+    animateVisualizer() {
+        if (!this.isTestingMic || this.currentStep !== 4) {
+            return;
+        }
 
-        animate();
+        this.waveBars.forEach((bar, i) => {
+            const height = 15 + Math.random() * 70;
+            bar.style.height = height + '%';
+            bar.style.opacity = '0.6';
+            bar.classList.toggle('active', height > 50);
+        });
+
+        this.vizAnimationId = setTimeout(() => {
+            requestAnimationFrame(() => this.animateVisualizer());
+        }, 80);
     }
 
     async initMicrophoneSelect() {

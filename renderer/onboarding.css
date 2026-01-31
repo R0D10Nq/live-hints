@@ -322,8 +322,7 @@ body {
 .node-label {
   font-size: 11px;
   font-weight: 500;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.05em;
   color: var(--ghost-dim);
   transition: all 0.3s var(--ease-out);
 }
@@ -419,7 +418,7 @@ body {
 
 .step-subtitle {
   font-size: 16px;
-  color: var(--ghost);
+  color: var(--mist);
   max-width: 480px;
   margin: 0 auto;
   line-height: 1.6;
