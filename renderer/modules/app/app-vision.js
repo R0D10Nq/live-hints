@@ -3,6 +3,7 @@
  */
 
 import { SERVERS } from '../constants.js';
+import { logger } from '../utils/logger.js';
 
 export class AppVision {
   constructor(app) {
@@ -14,7 +15,7 @@ export class AppVision {
 
     if (btnScreenshot) {
       btnScreenshot.addEventListener('click', () => {
-        console.log('[Vision] Клик по btn-screenshot');
+        logger.debug('Vision', 'Клик по btn-screenshot');
         this.captureAndAnalyze();
       });
     }
@@ -37,7 +38,7 @@ export class AppVision {
       }
 
       const imageData = await window.electronAPI.captureScreen();
-      console.log('[Vision] Захват:', imageData ? `${imageData.length} символов` : 'null');
+      logger.info('Vision', 'Захват:', imageData ? `${imageData.length} символов` : 'null');
 
       if (!imageData) {
         this.app.ui.showToast('Ошибка захвата экрана', 'error');
@@ -59,19 +60,19 @@ export class AppVision {
       }
 
       const data = await resp.json();
-      console.log('[Vision] Ответ:', data);
+      logger.info('Vision', 'Ответ:', data);
 
       if (data.analysis) {
         this.app.ui.addHintItem(`[Vision AI] ${data.analysis}`, new Date().toLocaleTimeString());
         this.app.ui.showToast('Скриншот отправлен', 'success');
       } else if (data.error) {
-        console.error('[Vision] Ошибка:', data.error);
+        logger.error('Vision', 'Ошибка:', data.error);
         this.app.ui.showToast(`Vision: ${data.error}`, 'error');
       } else {
         this.app.ui.showToast('Vision AI не вернул результат', 'error');
       }
     } catch (e) {
-      console.error('[Vision] Ошибка:', e);
+      logger.error('Vision', 'Ошибка:', e);
       this.app.ui.showToast(`Vision ошибка: ${e.message}`, 'error');
     }
   }
