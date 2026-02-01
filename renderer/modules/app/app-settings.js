@@ -3,6 +3,7 @@
  */
 
 import { SERVERS } from '../constants.js';
+import { logger } from '../utils/logger.js';
 
 export class AppSettings {
   constructor(app) {
@@ -205,12 +206,10 @@ export class AppSettings {
 
       if (context) {
         this.app.hints.setUserContext(context);
-        console.log(
-          `[App] Загружен контекст для профиля ${profile}: ${context.length} символов`
-        );
+        logger.info('App', `Загружен контекст для профиля ${profile}: ${context.length} символов`);
       }
     } catch (err) {
-      console.warn('[App] Ошибка загрузки контекста:', err);
+      logger.warn('App', 'Ошибка загрузки контекста:', err);
     }
   }
 
