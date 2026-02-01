@@ -3,6 +3,7 @@
  */
 
 import { SERVERS, TIMEOUTS, CONTEXT, LLM, STORAGE, SYSTEM_PROMPTS } from './constants.js';
+import { logger } from './utils/logger.js';
 
 export class HintManager {
   constructor(app) {
@@ -289,7 +290,7 @@ export class HintManager {
         const data = await response.json();
         const msg = `LLM: ${data.status}, модель: ${data.model}`;
         this.app.ui.showToast(msg, 'success');
-        console.log('[Health]', data);
+        logger.info('Health', 'LLM статус:', data);
       } else {
         this.app.ui.showError('LLM сервер недоступен');
       }
@@ -318,7 +319,7 @@ export class HintManager {
   setUserContext(context) {
     this.userContext = context || '';
     if (this.app.debugMode && context) {
-      console.log(`[HintManager] Установлен контекст пользователя: ${context.length} символов`);
+      logger.debug('HintManager', `Установлен контекст пользователя: ${context.length} символов`);
     }
   }
 
