@@ -4,6 +4,7 @@
  */
 
 import { STATUS_CONFIG } from './constants.js';
+import { logger } from './utils/logger.js';
 import { cacheElements } from './ui/ui-elements.js';
 import { UIUtils } from './ui/ui-utils.js';
 import { UIHints } from './ui/ui-hints.js';
@@ -320,7 +321,7 @@ export class UIController {
       await navigator.clipboard.writeText(textToCopy);
       this.showToast('Скопировано в буфер', 'success');
     } catch (error) {
-      console.error('Ошибка копирования:', error);
+      logger.error('UIController', 'Ошибка копирования:', error);
       this.showToast('Ошибка копирования', 'error');
     }
   }
