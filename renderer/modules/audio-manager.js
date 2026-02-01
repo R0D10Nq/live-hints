@@ -3,6 +3,7 @@
  */
 
 import { SERVERS, TIMEOUTS } from './constants.js';
+import { logger } from './utils/logger.js';
 
 export class AudioManager {
   constructor(app) {
@@ -72,13 +73,13 @@ export class AudioManager {
         if (dualAudioCheckbox) {
           dualAudioCheckbox.checked = settings.dualAudioEnabled;
         }
-        console.log('[AudioManager] Загружен dualAudioEnabled:', this.dualAudioEnabled);
+        logger.info('AudioManager', 'Загружен dualAudioEnabled:', this.dualAudioEnabled);
       }
 
       // Input device (микрофон)
       if (settings.inputDeviceIndex !== undefined) {
         this.inputDeviceIndex = settings.inputDeviceIndex;
-        console.log('[AudioManager] Загружен inputDeviceIndex:', this.inputDeviceIndex);
+        logger.info('AudioManager', 'Загружен inputDeviceIndex:', this.inputDeviceIndex);
       }
 
       // Loopback device
@@ -86,7 +87,7 @@ export class AudioManager {
         this.loopbackDeviceIndex = settings.loopbackDeviceIndex;
       }
     } catch (e) {
-      console.error('[AudioManager] Ошибка загрузки настроек:', e);
+      logger.error('AudioManager', 'Ошибка загрузки настроек:', e);
     }
   }
 
@@ -111,7 +112,7 @@ export class AudioManager {
           loopbacks.map((d) => `<option value="${d.index}">${d.name}</option>`).join('');
       }
     } catch (e) {
-      console.error('Ошибка загрузки аудио устройств:', e);
+      logger.error('AudioManager', 'Ошибка загрузки аудио устройств:', e);
     }
   }
 
@@ -120,13 +121,13 @@ export class AudioManager {
       let resolved = false;
 
       try {
-        console.log(`Подключение к STT серверу ${SERVERS.STT}...`);
+        logger.info('AudioManager', `Подключение к STT серверу ${SERVERS.STT}...`);
         this.wsConnection = new WebSocket(SERVERS.STT);
 
         this.wsConnection.onopen = () => {
           if (resolved) return;
           resolved = true;
-          console.log('Подключено к STT серверу');
+          logger.info('AudioManager', 'Подключено к STT серверу');
           resolve();
         };
 
@@ -135,7 +136,7 @@ export class AudioManager {
         };
 
         this.wsConnection.onerror = (error) => {
-          console.error('WebSocket ошибка:', error);
+          logger.error('AudioManager', 'WebSocket ошибка:', error);
           if (!resolved) {
             resolved = true;
             reject(new Error('Ошибка подключения к STT серверу'));
@@ -143,7 +144,7 @@ export class AudioManager {
         };
 
         this.wsConnection.onclose = () => {
-          console.log('WebSocket закрыт');
+          logger.info('AudioManager', 'WebSocket закрыт');
           if (!resolved) {
             resolved = true;
             reject(new Error('Соединение закрыто'));
@@ -168,12 +169,12 @@ export class AudioManager {
   handleSTTMessage(event) {
     try {
       const data = JSON.parse(event.data);
-      console.log('[STT] Получено сообщение:', data.type, data.text?.substring(0, 50));
+      logger.debug('STT', 'Получено сообщение:', data.type, data.text?.substring(0, 50));
 
       if (data.type === 'transcript') {
         const latencyInfo = data.latency_ms ? ` (${data.latency_ms}ms)` : '';
         const source = data.source || 'interviewer';
-        console.log(`[STT:${source}] "${data.text}"${latencyInfo}`);
+        logger.info('STT', `[${source}] "${data.text}"${latencyInfo}`);
 
         this.app.ui.addTranscriptItem(data.text, new Date().toISOString(), source);
 
@@ -195,17 +196,17 @@ export class AudioManager {
         const btnGetHint = document.getElementById('btn-get-hint');
         if (btnGetHint) btnGetHint.disabled = false;
       } else if (data.type === 'status') {
-        console.log('[STT] Статус:', data.status);
+        logger.debug('STT', 'Статус:', data.status);
       } else if (data.type === 'error') {
-        console.error('[STT] Ошибка:', data.message);
+        logger.error('STT', 'Ошибка:', data.message);
         this.app.ui.showError(`STT: ${data.message}`);
       }
     } catch (e) {
       // Может быть бинарные данные
       if (typeof event.data !== 'string') {
-        console.log('[STT] Получены бинарные данные');
+        logger.debug('STT', 'Получены бинарные данные');
       } else {
-        console.error('Ошибка парсинга сообщения:', e);
+        logger.error('STT', 'Ошибка парсинга сообщения:', e);
       }
     }
   }
@@ -224,26 +225,17 @@ export class AudioManager {
           this._micSentCount++;
 
           if (this._micSentCount === 1) {
-            console.log(
-              '[MIC] Первый чанк аудио отправлен, размер:',
-              data.length || data.byteLength,
-              'байт'
-            );
+            logger.info('MIC', 'Первый чанк аудио отправлен, размер:', data.length || data.byteLength, 'байт');
           } else if (this._micSentCount % 100 === 0) {
-            console.log('[MIC] Отправлено чанков:', this._micSentCount);
+            logger.info('MIC', 'Отправлено чанков:', this._micSentCount);
           }
 
           this.wsMicrophone.send(data);
         } catch (e) {
-          console.error('[MIC] Ошибка отправки аудио:', e);
+          logger.error('MIC', 'Ошибка отправки аудио:', e);
         }
       } else if (!this._micWsWarningShown && this.dualAudioEnabled) {
-        console.warn(
-          '[MIC] WebSocket не открыт или muted, состояние:',
-          this.wsMicrophone?.readyState,
-          'muted:',
-          this.micMuted
-        );
+        logger.warn('MIC', 'WebSocket не открыт или muted, состояние:', this.wsMicrophone?.readyState, 'muted:', this.micMuted);
         this._micWsWarningShown = true;
       }
     } else {
@@ -254,22 +246,18 @@ export class AudioManager {
           this._audioSentCount++;
 
           if (this._audioSentCount === 1) {
-            console.log(
-              '[AUDIO] Первый чанк аудио отправлен, размер:',
-              data.length || data.byteLength,
-              'байт'
-            );
+            logger.info('AUDIO', 'Первый чанк аудио отправлен, размер:', data.length || data.byteLength, 'байт');
           } else if (this._audioSentCount % 100 === 0) {
-            console.log('[AUDIO] Отправлено чанков:', this._audioSentCount);
+            logger.info('AUDIO', 'Отправлено чанков:', this._audioSentCount);
           }
 
           this.wsConnection.send(data);
         } catch (e) {
-          console.error('[AUDIO] Ошибка отправки аудио:', e);
+          logger.error('AUDIO', 'Ошибка отправки аудио:', e);
         }
       } else {
         if (!this._wsWarningShown) {
-          console.warn('[AUDIO] WebSocket не открыт, состояние:', this.wsConnection?.readyState);
+          logger.warn('AUDIO', 'WebSocket не открыт, состояние:', this.wsConnection?.readyState);
           this._wsWarningShown = true;
         }
       }
@@ -283,7 +271,7 @@ export class AudioManager {
       this.wsMicrophone = new WebSocket(SERVERS.STT_MIC);
 
       this.wsMicrophone.onopen = () => {
-        console.log('[MIC] WebSocket подключен');
+        logger.info('MIC', 'WebSocket подключен');
         this.app.ui.showToast('Микрофон подключен', 'success');
       };
 
@@ -291,7 +279,7 @@ export class AudioManager {
         try {
           const data = JSON.parse(event.data);
           if (data.type === 'transcript' && data.text) {
-            console.log(`[MIC] Транскрипт: "${data.text}"`);
+            logger.info('MIC', `Транскрипт: "${data.text}"`);
             this.app.ui.addTranscriptItem(
               data.text,
               data.timestamp || new Date().toISOString(),
@@ -322,19 +310,19 @@ export class AudioManager {
             if (btnGetHint) btnGetHint.disabled = false;
           }
         } catch (e) {
-          console.error('[MIC] Parse error:', e);
+          logger.error('MIC', 'Parse error:', e);
         }
       };
 
       this.wsMicrophone.onerror = (e) => {
-        console.error('[MIC] WebSocket error:', e);
+        logger.error('MIC', 'WebSocket error:', e);
       };
 
       this.wsMicrophone.onclose = () => {
-        console.log('[MIC] WebSocket закрыт');
+        logger.info('MIC', 'WebSocket закрыт');
       };
     } catch (e) {
-      console.error('[MIC] Ошибка подключения:', e);
+      logger.error('MIC', 'Ошибка подключения:', e);
     }
   }
 
