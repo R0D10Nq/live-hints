@@ -105,8 +105,17 @@ Object.defineProperty(global, 'navigator', {
 });
 
 // Мок для URL
-global.URL.createObjectURL = jest.fn(() => 'blob:mock-url');
-global.URL.revokeObjectURL = jest.fn();
+class MockURL {
+  constructor(url) {
+    this.url = url;
+  }
+  static createObjectURL(blob) {
+    return 'blob:mock-url';
+  }
+  static revokeObjectURL(url) { }
+}
+
+global.URL = MockURL;
 
 // Мок для Blob
 global.Blob = class Blob {
