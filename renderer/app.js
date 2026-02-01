@@ -1,304 +1,249 @@
 /**
- * Live Hints - Главный модуль приложения
- * Рефакторинг: использует отдельные модули для разных ответственностей
+ * Live Hints - Main Application
+ * Shadow Assistant Theme
+ * Integrates new UI modules with existing functionality
  */
 
-import { SERVERS } from './modules/constants.js';
-import { AudioManager } from './modules/audio-manager.js';
-import { SessionManager } from './modules/session-manager.js';
-import { UIController } from './modules/ui-controller.js';
-import { HintManager } from './modules/hint-manager.js';
-import { AppSettings } from './modules/app/app-settings.js';
-import { AppVision } from './modules/app/app-vision.js';
-import { AppStealth } from './modules/app/app-stealth.js';
-import { AppModels } from './modules/app/app-models.js';
-import { AppIPC } from './modules/app/app-ipc.js';
+import { NewUIController } from './modules/ui-new/index.js';
+import { state } from './modules/ui-new/state-manager.js';
+import { animations } from './modules/ui-new/animation-engine.js';
 
+// Constants
+const SERVERS = {
+  STT: 'ws://localhost:8765',
+  LLM: 'http://localhost:8766',
+  VISION: 'http://localhost:8767'
+};
+
+// Main Application Class
 class LiveHintsApp {
   constructor() {
-    // Состояние приложения
-    this.isRunning = false;
-    this.isPaused = false;
-    this.autoHintsEnabled = false;
-    this.debugMode = false;
-    this.theme = 'dark';
-    this.lastContextHash = '';
-    this.transcriptContext = [];
-
-    // Инициализация модулей
-    this.ui = new UIController(this);
-    this.audio = new AudioManager(this);
-    this.sessions = new SessionManager(this);
-    this.hints = new HintManager(this);
-
-    // Инициализация app-модулей
-    this.settings = new AppSettings(this);
-    this.vision = new AppVision(this);
-    this.stealth = new AppStealth(this);
-    this.models = new AppModels(this);
-    this.ipc = new AppIPC(this);
+    this.ui = null;
+    this.ws = null;
+    this.reconnectAttempts = 0;
+    this.maxReconnectAttempts = 5;
 
     this.init();
   }
 
-  init() {
-    this.ui.setup();
-    this.audio.setup();
-    this.sessions.setup();
-    this.bindEvents();
-    this.settings.load();
-    this.ipc.setup();
-    this.models.setup();
-    this.vision.setup();
-    this.stealth.setup();
-    this.hints.setupDirectMessage();
+  async init() {
+    console.log('[APP] Initializing Live Hints...');
+
+    // Initialize new UI controller
+    this.ui = new NewUIController();
+
+    // Setup IPC listeners
+    this.setupIPCListeners();
+
+    // Connect to WebSocket
+    this.connectWebSocket();
+
+    // Setup keyboard shortcuts
+    this.setupKeyboardShortcuts();
+
+    // Load initial settings
+    this.loadSettings();
+
+    // Setup particles for visual effect
+    this.setupParticles();
+
+    console.log('[APP] Initialization complete');
   }
 
-  bindEvents() {
-    const { elements } = this.ui;
-
-    // Window controls
-    elements.btnMinimize?.addEventListener('click', () => {
-      window.electronAPI.minimizeWindow();
-    });
-
-    elements.btnClose?.addEventListener('click', () => {
-      this.stop();
-      window.electronAPI.closeWindow();
-    });
-
-    // Start/Stop
-    elements.btnToggle?.addEventListener('click', () => {
-      if (this.isRunning) {
-        this.stop();
-      } else {
-        this.start();
-      }
-    });
-
-    // Provider change
-    elements.llmProvider?.addEventListener('change', (e) => {
-      this.saveSettings({ llmProvider: e.target.value });
-    });
-
-    // Profile change
-    elements.aiProfile?.addEventListener('change', (e) => {
-      this.hints.setProfile(e.target.value);
-      this.toggleCustomInstructions();
-      this.saveSettings({ aiProfile: e.target.value });
-    });
-
-    // Custom instructions
-    const customInstructions = document.getElementById('custom-instructions');
-    if (customInstructions) {
-      customInstructions.addEventListener('input', (e) => {
-        this.hints.customInstructions = e.target.value;
-        this.saveSettings({ customInstructions: e.target.value });
-      });
+  setupIPCListeners() {
+    if (!window.electron) {
+      console.warn('[APP] Electron API not available');
+      return;
     }
 
-    // Auto hints
-    const autoHints = document.getElementById('auto-hints');
-    if (autoHints) {
-      autoHints.addEventListener('change', (e) => {
-        this.autoHintsEnabled = e.target.checked;
-        this.saveSettings({ autoHints: e.target.checked });
+    // Transcript received
+    window.electron.on('transcript', (data) => {
+      console.log('[APP] Transcript received:', data.text);
+      state.addTranscript(data.text);
+    });
+
+    // Hint received
+    window.electron.on('hint', (data) => {
+      console.log('[APP] Hint received');
+      state.set('ui.status', 'recording');
+      state.addHint({
+        text: data.text,
+        timestamp: Date.now(),
+        type: data.type || 'general',
+        confidence: data.confidence || 'medium'
       });
-    }
-
-    // Get hint button
-    elements.btnGetHint?.addEventListener('click', () => {
-      this.hints.manualRequestHint();
+      this.ui.showToast('Подсказка получена', 'success');
     });
 
-    // Pause button
-    elements.btnPause?.addEventListener('click', () => {
-      this.togglePause();
+    // Error received
+    window.electron.on('error', (data) => {
+      console.error('[APP] Error:', data.message);
+      state.set('ui.status', 'error');
+      this.ui.showToast(data.message, 'error');
     });
 
-    // Opacity slider
-    const opacitySlider = document.getElementById('opacity-slider');
-    const opacityValue = document.getElementById('opacity-value');
-    if (opacitySlider) {
-      opacitySlider.addEventListener('input', (e) => {
-        const value = parseInt(e.target.value);
-        if (opacityValue) opacityValue.textContent = `${value}%`;
-        window.electronAPI.setOpacity(value);
-        this.saveSettings({ opacity: value });
-      });
-    }
-
-    // Settings sliders
-    this.settings.setupFontSliders();
-    this.settings.setupAdvancedSettings();
-
-    // History
-    elements.btnHistory?.addEventListener('click', () => {
-      this.ui.showHistoryModal();
+    // Status updates
+    window.electron.on('status', (data) => {
+      state.set('ui.status', data.status);
     });
 
-    // Hotkeys
-    document.addEventListener('keydown', (e) => this.handleHotkeys(e));
+    // Settings updated
+    window.electron.on('settings-updated', () => {
+      this.loadSettings();
+    });
   }
 
-  // Session flow
-  async start() {
+  connectWebSocket() {
     try {
-      console.log('[APP] Запуск сессии...');
+      this.ws = new WebSocket(SERVERS.STT);
 
-      this.ui.updateStatus('listening');
-      this.isRunning = true;
-      this.isPaused = false;
-      this.ui.updateToggleButton(true);
-      this.ui.clearFeeds();
-
-      this.hints.clearContext();
-      console.log('[APP] Контекст очищен для новой сессии');
-
-      this.clearServerCache();
-      this.sessions.create();
-
-      console.log('[APP] Подключение к STT...');
-      await this.audio.connectToSTT();
-      console.log('[APP] STT подключен');
-
-      if (this.audio.dualAudioEnabled) {
-        console.log('[APP] Dual Audio включён, подключаем микрофон...');
-        this.audio.connectMicrophone();
-      } else {
-        console.log('[APP] Single mode (только loopback)');
-      }
-
-      console.log('[APP] Запуск захвата аудио...');
-      const audioOptions = {
-        dualAudio: this.audio.dualAudioEnabled,
-        micDeviceIndex: this.audio.inputDeviceIndex || null,
+      this.ws.onopen = () => {
+        console.log('[APP] WebSocket connected');
+        this.reconnectAttempts = 0;
+        state.set('ui.status', 'idle');
       };
-      const result = await window.electronAPI.startAudioCapture(audioOptions);
-      console.log('[APP] Результат захвата:', result, 'dualAudio:', audioOptions.dualAudio);
 
-      if (!result.success) {
-        throw new Error(result.error || 'Не удалось запустить захват аудио');
-      }
+      this.ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          this.handleWebSocketMessage(data);
+        } catch (err) {
+          console.error('[APP] Failed to parse WebSocket message:', err);
+        }
+      };
 
-      console.log('[APP] Сессия запущена успешно');
-      this.ui.showToast('Сессия запущена', 'success');
-    } catch (error) {
-      console.error('[APP] Ошибка запуска:', error);
-      this.ui.showError(`Ошибка запуска: ${error.message}`);
-      this.stop();
-    }
-  }
+      this.ws.onclose = () => {
+        console.log('[APP] WebSocket closed');
+        this.attemptReconnect();
+      };
 
-  async stop() {
-    try {
-      console.log('[APP] Остановка сессии...');
-
-      await window.electronAPI.stopAudioCapture();
-      this.audio.disconnect();
-
-      if (this.sessions.currentSessionId) {
-        this.sessions.save();
-      }
-
-      this.isRunning = false;
-      this.isPaused = false;
-      this.ui.updateStatus('idle');
-      this.ui.updateToggleButton(false);
-
-      console.log('[APP] Сессия остановлена');
-    } catch (error) {
-      console.error('[APP] Ошибка остановки:', error);
-      this.ui.showError(`Ошибка остановки: ${error.message}`);
-    }
-  }
-
-  togglePause() {
-    if (!this.isRunning) return;
-
-    this.isPaused = !this.isPaused;
-    this.ui.updatePauseButton(this.isPaused);
-
-    if (this.isPaused) {
-      this.ui.updateStatus('paused');
-    } else {
-      this.ui.updateStatus('listening');
-    }
-  }
-
-  handleHotkeys(e) {
-    if (e.ctrlKey && e.key === '/') {
-      e.preventDefault();
-      window.electronAPI.toggleVisibility?.();
-    }
-    if (e.ctrlKey && e.key.startsWith('Arrow')) {
-      e.preventDefault();
-      const direction = e.key.replace('Arrow', '').toLowerCase();
-      window.electronAPI.moveWindow?.(direction);
-    }
-    if (e.ctrlKey && e.key === 'Enter' && this.isRunning) {
-      e.preventDefault();
-      this.hints.manualRequestHint();
-    }
-    if (e.ctrlKey && e.key === 't') {
-      e.preventDefault();
-      this.ui.toggleTranscripts();
-    }
-    if (e.ctrlKey && e.key === 'h') {
-      e.preventDefault();
-      this.stealth.toggle();
-    }
-    if (e.ctrlKey && e.key === 'd') {
-      e.preventDefault();
-      this.toggleTheme();
-    }
-  }
-
-  toggleTheme() {
-    this.theme = this.theme === 'dark' ? 'light' : 'dark';
-    document.body.setAttribute('data-theme', this.theme);
-    this.ui.showToast(`Тема: ${this.theme === 'dark' ? 'тёмная' : 'светлая'}`, 'success');
-    this.saveSettings();
-  }
-
-  toggleCustomInstructions() {
-    const container = document.getElementById('custom-prompt-group');
-    if (!container) return;
-
-    if (this.hints.currentProfile === 'custom') {
-      container.classList.remove('hidden');
-    } else {
-      container.classList.add('hidden');
-    }
-  }
-
-  async clearServerCache() {
-    try {
-      const response = await fetch(`${SERVERS.LLM}/cache/clear`, { method: 'POST' });
-      if (response.ok) {
-        console.log('[APP] Кэш сервера очищен');
-      }
+      this.ws.onerror = (err) => {
+        console.error('[APP] WebSocket error:', err);
+        state.set('ui.status', 'error');
+      };
     } catch (err) {
-      console.warn('[APP] Не удалось очистить кэш сервера:', err.message);
+      console.error('[APP] Failed to connect WebSocket:', err);
     }
   }
 
-  // Proxy methods for backwards compatibility
+  attemptReconnect() {
+    if (this.reconnectAttempts >= this.maxReconnectAttempts) {
+      console.error('[APP] Max reconnection attempts reached');
+      this.ui.showToast('Не удалось подключиться к серверу', 'error');
+      return;
+    }
+
+    this.reconnectAttempts++;
+    const delay = Math.min(1000 * Math.pow(2, this.reconnectAttempts), 30000);
+
+    console.log(`[APP] Reconnecting in ${delay}ms (attempt ${this.reconnectAttempts})`);
+
+    setTimeout(() => {
+      this.connectWebSocket();
+    }, delay);
+  }
+
+  handleWebSocketMessage(data) {
+    switch (data.type) {
+      case 'transcript':
+        state.addTranscript(data.text);
+        break;
+      case 'status':
+        state.set('ui.status', data.status);
+        break;
+      case 'error':
+        console.error('[APP] Server error:', data.message);
+        this.ui.showToast(data.message, 'error');
+        break;
+    }
+  }
+
+  setupKeyboardShortcuts() {
+    document.addEventListener('keydown', (e) => {
+      // Ctrl/Cmd + Space - Toggle recording
+      if ((e.ctrlKey || e.metaKey) && e.code === 'Space') {
+        e.preventDefault();
+        document.getElementById('btn-toggle')?.click();
+      }
+
+      // Ctrl/Cmd + P - Pause
+      if ((e.ctrlKey || e.metaKey) && e.code === 'KeyP') {
+        e.preventDefault();
+        document.getElementById('btn-pause')?.click();
+      }
+
+      // Ctrl/Cmd + H - Ask hint
+      if ((e.ctrlKey || e.metaKey) && e.code === 'KeyH') {
+        e.preventDefault();
+        document.getElementById('btn-ask')?.click();
+      }
+
+      // Escape - Close modals/panels
+      if (e.code === 'Escape') {
+        const settingsPanel = document.getElementById('settings-panel');
+        if (settingsPanel?.classList.contains('open')) {
+          this.ui.settings.close();
+        }
+      }
+    });
+  }
+
   loadSettings() {
-    this.settings.load();
+    if (!window.electron) return;
+
+    window.electron.send('get-settings');
+    window.electron.once('settings', (settings) => {
+      if (settings.theme) {
+        document.documentElement.setAttribute('data-theme', settings.theme);
+        state.updateSetting('theme', settings.theme);
+      }
+      if (settings.provider) {
+        state.updateSetting('provider', settings.provider);
+        const providerSelect = document.getElementById('llm-provider');
+        if (providerSelect) providerSelect.value = settings.provider;
+      }
+      if (settings.profile) {
+        state.updateSetting('profile', settings.profile);
+        const profileSelect = document.getElementById('ai-profile');
+        if (profileSelect) profileSelect.value = settings.profile;
+      }
+    });
   }
-  saveSettings(newSettings) {
-    this.settings.save(newSettings);
+
+  setupParticles() {
+    const particles = document.getElementById('particles');
+    if (!particles) return;
+
+    // Create subtle floating particles
+    for (let i = 0; i < 20; i++) {
+      const particle = document.createElement('div');
+      particle.className = 'particle';
+      particle.style.left = `${Math.random() * 100}%`;
+      particle.style.animationDelay = `${Math.random() * 20}s`;
+      particle.style.animationDuration = `${15 + Math.random() * 10}s`;
+      particles.appendChild(particle);
+    }
   }
-  captureAndAnalyze() {
-    this.vision.captureAndAnalyze();
+
+  // Public API for backwards compatibility
+  startRecording() {
+    state.startSession();
+    window.electron?.send('start-recording');
   }
-  get stealthMode() {
-    return this.stealth.stealthMode;
+
+  stopRecording() {
+    state.stopSession();
+    window.electron?.send('stop-recording');
+  }
+
+  generateHint() {
+    state.set('ui.status', 'processing');
+    this.ui.hints.showLoadingState();
+    window.electron?.send('generate-hint');
   }
 }
 
-// Initialize
+// Initialize application
 document.addEventListener('DOMContentLoaded', () => {
   window.liveHintsApp = new LiveHintsApp();
 });

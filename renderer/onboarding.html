@@ -1,12 +1,12 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="ru" data-theme="dark">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; connect-src 'self' ws://localhost:8765 ws://localhost:8764 http://localhost:8766">
   <title>Live Hints — Настройка</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="onboarding.css">
 </head>
 <body>
@@ -17,11 +17,11 @@
     <!-- Header -->
     <header class="onboarding-header">
       <div class="logo">
-        <div class="logo-mark"></div>
+        <div class="logo-mark">LH</div>
         <span class="logo-text">Live Hints</span>
       </div>
       <div class="window-controls">
-        <button id="btn-minimize" class="window-btn" title="Свернуть">─</button>
+        <button id="btn-minimize" class="window-btn" title="Свернуть">−</button>
         <button id="btn-close" class="window-btn window-btn-close" title="Закрыть">×</button>
       </div>
     </header>
@@ -29,9 +29,6 @@
     <!-- Progress Indicator -->
     <div class="progress-container">
       <div class="progress-orbit">
-        <div class="orbit-path"></div>
-        <div class="orbit-progress" id="orbit-progress"></div>
-        
         <div class="orbit-node active" data-step="1">
           <div class="node-core">1</div>
           <span class="node-label">Сценарий</span>
@@ -63,52 +60,37 @@
         
         <div class="mode-grid" id="mode-grid">
           <div class="mode-card selected" data-mode="job_interview_ru">
-            <div class="card-glow"></div>
-            <div class="card-content">
-              <div class="card-icon">◈</div>
-              <div class="card-title">Собеседование</div>
-              <div class="card-desc">Технические вопросы и ответы по вашему опыту</div>
-            </div>
+            <div class="card-icon">◈</div>
+            <div class="card-title">Собеседование</div>
+            <div class="card-desc">Технические вопросы и ответы по вашему опыту</div>
             <div class="card-check">✓</div>
           </div>
           
           <div class="mode-card" data-mode="business_meeting">
-            <div class="card-glow"></div>
-            <div class="card-content">
-              <div class="card-icon">◆</div>
-              <div class="card-title">Переговоры</div>
-              <div class="card-desc">Аргументы и контраргументы для бизнес-встреч</div>
-            </div>
+            <div class="card-icon">◆</div>
+            <div class="card-title">Переговоры</div>
+            <div class="card-desc">Аргументы и контраргументы для бизнес-встреч</div>
             <div class="card-check">✓</div>
           </div>
           
           <div class="mode-card" data-mode="daily_sync">
-            <div class="card-glow"></div>
-            <div class="card-content">
-              <div class="card-icon">◉</div>
-              <div class="card-title">Созвоны</div>
-              <div class="card-desc">Краткие статусы и обсуждение задач</div>
-            </div>
+            <div class="card-icon">◉</div>
+            <div class="card-title">Созвоны</div>
+            <div class="card-desc">Краткие статусы и обсуждение задач</div>
             <div class="card-check">✓</div>
           </div>
           
           <div class="mode-card" data-mode="presentation">
-            <div class="card-glow"></div>
-            <div class="card-content">
-              <div class="card-icon">★</div>
-              <div class="card-title">Презентация</div>
-              <div class="card-desc">Убедительные питчи и демонстрации</div>
-            </div>
+            <div class="card-icon">★</div>
+            <div class="card-title">Презентация</div>
+            <div class="card-desc">Убедительные питчи и демонстрации</div>
             <div class="card-check">✓</div>
           </div>
           
           <div class="mode-card" data-mode="custom">
-            <div class="card-glow"></div>
-            <div class="card-content">
-              <div class="card-icon">◎</div>
-              <div class="card-title">Свой сценарий</div>
-              <div class="card-desc">Полностью кастомные инструкции</div>
-            </div>
+            <div class="card-icon">◎</div>
+            <div class="card-title">Свой сценарий</div>
+            <div class="card-desc">Полностью кастомные инструкции</div>
             <div class="card-check">✓</div>
           </div>
         </div>
@@ -131,13 +113,7 @@
         </div>
 
         <div class="upload-zone" id="resume-upload">
-          <div class="upload-stream">
-            <div class="stream-line" style="top: 20%; animation-delay: 0s;"></div>
-            <div class="stream-line" style="top: 40%; animation-delay: 1s;"></div>
-            <div class="stream-line" style="top: 60%; animation-delay: 2s;"></div>
-            <div class="stream-line" style="top: 80%; animation-delay: 0.5s;"></div>
-          </div>
-          <div class="upload-icon-main">↑</div>
+          <div class="upload-icon-main">↗</div>
           <div class="upload-title">Перетащите файл или кликните для выбора</div>
           <div class="upload-hint">PDF, DOCX, TXT — до 10MB</div>
           <input type="file" id="resume-input" accept=".txt,.pdf,.docx" hidden>
@@ -145,7 +121,7 @@
 
         <div class="file-result hidden" id="resume-result">
           <div class="file-info-card">
-            <div class="file-icon">📄</div>
+            <div class="file-icon">◈</div>
             <div class="file-meta">
               <span class="file-name" id="resume-filename">resume.pdf</span>
               <span class="file-size" id="resume-filesize">2.4 MB</span>
@@ -173,11 +149,6 @@
         </div>
 
         <div class="upload-zone" id="vacancy-upload">
-          <div class="upload-stream">
-            <div class="stream-line" style="top: 25%; animation-delay: 0.3s;"></div>
-            <div class="stream-line" style="top: 50%; animation-delay: 1.3s;"></div>
-            <div class="stream-line" style="top: 75%; animation-delay: 2.3s;"></div>
-          </div>
           <div class="upload-icon-main">☁</div>
           <div class="upload-title">Загрузите описание вакансии</div>
           <div class="upload-hint">PDF, TXT — или пропустите этот шаг</div>
@@ -186,7 +157,7 @@
 
         <div class="file-result hidden" id="vacancy-result">
           <div class="file-info-card">
-            <div class="file-icon">📄</div>
+            <div class="file-icon">◈</div>
             <div class="file-meta">
               <span class="file-name" id="vacancy-filename">vacancy.pdf</span>
               <span class="file-size" id="vacancy-filesize">1.2 MB</span>
@@ -238,16 +209,15 @@
           </select>
           
           <button class="btn btn-primary" id="btn-test-mic">
-            <span class="btn-icon">●</span>
+            <span class="btn-icon">◉</span>
             Тест микрофона
           </button>
         </div>
 
         <label class="checkbox-modern">
           <input type="checkbox" id="dual-audio">
-          <span class="check-box"></span>
           <span class="check-label">
-            <strong>Dual Audio Mode <span class="tooltip-icon" data-tooltip="Захватывает микрофон + системный звук для лучшего распознавания собеседника">?</span></strong>
+            <strong>Dual Audio Mode <span class="tooltip-icon">?</span></strong>
             <span>Раздельный захват микрофона и системного звука</span>
           </span>
         </label>

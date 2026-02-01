@@ -146,6 +146,7 @@ playwright-report
 
 # Windsurf
 .windsurf
+AGENTS.md
 
 .benchmarks
 
@@ -177,3 +178,6 @@ data/session_memory.json
 python/data/questions_db.json
 python/llm/__pycache__/*
 python/stt/__pycache__/*
+
+# local docs
+docs/

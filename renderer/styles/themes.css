@@ -1,0 +1,116 @@
+/**
+ * Live Hints Themes
+ * Shadow Assistant Theme
+ */
+
+/* === DARK THEME (Default) === */
+
+[data-theme="dark"],
+:root {
+  --bg-void: #0a0a0f;
+  --bg-depth: #0d0d12;
+  --bg-surface: #13131a;
+  --bg-elevated: #1a1a22;
+  --bg-hover: #22222c;
+  --bg-active: #2a2a36;
+  --bg-overlay: rgba(10, 10, 15, 0.85);
+
+  --text-primary: #f0f0f5;
+  --text-secondary: #a0a0b0;
+  --text-muted: #6b6b7b;
+  --text-disabled: #4a4a5a;
+}
+
+/* === DEEP DARK THEME === */
+
+[data-theme="deep-dark"] {
+  --bg-void: #050508;
+  --bg-depth: #08080c;
+  --bg-surface: #0c0c12;
+  --bg-elevated: #111118;
+  --bg-hover: #181820;
+  --bg-active: #202028;
+  --bg-overlay: rgba(5, 5, 8, 0.9);
+
+  --text-primary: #e8e8ed;
+  --text-secondary: #9090a0;
+  --text-muted: #606070;
+  --text-disabled: #404050;
+}
+
+/* === MIDNIGHT THEME === */
+
+[data-theme="midnight"] {
+  --bg-void: #0c0c14;
+  --bg-depth: #11111c;
+  --bg-surface: #181825;
+  --bg-elevated: #202030;
+  --bg-hover: #2a2a3d;
+  --bg-active: #34344a;
+  --bg-overlay: rgba(12, 12, 20, 0.85);
+
+  --text-primary: #f2f2f8;
+  --text-secondary: #a8a8c0;
+  --text-muted: #707090;
+  --text-disabled: #505070;
+
+  --accent-primary: #d4a853;
+  --accent-primary-dim: #a8803c;
+  --accent-primary-bright: #e8c060;
+}
+
+/* === FOCUS MODE === */
+
+.focus-mode .sidebar,
+.focus-mode .control-bar {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--duration-slow) var(--ease-out);
+}
+
+.focus-mode:hover .sidebar,
+.focus-mode:hover .control-bar {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.focus-mode .app-header {
+  opacity: 0.5;
+  transition: opacity var(--duration-slow) var(--ease-out);
+}
+
+.focus-mode:hover .app-header {
+  opacity: 1;
+}
+
+.focus-mode .hints-container {
+  padding: var(--space-8);
+}
+
+/* === HIGH CONTRAST === */
+
+[data-contrast="high"] {
+  --text-primary: #ffffff;
+  --text-secondary: #cccccc;
+  --text-muted: #999999;
+  --border-default: rgba(255, 255, 255, 0.2);
+  --border-hover: rgba(255, 255, 255, 0.3);
+}
+
+/* === REDUCED MOTION === */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* === REDUCED TRANSPARENCY === */
+
+[data-transparency="reduced"] {
+  --bg-overlay: rgba(10, 10, 15, 0.98);
+}
