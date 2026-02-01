@@ -357,6 +357,110 @@ describe('HintManager', () => {
       );
     });
   });
+
+  describe('clearContext', () => {
+    test('должен очищать контекст и хеш', () => {
+      hintManager.transcriptContext = ['тест'];
+      hintManager.lastContextHash = 'hash123';
+
+      hintManager.clearContext();
+
+      expect(hintManager.transcriptContext).toEqual([]);
+      expect(hintManager.lastContextHash).toBe('');
+    });
+  });
+
+  describe('setProfile', () => {
+    test('должен устанавливать профиль', () => {
+      hintManager.setProfile('custom');
+      expect(hintManager.currentProfile).toBe('custom');
+    });
+
+    test('должен устанавливать профиль и кастомные инструкции', () => {
+      hintManager.setProfile('custom', 'мои инструкции');
+      expect(hintManager.currentProfile).toBe('custom');
+      expect(hintManager.customInstructions).toBe('мои инструкции');
+    });
+
+    test('кастомные инструкции по умолчанию пустые', () => {
+      hintManager.setProfile('job_interview_ru');
+      expect(hintManager.customInstructions).toBe('');
+    });
+  });
+
+  describe('setParams', () => {
+    test('должен устанавливать contextWindowSize', () => {
+      hintManager.setParams({ contextWindowSize: 20 });
+      expect(hintManager.contextWindowSize).toBe(20);
+    });
+
+    test('должен устанавливать maxContextChars', () => {
+      hintManager.setParams({ maxContextChars: 5000 });
+      expect(hintManager.maxContextChars).toBe(5000);
+    });
+
+    test('должен устанавливать maxTokens', () => {
+      hintManager.setParams({ maxTokens: 1000 });
+      expect(hintManager.maxTokens).toBe(1000);
+    });
+
+    test('должен устанавливать temperature', () => {
+      hintManager.setParams({ temperature: 0.5 });
+      expect(hintManager.temperature).toBe(0.5);
+    });
+
+    test('должен устанавливать несколько параметров одновременно', () => {
+      hintManager.setParams({ maxTokens: 1000, temperature: 0.5 });
+      expect(hintManager.maxTokens).toBe(1000);
+      expect(hintManager.temperature).toBe(0.5);
+    });
+
+    test('должен игнорировать undefined параметры', () => {
+      const originalTokens = hintManager.maxTokens;
+      hintManager.setParams({ maxTokens: undefined, temperature: 0.5 });
+      expect(hintManager.maxTokens).toBe(originalTokens);
+      expect(hintManager.temperature).toBe(0.5);
+    });
+  });
+
+  describe('getReadableError', () => {
+    test('должен возвращать сообщение для AbortError', () => {
+      const error = new Error('AbortError');
+      error.name = 'AbortError';
+      const result = hintManager.getReadableError(error);
+      expect(result).toContain('Таймаут');
+    });
+
+    test('должен возвращать сообщение для сетевой ошибки', () => {
+      const error = new Error('NetworkError: Failed to fetch');
+      const result = hintManager.getReadableError(error);
+      expect(result).toContain('сети');
+    });
+
+    test('должен возвращать сообщение для fetch ошибки', () => {
+      const error = new Error('Failed to fetch');
+      const result = hintManager.getReadableError(error);
+      expect(result).toContain('недоступен');
+    });
+
+    test('должен возвращать сообщение для ECONNREFUSED', () => {
+      const error = new Error('ECONNREFUSED');
+      const result = hintManager.getReadableError(error);
+      expect(result).toContain('не запущен');
+    });
+
+    test('должен возвращать дефолтное сообщение для неизвестной ошибки', () => {
+      const error = new Error('Unknown error');
+      const result = hintManager.getReadableError(error);
+      expect(result).toBe('Ошибка: Unknown error');
+    });
+
+    test('должен возвращать дефолтное сообщение если нет message', () => {
+      const error = {};
+      const result = hintManager.getReadableError(error);
+      expect(result).toBe('Ошибка: Неизвестная ошибка');
+    });
+  });
 });
 
 describe('HintManager метрики', () => {
