@@ -45,12 +45,12 @@ export class HintManager {
     const contextHash = context.join('|');
 
     if (this.lastContextHash === contextHash) {
-      if (this.app.debugMode) console.log('[LLM] Дубликат контекста, пропускаем');
+      if (this.app.debugMode) logger.debug('LLM', 'Дубликат контекста, пропускаем');
       return;
     }
 
     if (this.hintRequestPending) {
-      if (this.app.debugMode) console.log('[LLM] Запрос уже в процессе');
+      if (this.app.debugMode) logger.debug('LLM', 'Запрос уже в процессе');
       return;
     }
 
@@ -62,9 +62,7 @@ export class HintManager {
     this.app.ui.showHintLoading();
 
     if (this.app.debugMode) {
-      console.log(
-        `[LLM] Streaming запрос: maxTokens=${this.maxTokens}, temperature=${this.temperature}`
-      );
+      logger.debug('LLM', `Streaming запрос: maxTokens=${this.maxTokens}, temperature=${this.temperature}`);
     }
 
     try {
@@ -92,7 +90,7 @@ export class HintManager {
       if (!response.ok) {
         clearTimeout(timeoutId);
         const errorText = await response.text().catch(() => 'Не удалось прочитать ответ');
-        console.error(`[LLM] Ошибка ${response.status}: ${errorText.substring(0, 300)}`);
+        logger.error('LLM', `Ошибка ${response.status}:`, errorText.substring(0, 300));
         this.app.ui.showError(`LLM ошибка ${response.status}`);
         this.app.ui.hideHintLoading();
         return;
@@ -121,7 +119,7 @@ export class HintManager {
               if (isFirstChunk) {
                 this.metrics.t_hint_response = performance.now();
                 const ttft = Math.round(this.metrics.t_hint_response - startTime);
-                if (this.app.debugMode) console.log(`[LLM] TTFT: ${ttft}ms`);
+                if (this.app.debugMode) logger.debug('LLM', `TTFT: ${ttft}ms`);
 
                 this.app.ui.hideHintLoading();
                 hintElement = this.app.ui.createStreamingHintElement();
@@ -147,9 +145,7 @@ export class HintManager {
               }
 
               if (this.app.debugMode) {
-                console.log(
-                  `[LLM] Streaming завершён: total=${totalLatency}ms, server=${data.latency_ms}ms, cached=${data.cached}`
-                );
+                logger.debug('LLM', `Streaming завершён: total=${totalLatency}ms, server=${data.latency_ms}ms, cached=${data.cached}`);
               }
 
               if (hintElement && accumulatedHint.trim()) {
@@ -165,14 +161,14 @@ export class HintManager {
               }
             }
           } catch (parseError) {
-            if (this.app.debugMode) console.warn('[LLM] SSE parse error:', parseError);
+            if (this.app.debugMode) logger.warn('LLM', 'SSE parse error:', parseError);
           }
         }
       }
     } catch (error) {
       this.app.ui.hideHintLoading();
       const errorMessage = this.getReadableError(error);
-      console.error('[LLM] Ошибка:', errorMessage);
+      logger.error('LLM', 'Ошибка:', errorMessage);
       this.app.ui.showError(errorMessage);
     } finally {
       this.hintRequestPending = false;
