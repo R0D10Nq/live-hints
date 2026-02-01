@@ -1,4 +1,6 @@
 /**
+ * @jest-environment jsdom
+ *
  * Unit тесты для AudioManager
  */
 
@@ -62,7 +64,7 @@ const mockApp = {
   },
 };
 
-// AudioManager класс (упрощённая версия)
+// AudioManager класс для тестирования (inline версия)
 class AudioManager {
   constructor(app) {
     this.app = app;
@@ -102,13 +104,39 @@ class AudioManager {
     });
   }
 
+  disconnect() {
+    if (this.ws) {
+      this.ws.close();
+      this.ws = null;
+    }
+    this.reconnectAttempts = 0;
+  }
+
+  attemptReconnect() {
+    if (this.reconnectAttempts >= this.maxReconnectAttempts) {
+      console.error('[STT] Превышено максимальное количество попыток переподключения');
+      this.app.ui.showError('Не удалось подключиться к STT серверу');
+      return;
+    }
+
+    this.reconnectAttempts++;
+    console.log(`[STT] Попытка переподключения ${this.reconnectAttempts}/${this.maxReconnectAttempts}`);
+
+    setTimeout(() => {
+      this.connectToSTT().catch(console.error);
+    }, this.reconnectDelay);
+  }
+
   handleSTTMessage(data) {
     try {
       const message = JSON.parse(data);
 
       if (message.type === 'transcript' && message.text) {
-        const source = message.source || 'interviewer';
-        this.app.ui.addTranscriptItem(message.text, new Date().toISOString(), source);
+        this.app.ui.addTranscriptItem(
+          message.text,
+          message.timestamp || new Date().toISOString(),
+          message.source || 'interviewer'
+        );
 
         if (message.latency_ms) {
           this.app.hints.metrics.stt_latency_ms = message.latency_ms;
@@ -118,33 +146,9 @@ class AudioManager {
           this.app.hints.requestHint(message.text);
         }
       }
-    } catch (error) {
-      console.error('[STT] Ошибка парсинга:', error);
+    } catch (e) {
+      // Игнорируем невалидные сообщения
     }
-  }
-
-  attemptReconnect() {
-    if (this.reconnectAttempts >= this.maxReconnectAttempts) {
-      this.app.ui.showError('Не удалось подключиться к STT серверу');
-      return;
-    }
-
-    this.reconnectAttempts++;
-    const delay = this.reconnectDelay * Math.pow(2, this.reconnectAttempts - 1);
-
-    setTimeout(() => {
-      if (this.app.isRunning) {
-        this.connectToSTT().catch(() => {});
-      }
-    }, delay);
-  }
-
-  disconnect() {
-    if (this.ws) {
-      this.ws.close();
-      this.ws = null;
-    }
-    this.reconnectAttempts = 0;
   }
 
   sendAudio(audioData) {
@@ -156,7 +160,7 @@ class AudioManager {
   }
 
   isConnected() {
-    return this.ws && this.ws.readyState === 1;
+    return !!(this.ws && this.ws.readyState === 1);
   }
 
   setDualAudio(enabled) {

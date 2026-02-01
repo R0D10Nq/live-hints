@@ -1,5 +1,6 @@
 /**
  * @jest-environment jsdom
+ *
  * Unit тесты для UIController
  */
 
@@ -212,8 +213,8 @@ class UIController {
     const items = this.elements.transcriptFeed?.querySelectorAll('.feed-item-text');
     return items
       ? Array.from(items)
-          .map((el) => el.textContent)
-          .join('\n')
+        .map((el) => el.textContent)
+        .join('\n')
       : '';
   }
 
@@ -224,8 +225,8 @@ class UIController {
     const items = this.elements.hintsFeed?.querySelectorAll('.feed-item-text, .hint-content');
     return items
       ? Array.from(items)
-          .map((el) => el.textContent)
-          .join('\n')
+        .map((el) => el.textContent)
+        .join('\n')
       : '';
   }
 

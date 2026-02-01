@@ -145,9 +145,9 @@ live-hints/
 
 | Тип | Статус | Покрытие |
 |-----|--------|----------|
-| Python Unit | Работает | 200+ тестов, 13 модулей 100% |
-| JavaScript Unit | Работает | Jest |
-| E2E Playwright | Частично | Onboarding работает, Main UI в процессе |
+| Python Unit | Работает | 247 тестов, 13 модулей 100% |
+| JavaScript Unit | Работает | 239 тестов (7 suites) |
+| E2E Playwright | Частично | Onboarding работает |
 
 ## Метрики производительности
 

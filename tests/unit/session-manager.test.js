@@ -1,5 +1,6 @@
 /**
  * @jest-environment jsdom
+ *
  * Unit тесты для SessionManager
  */
 

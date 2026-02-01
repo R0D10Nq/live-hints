@@ -36,7 +36,10 @@
   "author": "",
   "license": "MIT",
   "devDependencies": {
+    "@babel/core": "^7.29.0",
+    "@babel/preset-env": "^7.29.0",
     "@playwright/test": "^1.40.0",
+    "babel-jest": "^30.2.0",
     "electron": "^28.3.3",
     "electron-builder": "^26.0.12",
     "eslint": "^9.39.2",

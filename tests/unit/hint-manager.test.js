@@ -1,6 +1,23 @@
 /**
+ * @jest-environment jsdom
+ *
  * Unit тесты для HintManager
  */
+
+// Мок для модулей ES6
+jest.mock('../../renderer/modules/constants.js', () => ({
+  SERVERS: { LLM: 'http://localhost:8766' },
+  TIMEOUTS: { LLM_REQUEST: 60000 },
+  CONTEXT: { WINDOW_SIZE_DEFAULT: 10, MAX_CHARS_DEFAULT: 3000 },
+  LLM: { MAX_TOKENS_DEFAULT: 500, TEMPERATURE_DEFAULT: 0.8 },
+  STORAGE: { MAX_PROMPT_LENGTH: 5000 },
+  SYSTEM_PROMPTS: {
+    job_interview_ru: 'Системный промпт для интервью',
+    default_fallback: 'Дефолтный промпт',
+  },
+}));
+
+import { HintManager } from '../../renderer/modules/hint-manager.js';
 
 // Моки
 const mockApp = {
@@ -18,115 +35,6 @@ const mockApp = {
     lastHintText: '',
   },
 };
-
-// Константы для тестов
-const CONSTANTS = {
-  SERVERS: { LLM: 'http://localhost:8766' },
-  TIMEOUTS: { LLM_REQUEST: 60000 },
-  CONTEXT: { WINDOW_SIZE_DEFAULT: 10, MAX_CHARS_DEFAULT: 3000 },
-  LLM: { MAX_TOKENS_DEFAULT: 500, TEMPERATURE_DEFAULT: 0.8 },
-  STORAGE: { MAX_PROMPT_LENGTH: 5000 },
-  SYSTEM_PROMPTS: {
-    job_interview_ru: 'Системный промпт для интервью',
-    default_fallback: 'Дефолтный промпт',
-  },
-};
-
-// Примечание: тесты используют inline версию HintManager
-
-// HintManager класс для тестирования (inline версия)
-class HintManager {
-  constructor(app) {
-    this.app = app;
-    this.hintRequestPending = false;
-    this.transcriptContext = [];
-    this.lastContextHash = '';
-    this.contextWindowSize = CONSTANTS.CONTEXT.WINDOW_SIZE_DEFAULT;
-    this.maxContextChars = CONSTANTS.CONTEXT.MAX_CHARS_DEFAULT;
-    this.maxTokens = CONSTANTS.LLM.MAX_TOKENS_DEFAULT;
-    this.temperature = CONSTANTS.LLM.TEMPERATURE_DEFAULT;
-    this.currentProfile = 'job_interview_ru';
-    this.customInstructions = '';
-    this.currentModel = null;
-    this.userContext = '';
-    this.metrics = {
-      t_hint_request_start: null,
-      t_hint_response: null,
-      t_hint_done: null,
-      stt_latency_ms: null,
-      llm_client_latency_ms: null,
-      llm_server_latency_ms: null,
-    };
-  }
-
-  buildContext() {
-    const items = this.transcriptContext.slice(-this.contextWindowSize);
-    let totalChars = 0;
-    const result = [];
-    for (let i = items.length - 1; i >= 0; i--) {
-      const item = items[i];
-      if (totalChars + item.length <= this.maxContextChars) {
-        result.unshift(item);
-        totalChars += item.length;
-      } else {
-        break;
-      }
-    }
-    return result;
-  }
-
-  buildSystemPrompt() {
-    if (this.currentProfile === 'custom') {
-      const trimmed = (this.customInstructions || '').trim();
-      if (trimmed.length > 0) {
-        return trimmed.length > CONSTANTS.STORAGE.MAX_PROMPT_LENGTH
-          ? trimmed.substring(0, CONSTANTS.STORAGE.MAX_PROMPT_LENGTH)
-          : trimmed;
-      }
-      return CONSTANTS.SYSTEM_PROMPTS.default_fallback;
-    }
-    return (
-      CONSTANTS.SYSTEM_PROMPTS[this.currentProfile] || CONSTANTS.SYSTEM_PROMPTS.job_interview_ru
-    );
-  }
-
-  getReadableError(error) {
-    if (error.name === 'AbortError') {
-      return 'Таймаут запроса к LLM (60 сек)';
-    }
-    if (error.message?.includes('fetch') || error.message?.includes('Failed to fetch')) {
-      return `LLM сервер недоступен (${CONSTANTS.SERVERS.LLM})`;
-    }
-    if (error.message?.includes('NetworkError') || error.message?.includes('network')) {
-      return 'Ошибка сети. Проверьте подключение.';
-    }
-    if (error.message?.includes('ECONNREFUSED')) {
-      return 'LLM сервер не запущен. Запустите: python python/llm_server.py';
-    }
-    return `Ошибка: ${error.message || 'Неизвестная ошибка'}`;
-  }
-
-  clearContext() {
-    this.transcriptContext = [];
-    this.lastContextHash = '';
-  }
-
-  setProfile(profile, customInstructions = '') {
-    this.currentProfile = profile;
-    this.customInstructions = customInstructions;
-  }
-
-  setParams(params) {
-    if (params.contextWindowSize !== undefined) this.contextWindowSize = params.contextWindowSize;
-    if (params.maxContextChars !== undefined) this.maxContextChars = params.maxContextChars;
-    if (params.maxTokens !== undefined) this.maxTokens = params.maxTokens;
-    if (params.temperature !== undefined) this.temperature = params.temperature;
-  }
-
-  setUserContext(context) {
-    this.userContext = context || '';
-  }
-}
 
 describe('HintManager', () => {
   let hintManager;

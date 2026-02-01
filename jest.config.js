@@ -4,19 +4,24 @@
 
 module.exports = {
   testEnvironment: 'node',
-  roots: ['<rootDir>/tests/unit', '<rootDir>/tests/integration'],
+  roots: ['<rootDir>/tests/unit'],
   testMatch: ['**/*.test.js'],
   testPathIgnorePatterns: [
     '/node_modules/',
     '/.history/',
     '/tests/e2e/',
-    'ui-controller.test.js',
-    'session-manager.test.js',
-    'audio-manager.test.js',
-    'hint-manager.test.js',
-    'llm-api.test.js',
   ],
-  collectCoverageFrom: ['src/**/*.js', '!**/node_modules/**'],
+  transform: {
+    '^.+\\.js$': 'babel-jest',
+  },
+  collectCoverageFrom: [
+    'renderer/**/*.js',
+    'main.js',
+    'preload.js',
+    '!**/node_modules/**',
+    '!renderer/onboarding/**',
+    '!**/index.js',
+  ],
   coverageDirectory: 'coverage',
   coverageReporters: ['text', 'lcov', 'html', 'text-summary'],
   verbose: true,

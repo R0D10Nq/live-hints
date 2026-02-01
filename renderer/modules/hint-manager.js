@@ -266,11 +266,11 @@ export class HintManager {
     if (error.name === 'AbortError') {
       return 'Таймаут запроса к LLM (60 сек)';
     }
-    if (error.message?.includes('fetch') || error.message?.includes('Failed to fetch')) {
-      return `LLM сервер недоступен (${SERVERS.LLM})`;
-    }
     if (error.message?.includes('NetworkError') || error.message?.includes('network')) {
       return 'Ошибка сети. Проверьте подключение.';
+    }
+    if (error.message?.includes('fetch') || error.message?.includes('Failed to fetch')) {
+      return `LLM сервер недоступен (${SERVERS.LLM})`;
     }
     if (error.message?.includes('ECONNREFUSED')) {
       return 'LLM сервер не запущен. Запустите: python python/llm_server.py';
