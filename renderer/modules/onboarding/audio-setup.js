@@ -2,6 +2,8 @@
  * Onboarding Audio Setup - настройка микрофона и VU meter
  */
 
+import { logger } from '../utils/logger.js';
+
 export class AudioSetup {
   constructor(app) {
     this.app = app;
@@ -25,7 +27,7 @@ export class AudioSetup {
       await this.populateMicrophoneList();
       this.startVuMeter();
     } catch (err) {
-      console.error('Microphone access denied:', err);
+      logger.error('AudioSetup', 'Microphone access denied:', err);
       this.updateMicStatus('denied', 'Доступ запрещён');
     }
   }
@@ -56,7 +58,7 @@ export class AudioSetup {
         this.app.settings.microphoneId = audioInputs[0].deviceId;
       }
     } catch (err) {
-      console.error('Failed to enumerate devices:', err);
+      logger.error('AudioSetup', 'Failed to enumerate devices:', err);
     }
   }
 
