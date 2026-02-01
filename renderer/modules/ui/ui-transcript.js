@@ -2,6 +2,8 @@
  * UI Transcript - управление сайдбаром транскриптов
  */
 
+import { logger } from '../utils/logger.js';
+
 export class UITranscript {
   constructor(elements, utils, app) {
     this.elements = elements;
@@ -16,7 +18,7 @@ export class UITranscript {
     const btnExpand = this.elements.btnExpandSidebar;
 
     if (!sidebar) {
-      console.warn('[UI] Sidebar элемент не найден');
+      logger.warn('UI', 'Sidebar элемент не найден');
       return;
     }
 
@@ -39,7 +41,7 @@ export class UITranscript {
       newState = 'expanded';
     }
 
-    console.log('[UI] Транскрипт:', newState);
+    logger.debug('UI', 'Транскрипт:', newState);
 
     if (btnExpand) {
       btnExpand.classList.toggle('hidden', newState !== 'collapsed');
@@ -59,7 +61,7 @@ export class UITranscript {
     try {
       localStorage.setItem('transcriptState', newState);
     } catch {
-      console.warn('Не удалось сохранить состояние транскрипта');
+      logger.warn('UI', 'Не удалось сохранить состояние транскрипта');
     }
   }
 
@@ -95,13 +97,13 @@ export class UITranscript {
         }
       }
     } catch {
-      console.warn('Не удалось восстановить состояние транскрипта');
+      logger.warn('UI', 'Не удалось восстановить состояние транскрипта');
     }
   }
 
   addItem(text, timestamp, source = 'interviewer') {
     if (text === this.lastTranscriptText) {
-      console.log('[STT] Дубликат транскрипта, пропускаем');
+      logger.debug('STT', 'Дубликат транскрипта, пропускаем');
       return;
     }
     this.lastTranscriptText = text;
@@ -147,8 +149,8 @@ export class UITranscript {
     const items = this.elements.transcriptFeed?.querySelectorAll('.feed-item-text');
     return items
       ? Array.from(items)
-          .map((el) => el.textContent)
-          .join('\n')
+        .map((el) => el.textContent)
+        .join('\n')
       : '';
   }
 }
