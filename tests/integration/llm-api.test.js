@@ -25,7 +25,14 @@ describe('LLM API интеграционные тесты', () => {
 
   beforeAll(async () => {
     try {
-      serverAvailable = await isServerAvailable();
+      // Проверяем, что fetch не является моком (jest.fn)
+      if (fetch._isMockFunction) {
+        serverAvailable = false;
+        return;
+      }
+      // Проверяем доступность сервера
+      const response = await fetch(`${LLM_URL}/health`);
+      serverAvailable = response.ok;
     } catch {
       serverAvailable = false;
     }

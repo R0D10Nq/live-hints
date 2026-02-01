@@ -52,6 +52,11 @@ const utils = {
   },
 
   isValidUrl(url) {
+    if (!url || typeof url !== 'string') return false;
+    // Проверяем наличие протокола
+    if (!/^https?:\/\//.test(url) && !/^wss?:\/\//.test(url)) {
+      return false;
+    }
     try {
       new URL(url);
       return true;
