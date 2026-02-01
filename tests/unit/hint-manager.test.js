@@ -321,6 +321,42 @@ describe('HintManager', () => {
       );
     });
   });
+
+  describe('checkHealth', () => {
+    test('должен показывать статус при успешном ответе', async () => {
+      global.fetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ status: 'ok', model: 'test-model' }),
+      });
+
+      await hintManager.checkHealth();
+
+      expect(mockApp.ui.showToast).toHaveBeenCalledWith(
+        'LLM: ok, модель: test-model',
+        'success'
+      );
+    });
+
+    test('должен показывать ошибку при неуспешном ответе', async () => {
+      global.fetch.mockResolvedValueOnce({
+        ok: false,
+      });
+
+      await hintManager.checkHealth();
+
+      expect(mockApp.ui.showError).toHaveBeenCalledWith('LLM сервер недоступен');
+    });
+
+    test('должен показывать ошибку при исключении', async () => {
+      global.fetch.mockRejectedValueOnce(new Error('Connection refused'));
+
+      await hintManager.checkHealth();
+
+      expect(mockApp.ui.showError).toHaveBeenCalledWith(
+        expect.stringContaining('LLM сервер не отвечает')
+      );
+    });
+  });
 });
 
 describe('HintManager метрики', () => {
