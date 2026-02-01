@@ -1,0 +1,30 @@
+#!/bin/sh
+#
+# Commit-msg hook для live-hints
+# Проверяет формат сообщения коммита
+#
+
+commit_msg_file=$1
+commit_msg=$(head -n1 "$commit_msg_file")
+
+# Проверка на пустое сообщение
+if [ -z "$commit_msg" ]; then
+    echo "❌ Сообщение коммита не может быть пустым"
+    exit 1
+fi
+
+# Проверка длины сообщения (максимум 72 символа для первой строки)
+if [ ${#commit_msg} -gt 72 ]; then
+    echo "⚠️  Предупреждение: первая строка сообщения длиннее 72 символов"
+fi
+
+# Проверка на тип коммита (conventional commits)
+valid_types="feat|fix|docs|style|refactor|test|chore|perf|ci|build"
+if ! echo "$commit_msg" | grep -qE "^($valid_types):"; then
+    echo "⚠️  Предупреждение: сообщение должно начинаться с типа коммита"
+    echo "   Допустимые типы: feat, fix, docs, style, refactor, test, chore, perf, ci, build"
+    echo "   Пример: feat: добавить новую функцию"
+fi
+
+echo "✓ Сообщение коммита прошло проверку"
+exit 0

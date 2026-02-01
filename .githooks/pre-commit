@@ -1,0 +1,30 @@
+#!/bin/sh
+#
+# Pre-commit hook для live-hints
+# Запускает тесты перед коммитом
+#
+
+echo "Запуск pre-commit проверок..."
+
+# Проверка Python тестов
+echo "Проверка Python тестов..."
+python -m pytest tests/unit/ -q --tb=line 2>/dev/null
+if [ $? -ne 0 ]; then
+    echo "❌ Python тесты не пройдены"
+    exit 1
+fi
+
+echo "✓ Python тесты пройдены"
+
+# Проверка JavaScript тестов
+echo "Проверка JavaScript тестов..."
+npx jest --silent --passWithNoTests 2>/dev/null
+if [ $? -ne 0 ]; then
+    echo "❌ JavaScript тесты не пройдены"
+    exit 1
+fi
+
+echo "✓ JavaScript тесты пройдены"
+
+echo "✅ Все проверки пройдены, коммит разрешён"
+exit 0
