@@ -4,6 +4,8 @@
 
 import { SERVERS, PROFILES } from '../constants.js';
 
+import { logger } from '../utils/logger.js';
+
 export class AppModels {
   constructor(app) {
     this.app = app;
@@ -72,7 +74,7 @@ export class AppModels {
       }
     } catch (e) {
       modelSelect.innerHTML = '<option value="">Ошибка загрузки</option>';
-      console.error('Ошибка загрузки моделей:', e);
+      logger.error('AppModels', 'Ошибка загрузки моделей:', e);
     }
   }
 

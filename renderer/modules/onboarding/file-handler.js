@@ -2,6 +2,8 @@
  * Onboarding File Handler - загрузка и обработка файлов
  */
 
+import { logger } from '../utils/logger.js';
+
 export class FileHandler {
   constructor(app) {
     this.app = app;
@@ -100,7 +102,7 @@ export class FileHandler {
 
       this.app.updateUI();
     } catch (err) {
-      console.error('[Onboarding] Ошибка чтения файла:', err);
+      logger.error('FileHandler', 'Ошибка чтения файла:', err);
       this.app.showError('Ошибка чтения файла: ' + err.message);
     }
   }

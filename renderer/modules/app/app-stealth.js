@@ -2,6 +2,8 @@
  * App Stealth - Stealth режим
  */
 
+import { logger } from '../utils/logger.js';
+
 export class AppStealth {
   constructor(app) {
     this.app = app;
@@ -61,7 +63,7 @@ export class AppStealth {
         secondMonitorOption.disabled = true;
       }
     } catch (e) {
-      console.error('Ошибка загрузки stealth статуса:', e);
+      logger.error('AppStealth', 'Ошибка загрузки stealth статуса:', e);
     }
   }
 
