@@ -266,6 +266,61 @@ describe('HintManager', () => {
       expect(hintManager.userContext).toBe('');
     });
   });
+
+  describe('getLastInterviewerQuestion', () => {
+    test('должен возвращать последний вопрос интервьюера', () => {
+      hintManager.transcriptContext = [
+        { text: 'первый вопрос', source: 'interviewer' },
+        { text: 'ответ кандидата', source: 'candidate' },
+        { text: 'второй вопрос', source: 'interviewer' },
+      ];
+      expect(hintManager.getLastInterviewerQuestion()).toBe('второй вопрос');
+    });
+
+    test('должен возвращать null если нет вопросов интервьюера', () => {
+      hintManager.transcriptContext = [
+        { text: 'ответ кандидата', source: 'candidate' },
+      ];
+      expect(hintManager.getLastInterviewerQuestion()).toBeNull();
+    });
+
+    test('должен возвращать null для пустого контекста', () => {
+      expect(hintManager.getLastInterviewerQuestion()).toBeNull();
+    });
+  });
+
+  describe('getLastTranscriptText', () => {
+    test('должен возвращать последний текст транскрипта', () => {
+      hintManager.transcriptContext = [
+        { text: 'первый', source: 'interviewer' },
+        { text: 'второй', source: 'candidate' },
+      ];
+      expect(hintManager.getLastTranscriptText()).toBe('второй');
+    });
+
+    test('должен возвращать пустую строку для пустого контекста', () => {
+      expect(hintManager.getLastTranscriptText()).toBe('');
+    });
+  });
+
+  describe('manualRequestHint', () => {
+    test('не должен запрашивать подсказку если нет транскрипта', async () => {
+      hintManager.app.isRunning = true;
+      await hintManager.manualRequestHint();
+      expect(mockApp.ui.showError).toHaveBeenCalledWith(
+        'Нет транскрипта для анализа. Дождитесь речи.'
+      );
+    });
+
+    test('не должен запрашивать подсказку если приложение не запущено', async () => {
+      hintManager.app.isRunning = false;
+      hintManager.transcriptContext = ['текст'];
+      await hintManager.manualRequestHint();
+      expect(mockApp.ui.showError).toHaveBeenCalledWith(
+        'Нет транскрипта для анализа. Дождитесь речи.'
+      );
+    });
+  });
 });
 
 describe('HintManager метрики', () => {

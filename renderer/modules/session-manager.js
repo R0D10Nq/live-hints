@@ -175,6 +175,14 @@ ${session.hints || 'Нет данных'}
     }
   }
 
+  deleteAllSessions() {
+    if (confirm('Удалить все сессии? Это действие нельзя отменить.')) {
+      localStorage.removeItem('live-hints-sessions');
+      this.app.ui.showToast('Все сессии удалены', 'info');
+      this.app.ui.renderSessionsList();
+    }
+  }
+
   calculateDuration(session) {
     if (session.endedAt && session.date) {
       const start = new Date(session.date);

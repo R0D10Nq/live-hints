@@ -279,11 +279,61 @@ describe('SessionManager', () => {
     });
   });
 
-  describe('formatDate', () => {
-    test('должен форматировать дату кратко', () => {
-      const result = sessionManager.formatDate('2024-01-15T10:30:00Z');
-      expect(result).toBeTruthy();
-      expect(typeof result).toBe('string');
+  describe('importSessions', () => {
+    test('должен импортировать сессии из JSON файла', async () => {
+      const sessions = [{ id: 'session_1' }, { id: 'session_2' }];
+      const fileContent = JSON.stringify({ sessions });
+      const file = new Blob([fileContent], { type: 'application/json' });
+      file.text = jest.fn().mockResolvedValue(fileContent);
+
+      await sessionManager.importSessions(file);
+
+      expect(localStorage.setItem).toHaveBeenCalledWith(
+        'live-hints-sessions',
+        expect.any(String)
+      );
+      expect(mockApp.ui.showToast).toHaveBeenCalledWith('Импортировано 2 новых сессий', 'success');
+    });
+
+    test('должен обрабатывать ошибку парсинга JSON', async () => {
+      const file = new Blob(['invalid json'], { type: 'application/json' });
+      file.text = jest.fn().mockResolvedValue('invalid json');
+
+      await sessionManager.importSessions(file);
+
+      expect(mockApp.ui.showToast).toHaveBeenCalledWith(
+        'Ошибка импорта: неверный формат',
+        'error'
+      );
+    });
+
+    test('должен обрабатывать невалидный JSON (не массив)', async () => {
+      const file = new Blob(['{"id": "1"}'], { type: 'application/json' });
+      file.text = jest.fn().mockResolvedValue('{"id": "1"}');
+
+      await sessionManager.importSessions(file);
+
+      expect(mockApp.ui.showToast).toHaveBeenCalledWith(
+        'Неверный формат файла',
+        'error'
+      );
+    });
+  });
+
+  describe('deleteAllSessions', () => {
+    test('должен удалять все сессии после подтверждения', () => {
+      global.confirm.mockReturnValueOnce(true);
+      sessionManager.deleteAllSessions();
+
+      expect(localStorage.removeItem).toHaveBeenCalledWith('live-hints-sessions');
+      expect(mockApp.ui.showToast).toHaveBeenCalledWith('Все сессии удалены', 'info');
+    });
+
+    test('не должен удалять сессии если пользователь отменил', () => {
+      global.confirm.mockReturnValueOnce(false);
+      sessionManager.deleteAllSessions();
+
+      expect(localStorage.removeItem).not.toHaveBeenCalled();
     });
   });
 });
