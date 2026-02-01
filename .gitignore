@@ -157,9 +157,15 @@ __pycache__/
 *.pyc
 *.pyo
 
+# Python dist/build
+build/
+dist/
+*.egg-info/
+
 # Coverage reports
 .coverage
 htmlcov/
+.coverage.*
 
 # Test results
 test-results/
@@ -178,3 +184,21 @@ data/session_memory.json
 python/data/questions_db.json
 python/llm/__pycache__/*
 python/stt/__pycache__/*
+
+# Electron build artifacts
+out/
+release/
+
+# Local audio recordings
+recordings/
+audio_cache/
+
+# User uploads (respect privacy)
+uploads/
+user_data/
+
+# Model downloads (large files)
+models/
+*.gguf
+*.bin
+*.onnx
