@@ -3,6 +3,7 @@
  */
 
 import { STORAGE } from './constants.js';
+import { logger } from './utils/logger.js';
 
 export class SessionManager {
   constructor(app) {
@@ -137,7 +138,7 @@ ${session.hints || 'Нет данных'}
 
       this.app.ui.showToast(`Экспортировано ${sessions.length} сессий`, 'success');
     } catch (e) {
-      console.error('Export error:', e);
+      logger.error('SessionManager', 'Export error:', e);
       this.app.ui.showToast('Ошибка экспорта', 'error');
     }
   }
@@ -169,7 +170,7 @@ ${session.hints || 'Нет данных'}
       this.app.ui.showToast(`Импортировано ${imported} новых сессий`, 'success');
       this.app.ui.renderSessionsList();
     } catch (e) {
-      console.error('Import error:', e);
+      logger.error('SessionManager', 'Import error:', e);
       this.app.ui.showToast('Ошибка импорта: неверный формат', 'error');
     }
   }
