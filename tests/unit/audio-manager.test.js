@@ -416,4 +416,92 @@ describe('AudioManager', () => {
       expect(audioManager.dualAudioEnabled).toBe(false);
     });
   });
+
+  describe('connectMicrophone', () => {
+    test('не должен подключаться если dualAudio отключен', () => {
+      audioManager.dualAudioEnabled = false;
+      audioManager.connectMicrophone();
+      expect(audioManager.wsMicrophone).toBeNull();
+    });
+
+    test('должен создавать WebSocket для микрофона если dualAudio включен', () => {
+      audioManager.dualAudioEnabled = true;
+      audioManager.connectMicrophone();
+      expect(audioManager.wsMicrophone).toBeTruthy();
+    });
+
+    test('должен показывать toast при успешном подключении микрофона', () => {
+      audioManager.dualAudioEnabled = true;
+      audioManager.connectMicrophone();
+      // Simulate onopen
+      audioManager.wsMicrophone.onopen();
+      expect(mockApp.ui.showToast).toHaveBeenCalledWith('Микрофон подключен', 'success');
+    });
+  });
+
+  describe('disconnectMicrophone', () => {
+    test('должен закрывать WebSocket микрофона', () => {
+      audioManager.dualAudioEnabled = true;
+      audioManager.connectMicrophone();
+      const wsMic = audioManager.wsMicrophone;
+      audioManager.disconnectMicrophone();
+      expect(audioManager.wsMicrophone).toBeNull();
+      expect(wsMic.readyState).toBe(3);
+    });
+
+    test('не должен вызывать ошибку если wsMicrophone null', () => {
+      expect(() => {
+        audioManager.disconnectMicrophone();
+      }).not.toThrow();
+    });
+  });
+
+  describe('toggleMicMute', () => {
+    test('должен переключать состояние mute', () => {
+      expect(audioManager.micMuted).toBe(false);
+      audioManager.toggleMicMute();
+      expect(audioManager.micMuted).toBe(true);
+      audioManager.toggleMicMute();
+      expect(audioManager.micMuted).toBe(false);
+    });
+
+    test('должен показывать toast при изменении состояния', () => {
+      audioManager.toggleMicMute();
+      expect(mockApp.ui.showToast).toHaveBeenCalledWith('Микрофон выключен', 'info');
+    });
+  });
+
+  describe('toggleMute', () => {
+    test('должен вызывать toggleMicMute', () => {
+      const spy = jest.spyOn(audioManager, 'toggleMicMute');
+      audioManager.toggleMute();
+      expect(spy).toHaveBeenCalled();
+      spy.mockRestore();
+    });
+  });
+
+  describe('testRemoteConnection', () => {
+    test('должен возвращать статус подключения', async () => {
+      global.fetch = jest.fn().mockResolvedValue({ ok: true });
+
+      const result = await audioManager.testRemoteConnection(
+        'ws://localhost:8765',
+        'http://localhost:8766'
+      );
+
+      expect(result).toHaveProperty('sttOk');
+      expect(result).toHaveProperty('llmOk');
+    });
+
+    test('должен обрабатывать ошибки подключения', async () => {
+      global.fetch = jest.fn().mockRejectedValue(new Error('Connection failed'));
+
+      const result = await audioManager.testRemoteConnection(
+        'ws://localhost:8765',
+        'http://localhost:8766'
+      );
+
+      expect(result.llmOk).toBe(false);
+    });
+  });
 });

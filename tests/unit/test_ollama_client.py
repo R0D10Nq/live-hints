@@ -191,6 +191,48 @@ class TestOllamaClient:
         
         assert result is False
     
+    @patch('llm.ollama_client.requests.get')
+    @patch('llm.ollama_client.HintCache')
+    def test_list_models_success(self, mock_cache, mock_get):
+        """list_models возвращает список моделей"""
+        from llm.ollama_client import OllamaClient
+        
+        mock_get.return_value.status_code = 200
+        mock_get.return_value.json.return_value = {
+            'models': [
+                {
+                    'name': 'llama3',
+                    'size': 5000000000,
+                    'modified_at': '2024-01-01',
+                    'details': {
+                        'family': 'llama',
+                        'parameter_size': '8B'
+                    }
+                }
+            ]
+        }
+        
+        client = OllamaClient('http://localhost:11434', 'llama3', MagicMock())
+        result = client.list_models()
+        
+        assert len(result) == 1
+        assert result[0]['name'] == 'llama3'
+        assert result[0]['size'] == '4.7GB'
+        assert result[0]['family'] == 'llama'
+    
+    @patch('llm.ollama_client.requests.get')
+    @patch('llm.ollama_client.HintCache')
+    def test_list_models_error(self, mock_cache, mock_get):
+        """list_models бросает исключение при ошибке"""
+        from llm.ollama_client import OllamaClient
+        
+        mock_get.return_value.status_code = 500
+        
+        client = OllamaClient('http://localhost:11434', 'llama3', MagicMock())
+        
+        with pytest.raises(Exception):
+            client.list_models()
+    
     @patch('llm.ollama_client.requests.post')
     @patch('llm.ollama_client.classify_question')
     @patch('llm.ollama_client.build_contextual_prompt')
