@@ -11,12 +11,12 @@ from typing import Optional
 import aiohttp
 import requests
 
-from prompts import get_few_shot_examples
-from classification import classify_question, build_contextual_prompt, get_max_tokens_for_type, get_temperature_for_type
-from cache import HintCache
-from metrics import log_llm_request, log_llm_response, log_error
-from semantic_cache import get_semantic_cache
-from advanced_rag import get_advanced_rag
+from ..prompts import get_few_shot_examples
+from ..classification import classify_question, build_contextual_prompt, get_max_tokens_for_type, get_temperature_for_type
+from ..cache import HintCache
+from ..metrics import log_llm_request, log_llm_response, log_error
+from ..semantic_cache import get_semantic_cache
+from ..advanced_rag import get_advanced_rag
 
 logger = logging.getLogger('LLM')
 
