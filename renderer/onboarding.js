@@ -81,6 +81,11 @@ class OnboardingController {
             document.getElementById('vacancy-text-area')?.classList.toggle('hidden');
         });
 
+        // Skip resume button
+        document.getElementById('skip-resume')?.addEventListener('click', () => {
+            this.nextStep();
+        });
+
         // Textarea validation
         document.querySelector('#resume-text-area textarea')?.addEventListener('input', () => {
             this.updateButtons();
@@ -135,7 +140,10 @@ class OnboardingController {
 
         this.waveBars = this.audioViz.querySelectorAll('.wave-bar');
         this.isTestingMic = false;
-        this.vizAnimationId = null;
+        this.audioContext = null;
+        this.analyser = null;
+        this.microphone = null;
+        this.dataArray = null;
 
         // Начальное состояние — плоские линии
         this.waveBars.forEach(bar => {
@@ -144,42 +152,117 @@ class OnboardingController {
         });
     }
 
-    testMicrophone() {
+    async testMicrophone() {
         if (this.isTestingMic) {
             // Останавливаем тест
-            this.isTestingMic = false;
-            if (this.vizAnimationId) {
-                cancelAnimationFrame(this.vizAnimationId);
-            }
-            this.waveBars.forEach(bar => {
-                bar.style.height = '10%';
-                bar.style.opacity = '0.3';
-                bar.classList.remove('active');
-            });
-            document.getElementById('btn-test-mic').innerHTML = '<span class="btn-icon">●</span> Тест микрофона';
+            this.stopMicrophoneTest();
         } else {
-            // Запускаем тест
-            this.isTestingMic = true;
-            document.getElementById('btn-test-mic').innerHTML = '<span class="btn-icon">■</span> Остановить';
-            this.animateVisualizer();
+            // Запускаем реальный тест
+            await this.startMicrophoneTest();
         }
     }
 
+    async startMicrophoneTest() {
+        try {
+            const micSelect = document.getElementById('mic-select');
+            const deviceId = micSelect?.value;
+
+            if (!deviceId) {
+                this.showError('Сначала выберите микрофон');
+                return;
+            }
+
+            // Запрашиваем доступ к микрофону
+            const stream = await navigator.mediaDevices.getUserMedia({
+                audio: {
+                    deviceId: deviceId ? { exact: deviceId } : undefined,
+                    echoCancellation: false,
+                    noiseSuppression: false,
+                    autoGainControl: false
+                }
+            });
+
+            // Создаем AudioContext
+            this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            this.analyser = this.audioContext.createAnalyser();
+            this.analyser.fftSize = 64;
+            this.analyser.smoothingTimeConstant = 0.8;
+
+            // Подключаем микрофон
+            this.microphone = this.audioContext.createMediaStreamSource(stream);
+            this.microphone.connect(this.analyser);
+
+            // Получаем данные для визуализации
+            const bufferLength = this.analyser.frequencyBinCount;
+            this.dataArray = new Uint8Array(bufferLength);
+
+            // Обновляем UI
+            this.isTestingMic = true;
+            document.getElementById('btn-test-mic').innerHTML = '<span class="btn-icon">■</span> Остановить';
+            document.getElementById('btn-test-mic').classList.add('active');
+
+            // Запускаем визуализацию
+            this.animateVisualizer();
+
+        } catch (error) {
+            console.error('[Microphone] Ошибка доступа:', error);
+            this.showError('Не удалось получить доступ к микрофону: ' + error.message);
+        }
+    }
+
+    stopMicrophoneTest() {
+        this.isTestingMic = false;
+
+        // Останавливаем все треки
+        if (this.microphone && this.microphone.mediaStream) {
+            this.microphone.mediaStream.getTracks().forEach(track => track.stop());
+        }
+
+        // Закрываем AudioContext
+        if (this.audioContext && this.audioContext.state !== 'closed') {
+            this.audioContext.close();
+        }
+
+        // Сбрасываем ссылки
+        this.audioContext = null;
+        this.analyser = null;
+        this.microphone = null;
+        this.dataArray = null;
+
+        // Сбрасываем UI
+        this.waveBars.forEach(bar => {
+            bar.style.height = '10%';
+            bar.style.opacity = '0.3';
+        });
+
+        document.getElementById('btn-test-mic').innerHTML = '<span class="btn-icon">◉</span> Тест микрофона';
+        document.getElementById('btn-test-mic').classList.remove('active');
+    }
+
     animateVisualizer() {
-        if (!this.isTestingMic || this.currentStep !== 4) {
+        if (!this.isTestingMic || !this.analyser) {
             return;
         }
 
+        // Получаем частотные данные
+        this.analyser.getByteFrequencyData(this.dataArray);
+
+        // Обновляем высоту полос
+        const barCount = this.waveBars.length;
+        const step = Math.floor(this.dataArray.length / barCount);
+
         this.waveBars.forEach((bar, i) => {
-            const height = 15 + Math.random() * 70;
+            const dataIndex = i * step;
+            const value = this.dataArray[dataIndex] || 0;
+            const height = Math.max(10, (value / 255) * 100);
+
             bar.style.height = height + '%';
             bar.style.opacity = '0.6';
             bar.classList.toggle('active', height > 50);
         });
 
-        this.vizAnimationId = setTimeout(() => {
-            requestAnimationFrame(() => this.animateVisualizer());
-        }, 80);
+        // Продолжаем анимацию
+        requestAnimationFrame(() => this.animateVisualizer());
     }
 
     async initMicrophoneSelect() {
@@ -240,11 +323,29 @@ class OnboardingController {
             this.modeContextArea?.classList.add('hidden');
         }
 
+        // Update resume step UI based on mode
+        this.updateResumeStepUI();
+
         // Haptic feedback
         this.triggerHaptic();
 
         // Обновляем валидацию кнопки Далее
         this.updateButtons();
+    }
+
+    updateResumeStepUI() {
+        const skipBtn = document.getElementById('skip-resume');
+        const subtitle = document.getElementById('resume-subtitle');
+
+        if (this.selectedMode === 'job_interview_ru') {
+            // Для собеседований резюме обязательно
+            if (skipBtn) skipBtn.classList.add('hidden');
+            if (subtitle) subtitle.textContent = 'AI будет опираться на ваш реальный опыт при формулировке ответов. Обязательно для собеседований.';
+        } else {
+            // Для других режимов можно пропустить
+            if (skipBtn) skipBtn.classList.remove('hidden');
+            if (subtitle) subtitle.textContent = 'AI будет опираться на ваш реальный опыт при формулировке ответов. Опционально для этого режима.';
+        }
     }
 
     hoverCard(card, entering) {
@@ -418,9 +519,13 @@ class OnboardingController {
                 // Шаг 1: должен быть выбран режим
                 return !!this.selectedMode;
             case 2:
-                // Шаг 2: резюме или текст
-                const resumeText = document.querySelector('#resume-text-area textarea')?.value;
-                return this.hasResume || (resumeText && resumeText.trim().length > 0);
+                // Шаг 2: резюме обязательно только для собеседований
+                if (this.selectedMode === 'job_interview_ru') {
+                    const resumeText = document.querySelector('#resume-text-area textarea')?.value;
+                    return this.hasResume || (resumeText && resumeText.trim().length > 0);
+                }
+                // Для других режимов шаг 2 опционален
+                return true;
             case 3:
                 // Шаг 3: вакансия опциональна, всегда валидно
                 return true;
@@ -447,19 +552,50 @@ class OnboardingController {
             timestamp: Date.now()
         };
 
-        // Animate finish
-        this.btnFinish?.animate([
-            { transform: 'scale(1)' },
-            { transform: 'scale(0.95)' },
-            { transform: 'scale(1)' }
-        ], { duration: 150 });
+        // Show loading state
+        this.btnFinish.disabled = true;
+        this.btnFinish.textContent = 'Запуск...';
+        this.btnFinish.classList.add('loading');
 
-        // Send to main process
-        if (window.electronAPI?.finishOnboarding) {
-            await window.electronAPI.finishOnboarding(settings);
+        try {
+            // Check if IPC is available
+            if (!window.electronAPI?.finishOnboarding) {
+                throw new Error('IPC API не доступен. Перезапустите приложение.');
+            }
+
+            // Send to main process
+            const result = await window.electronAPI.finishOnboarding(settings);
+
+            if (!result || !result.success) {
+                throw new Error(result?.error || 'Неизвестная ошибка');
+            }
+
+            console.log('[Onboarding] Finished:', settings);
+        } catch (error) {
+            console.error('[Onboarding] Ошибка запуска:', error);
+
+            // Reset button state
+            this.btnFinish.disabled = false;
+            this.btnFinish.textContent = 'Запустить сессию';
+            this.btnFinish.classList.remove('loading');
+
+            // Show error
+            this.showError('Ошибка запуска: ' + error.message);
         }
+    }
 
-        console.log('[Onboarding] Finished:', settings);
+    showError(message) {
+        // Create or update error toast
+        let toast = document.querySelector('.onboarding-error-toast');
+        if (!toast) {
+            toast = document.createElement('div');
+            toast.className = 'onboarding-error-toast';
+            document.body.appendChild(toast);
+        }
+        toast.textContent = message;
+        toast.classList.add('show');
+
+        setTimeout(() => toast.classList.remove('show'), 5000);
     }
 }
 

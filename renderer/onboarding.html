@@ -109,7 +109,7 @@
         <div class="step-header">
           <div class="step-badge">Шаг 2 из 4</div>
           <h2 class="step-title">Загрузите резюме</h2>
-          <p class="step-subtitle">AI будет опираться на ваш реальный опыт при формулировке ответов</p>
+          <p class="step-subtitle" id="resume-subtitle">AI будет опираться на ваш реальный опыт при формулировке ответов. Обязательно только для режима "Собеседование".</p>
         </div>
 
         <div class="upload-zone" id="resume-upload">
@@ -133,6 +133,7 @@
 
         <div class="text-toggle">
           <button class="btn-text" id="toggle-resume-text">Или вставить текст вручную</button>
+          <button class="btn-text hidden" id="skip-resume">Пропустить шаг →</button>
         </div>
 
         <div class="text-area hidden" id="resume-text-area">

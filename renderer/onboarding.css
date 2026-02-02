@@ -464,25 +464,78 @@
   animation: wave 1.2s ease-in-out infinite;
 }
 
-.wave-bar:nth-child(2) { animation-delay: 0.1s; }
-.wave-bar:nth-child(3) { animation-delay: 0.2s; }
-.wave-bar:nth-child(4) { animation-delay: 0.3s; }
-.wave-bar:nth-child(5) { animation-delay: 0.4s; }
-.wave-bar:nth-child(6) { animation-delay: 0.3s; }
-.wave-bar:nth-child(7) { animation-delay: 0.2s; }
-.wave-bar:nth-child(8) { animation-delay: 0.1s; }
-.wave-bar:nth-child(9) { animation-delay: 0.2s; }
-.wave-bar:nth-child(10) { animation-delay: 0.3s; }
-.wave-bar:nth-child(11) { animation-delay: 0.4s; }
-.wave-bar:nth-child(12) { animation-delay: 0.5s; }
-.wave-bar:nth-child(13) { animation-delay: 0.4s; }
-.wave-bar:nth-child(14) { animation-delay: 0.3s; }
-.wave-bar:nth-child(15) { animation-delay: 0.2s; }
-.wave-bar:nth-child(16) { animation-delay: 0.1s; }
+.wave-bar:nth-child(2) {
+  animation-delay: 0.1s;
+}
+
+.wave-bar:nth-child(3) {
+  animation-delay: 0.2s;
+}
+
+.wave-bar:nth-child(4) {
+  animation-delay: 0.3s;
+}
+
+.wave-bar:nth-child(5) {
+  animation-delay: 0.4s;
+}
+
+.wave-bar:nth-child(6) {
+  animation-delay: 0.3s;
+}
+
+.wave-bar:nth-child(7) {
+  animation-delay: 0.2s;
+}
+
+.wave-bar:nth-child(8) {
+  animation-delay: 0.1s;
+}
+
+.wave-bar:nth-child(9) {
+  animation-delay: 0.2s;
+}
+
+.wave-bar:nth-child(10) {
+  animation-delay: 0.3s;
+}
+
+.wave-bar:nth-child(11) {
+  animation-delay: 0.4s;
+}
+
+.wave-bar:nth-child(12) {
+  animation-delay: 0.5s;
+}
+
+.wave-bar:nth-child(13) {
+  animation-delay: 0.4s;
+}
+
+.wave-bar:nth-child(14) {
+  animation-delay: 0.3s;
+}
+
+.wave-bar:nth-child(15) {
+  animation-delay: 0.2s;
+}
+
+.wave-bar:nth-child(16) {
+  animation-delay: 0.1s;
+}
 
 @keyframes wave {
-  0%, 100% { transform: scaleY(0.5); opacity: 0.4; }
-  50% { transform: scaleY(1); opacity: 0.8; }
+
+  0%,
+  100% {
+    transform: scaleY(0.5);
+    opacity: 0.4;
+  }
+
+  50% {
+    transform: scaleY(1);
+    opacity: 0.8;
+  }
 }
 
 /* === CHECKBOX === */
@@ -615,6 +668,11 @@
   box-shadow: var(--shadow-glow);
 }
 
+.btn-primary.active {
+  background: linear-gradient(135deg, var(--status-error), #dc2626);
+  box-shadow: 0 0 20px rgba(239, 68, 68, 0.3);
+}
+
 .btn-ghost {
   background: transparent;
   border-color: transparent;
@@ -696,8 +754,76 @@
 }
 
 @keyframes float {
-  0% { transform: translateY(100vh) rotate(0deg); opacity: 0; }
-  10% { opacity: 0.3; }
-  90% { opacity: 0.3; }
-  100% { transform: translateY(-100px) rotate(360deg); opacity: 0; }
+  0% {
+    transform: translateY(100vh) rotate(0deg);
+    opacity: 0;
+  }
+
+  10% {
+    opacity: 0.3;
+  }
+
+  90% {
+    opacity: 0.3;
+  }
+
+  100% {
+    transform: translateY(-100px) rotate(360deg);
+    opacity: 0;
+  }
+}
+
+/* === ERROR TOAST === */
+
+.onboarding-error-toast {
+  position: fixed;
+  bottom: var(--space-6);
+  left: 50%;
+  transform: translateX(-50%) translateY(100px);
+  padding: var(--space-4) var(--space-6);
+  background: var(--status-error);
+  color: white;
+  border-radius: var(--radius-lg);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  box-shadow: var(--shadow-lg);
+  opacity: 0;
+  transition: all var(--duration-normal) var(--ease-out);
+  z-index: 1000;
+}
+
+.onboarding-error-toast.show {
+  transform: translateX(-50%) translateY(0);
+  opacity: 1;
+}
+
+/* === LOADING STATE === */
+
+.btn.loading {
+  position: relative;
+  color: transparent;
+}
+
+.btn.loading::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 16px;
+  height: 16px;
+  border: 2px solid transparent;
+  border-top-color: currentColor;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+.btn-primary.loading::after {
+  border-top-color: var(--bg-void);
+}
+
+@keyframes spin {
+  to {
+    transform: translate(-50%, -50%) rotate(360deg);
+  }
 }

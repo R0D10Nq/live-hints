@@ -204,13 +204,26 @@ function setupIPC(handlers) {
 
   // Onboarding
   ipcMain.handle('onboarding:finish', (event, settings) => {
-    store.set('onboardingCompleted', true);
-    store.set('onboardingSettings', settings);
-    const onboardingWin = windowManager.getOnboardingWindow();
-    if (onboardingWin) onboardingWin.close();
-    const mainWin = windowManager.createWindow();
-    windowManager.setMainWindow(mainWin);
-    handlers.onFinishOnboarding && handlers.onFinishOnboarding();
+    try {
+      store.set('onboardingCompleted', true);
+      store.set('onboardingSettings', settings);
+
+      const mainWin = windowManager.createWindow();
+      if (!mainWin) {
+        throw new Error('Не удалось создать главное окно');
+      }
+
+      windowManager.setMainWindow(mainWin);
+
+      const onboardingWin = windowManager.getOnboardingWindow();
+      if (onboardingWin) onboardingWin.close();
+
+      handlers.onFinishOnboarding && handlers.onFinishOnboarding();
+      return { success: true };
+    } catch (error) {
+      console.error('[Onboarding] Ошибка завершения:', error);
+      return { success: false, error: error.message };
+    }
   });
 
   // Settings
