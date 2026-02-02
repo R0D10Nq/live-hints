@@ -206,6 +206,54 @@ npm test
 npm run test:e2e
 ```
 
+## Тестирование
+
+### Покрытие кода
+
+| Модуль | Покрытие | Тесты |
+|--------|----------|-------|
+| hint-manager.js | 59.59% | 74 |
+| session-manager.js | 82.14% | ~60 |
+| audio-manager.js | ~40% | 34 |
+| logger.js | 100% | 6 |
+| **Всего** | **55.62%** | **296** |
+
+### Запуск тестов
+
+```bash
+# Все тесты с покрытием
+npm test
+
+# Unit тесты только
+npm run test:unit
+
+# Python тесты
+npm run test:python
+
+# Наблюдение за изменениями
+npm run test:watch
+```
+
+### Структура тестов
+
+```
+tests/
+├── unit/                       # Unit тесты (Jest + pytest)
+│   ├── hint-manager.test.js    # 74 теста
+│   ├── session-manager.test.js # ~60 тестов
+│   ├── audio-manager.test.js   # 34 теста
+│   ├── ui-controller.test.js   # 10 тестов
+│   ├── test_ollama_client.py   # Python LLM клиент
+│   └── ...                     # Другие модули
+├── integration/                # Интеграционные тесты
+│   ├── app-flow.test.js        # Сценарии с сессиями
+│   └── llm-api.test.js         # LLM API тесты
+└── e2e/                        # E2E тесты (Playwright)
+    ├── app.spec.js
+    ├── ui.spec.js
+    └── app.e2e.test.js
+```
+
 ## Структура проекта
 
 ```text
