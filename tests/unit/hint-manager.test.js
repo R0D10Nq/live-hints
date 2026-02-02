@@ -461,6 +461,144 @@ describe('HintManager', () => {
       expect(result).toBe('Ошибка: Неизвестная ошибка');
     });
   });
+
+  describe('buildContext', () => {
+    test('должен строить контекст из объектов с source', () => {
+      hintManager.transcriptContext = [
+        { text: 'Вопрос интервьюера', source: 'interviewer', timestamp: Date.now() },
+        { text: 'Ответ кандидата', source: 'candidate', timestamp: Date.now() },
+      ];
+      hintManager.contextWindowSize = 10;
+      hintManager.maxContextChars = 1000;
+
+      const context = hintManager.buildContext();
+
+      expect(context).toHaveLength(2);
+      expect(context[0]).toContain('🎙️ Интервьюер');
+      expect(context[0]).toContain('Вопрос интервьюера');
+      expect(context[1]).toContain('🗣️ Ты');
+      expect(context[1]).toContain('Ответ кандидата');
+    });
+
+    test('должен ограничивать контекст по maxContextChars', () => {
+      hintManager.transcriptContext = [
+        { text: 'Короткий текст', source: 'candidate', timestamp: Date.now() },
+        { text: 'Очень длинный текст который не поместится в лимит символов', source: 'interviewer', timestamp: Date.now() },
+      ];
+      hintManager.maxContextChars = 30;
+
+      const context = hintManager.buildContext();
+
+      expect(context.length).toBeLessThanOrEqual(2);
+    });
+
+    test('должен поддерживать строки для обратной совместимости', () => {
+      hintManager.transcriptContext = ['Простая строка'];
+
+      const context = hintManager.buildContext();
+
+      expect(context).toHaveLength(1);
+      expect(context[0]).toBe('Простая строка');
+    });
+  });
+
+  describe('buildSystemPrompt', () => {
+    test('должен возвращать prompt для job_interview_ru', () => {
+      hintManager.currentProfile = 'job_interview_ru';
+      const prompt = hintManager.buildSystemPrompt();
+      expect(prompt).toBeDefined();
+      expect(typeof prompt).toBe('string');
+    });
+
+    test('должен возвращать custom инструкции для custom профиля', () => {
+      hintManager.currentProfile = 'custom';
+      hintManager.customInstructions = 'Мои кастомные инструкции';
+      const prompt = hintManager.buildSystemPrompt();
+      expect(prompt).toBe('Мои кастомные инструкции');
+    });
+
+    test('должен возвращать fallback для custom профиля без инструкций', () => {
+      hintManager.currentProfile = 'custom';
+      hintManager.customInstructions = '';
+      const prompt = hintManager.buildSystemPrompt();
+      expect(prompt).toBeDefined();
+      expect(typeof prompt).toBe('string');
+    });
+
+    test('должен обрезать слишком длинные custom инструкции', () => {
+      hintManager.currentProfile = 'custom';
+      hintManager.customInstructions = 'a'.repeat(10000);
+      const prompt = hintManager.buildSystemPrompt();
+      expect(prompt.length).toBeLessThanOrEqual(5000);
+    });
+  });
+
+  describe('setUserContext', () => {
+    test('должен устанавливать контекст пользователя', () => {
+      hintManager.setUserContext('Резюме пользователя');
+      expect(hintManager.userContext).toBe('Резюме пользователя');
+    });
+
+    test('должен устанавливать пустую строку для falsy значений', () => {
+      hintManager.setUserContext(null);
+      expect(hintManager.userContext).toBe('');
+    });
+  });
+
+  describe('sendDirectMessage', () => {
+    test('должен вызывать requestHint для непустого сообщения', async () => {
+      hintManager.requestHint = jest.fn().mockResolvedValue();
+      await hintManager.sendDirectMessage('Помоги мне');
+      expect(hintManager.requestHint).toHaveBeenCalled();
+    });
+
+    test('не должен вызывать requestHint для пустого сообщения', async () => {
+      hintManager.requestHint = jest.fn().mockResolvedValue();
+      await hintManager.sendDirectMessage('   ');
+      expect(hintManager.requestHint).not.toHaveBeenCalled();
+    });
+
+    test('не должен вызывать requestHint для null', async () => {
+      hintManager.requestHint = jest.fn().mockResolvedValue();
+      await hintManager.sendDirectMessage(null);
+      expect(hintManager.requestHint).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('requestHint', () => {
+    test('не должен делать запрос при дубликате контекста', async () => {
+      hintManager.transcriptContext = [{ text: 'тест', source: 'interviewer' }];
+      hintManager.buildContext = jest.fn().mockReturnValue(['контекст']);
+      hintManager.lastContextHash = 'контекст';
+      global.fetch = jest.fn();
+
+      await hintManager.requestHint('тест');
+
+      expect(global.fetch).not.toHaveBeenCalled();
+    });
+
+    test('не должен делать запрос если запрос уже в процессе', async () => {
+      hintManager.hintRequestPending = true;
+      global.fetch = jest.fn();
+
+      await hintManager.requestHint('тест');
+
+      expect(global.fetch).not.toHaveBeenCalled();
+    });
+
+    test('должен обрабатывать ошибку ответа сервера', async () => {
+      hintManager.transcriptContext = [];
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: false,
+        text: jest.fn().mockResolvedValue('Server error'),
+      });
+
+      await hintManager.requestHint('тест');
+
+      expect(mockApp.ui.showError).toHaveBeenCalled();
+      expect(hintManager.hintRequestPending).toBe(false);
+    });
+  });
 });
 
 describe('HintManager метрики', () => {
