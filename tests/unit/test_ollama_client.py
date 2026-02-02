@@ -4,6 +4,7 @@
 import pytest
 import asyncio
 import json
+import requests
 from unittest.mock import patch, MagicMock, AsyncMock
 
 
@@ -184,7 +185,7 @@ class TestOllamaClient:
         """_check_available возвращает False при ошибке"""
         from llm.ollama_client import OllamaClient
         
-        mock_get.side_effect = Exception('Connection refused')
+        mock_get.side_effect = requests.ConnectionError('Connection refused')
         
         client = OllamaClient('http://localhost:11434', 'llama3', MagicMock())
         result = client._check_available()

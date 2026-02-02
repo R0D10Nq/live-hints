@@ -3,10 +3,10 @@
  * Integrates all new UI modules
  */
 
-import { animations } from './ui-new/animation-engine.js';
-import { state } from './ui-new/state-manager.js';
-import { HintComponent, TranscriptComponent, ToastComponent } from './ui-new/components.js';
-import { ModalManager, SettingsPanel, SidebarManager } from './ui-new/modal-manager.js';
+import { animations } from './animation-engine.js';
+import { state } from './state-manager.js';
+import { HintComponent, TranscriptComponent, ToastComponent } from './components.js';
+import { ModalManager, SettingsPanel, SidebarManager } from './modal-manager.js';
 
 export class NewUIController {
   constructor() {
@@ -41,6 +41,7 @@ export class NewUIController {
 
     // Initial render
     this.hints.showEmptyState();
+    this.setSettingsMode('basic');
   }
 
   setupEventListeners() {
@@ -55,11 +56,11 @@ export class NewUIController {
 
     // Window controls
     document.getElementById('btn-minimize')?.addEventListener('click', () => {
-      window.electron?.send('minimize-window');
+      window.electron?.invoke('window:minimize');
     });
 
     document.getElementById('btn-close')?.addEventListener('click', () => {
-      window.electron?.send('close-window');
+      window.electron?.invoke('window:close');
     });
 
     // Control bar
@@ -116,6 +117,15 @@ export class NewUIController {
       this.modals.close('history-modal');
     });
 
+    // Help
+    document.getElementById('btn-help')?.addEventListener('click', () => {
+      this.modals.open('help-modal');
+    });
+
+    document.getElementById('btn-close-help')?.addEventListener('click', () => {
+      this.modals.close('help-modal');
+    });
+
     // Direct message
     document.getElementById('btn-send-direct')?.addEventListener('click', () => {
       this.sendDirectMessage();
@@ -128,12 +138,41 @@ export class NewUIController {
     });
 
     // Settings
+    document.getElementById('btn-settings-basic')?.addEventListener('click', () => {
+      this.setSettingsMode('basic');
+    });
+
+    document.getElementById('btn-settings-advanced')?.addEventListener('click', () => {
+      this.setSettingsMode('advanced');
+    });
+
+    document.getElementById('btn-onboarding-reset')?.addEventListener('click', async () => {
+      if (confirm('Вы уверены, что хотите сбросить онбординг? Приложение будет перезапущено.')) {
+        await window.electron?.invoke('settings:reset');
+        window.electron?.invoke('window:close'); // This will trigger quit in main if mainWin is closed and it was the only one? No, electron-store reset then restart is better.
+      }
+    });
+
     document.getElementById('llm-provider')?.addEventListener('change', (e) => {
       state.updateSetting('provider', e.target.value);
     });
 
     document.getElementById('ai-profile')?.addEventListener('change', (e) => {
       state.updateSetting('profile', e.target.value);
+    });
+
+    document.getElementById('dual-audio')?.addEventListener('change', (e) => {
+      state.updateSetting('dualAudio', e.target.checked);
+    });
+
+    document.getElementById('always-on-top')?.addEventListener('change', (e) => {
+      state.updateSetting('alwaysOnTop', e.target.checked);
+      window.electron?.send('window:set-always-on-top', e.target.checked);
+    });
+
+    document.getElementById('compact-mode')?.addEventListener('change', (e) => {
+      state.updateSetting('compactMode', e.target.checked);
+      document.body.classList.toggle('compact-mode', e.target.checked);
     });
 
     document.getElementById('theme-select')?.addEventListener('change', (e) => {
@@ -191,12 +230,26 @@ export class NewUIController {
         this.transcripts.addEntry(last.text);
       }
     });
+
+    // Settings changes
+    state.subscribe('settings.profile', (profile) => {
+      const customGroup = document.getElementById('custom-prompt-group');
+      if (customGroup) {
+        if (profile === 'custom') {
+          customGroup.classList.remove('hidden');
+          // Animate opening
+          this.animations.slideUp(customGroup);
+        } else {
+          customGroup.classList.add('hidden');
+        }
+      }
+    });
   }
 
   // Session actions
   toggleSession() {
     const isActive = state.get('session.isActive');
-    
+
     if (isActive) {
       state.stopSession();
       this.updateToggleButton(false);
@@ -209,13 +262,13 @@ export class NewUIController {
 
   togglePause() {
     const isPaused = state.get('session.isPaused');
-    
+
     if (isPaused) {
       state.resumeSession();
     } else {
       state.pauseSession();
     }
-    
+
     this.updatePauseButton(!isPaused);
   }
 
@@ -266,7 +319,7 @@ export class NewUIController {
   askHint() {
     state.set('ui.status', 'processing');
     this.hints.showLoadingState();
-    
+
     window.electron?.send('generate-hint');
   }
 
@@ -278,7 +331,7 @@ export class NewUIController {
       confidence: hintData.confidence || 'medium',
       context: hintData.context
     });
-    
+
     state.set('ui.status', 'recording');
   }
 
@@ -308,7 +361,7 @@ export class NewUIController {
   sendDirectMessage() {
     const input = document.getElementById('direct-message-input');
     const text = input?.value.trim();
-    
+
     if (text) {
       window.electron?.send('direct-message', { text });
       input.value = '';
@@ -319,6 +372,28 @@ export class NewUIController {
   // Transcript
   addTranscript(text) {
     state.addTranscript(text);
+  }
+
+  // Settings modes
+  setSettingsMode(mode) {
+    const basicBtn = document.getElementById('btn-settings-basic');
+    const advancedBtn = document.getElementById('btn-settings-advanced');
+    const sections = document.querySelectorAll('.settings-section');
+
+    if (mode === 'basic') {
+      basicBtn?.classList.add('active');
+      advancedBtn?.classList.remove('active');
+      // Hide advanced sections
+      sections.forEach((s, i) => {
+        if (i > 2) s.classList.add('hidden');
+        else s.classList.remove('hidden');
+      });
+    } else {
+      basicBtn?.classList.remove('active');
+      advancedBtn?.classList.add('active');
+      // Show all sections
+      sections.forEach(s => s.classList.remove('hidden'));
+    }
   }
 
   // Toast

@@ -44,8 +44,21 @@ app.whenReady().then(() => {
   Store = require('electron-store');
   store = new Store();
 
-  const onboardingWin = windowManager.createOnboardingWindow();
-  windowManager.setOnboardingWindow(onboardingWin);
+  const onboardingCompleted = store.get('onboardingCompleted');
+  const isTest = process.env.NODE_ENV === 'test';
+  console.log('[Main] NODE_ENV:', process.env.NODE_ENV);
+  console.log('[Main] Onboarding completed:', onboardingCompleted);
+  console.log('[Main] Is Test:', isTest);
+
+  if (onboardingCompleted || isTest) {
+    const mainWin = windowManager.createWindow();
+    windowManager.setMainWindow(mainWin);
+    onFinishOnboarding(); // Setups shortcuts
+  } else {
+    // If onboarding not completed, always show it unless it's a test
+    const onboardingWin = windowManager.createOnboardingWindow();
+    windowManager.setOnboardingWindow(onboardingWin);
+  }
 
   setupIPC({
     windowManager,
@@ -60,10 +73,4 @@ app.whenReady().then(() => {
 app.on('window-all-closed', () => {
   processManager.stopAllProcesses();
   app.quit();
-});
-
-app.on('activate', () => {
-  if (BrowserWindow.getAllWindows().length === 0) {
-    windowManager.createOnboardingWindow();
-  }
 });

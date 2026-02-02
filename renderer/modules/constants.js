@@ -16,6 +16,7 @@ export const SERVERS = {
   STT: `ws://localhost:${PORTS.STT_SYSTEM}`,
   STT_MIC: `ws://localhost:${PORTS.STT_MIC}`,
   LLM: `http://localhost:${PORTS.LLM}`,
+  VISION: `http://localhost:${PORTS.DASHBOARD}`,  // Vision API на порту dashboard
   DASHBOARD: `http://localhost:${PORTS.DASHBOARD}`,
 };
 

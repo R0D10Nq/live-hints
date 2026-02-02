@@ -558,19 +558,16 @@ class OnboardingController {
         this.btnFinish.classList.add('loading');
 
         try {
-            // Check if IPC is available
-            if (!window.electronAPI?.finishOnboarding) {
-                throw new Error('IPC API не доступен. Перезапустите приложение.');
-            }
-
             // Send to main process
-            const result = await window.electronAPI.finishOnboarding(settings);
+            if (window.electronAPI?.finishOnboarding) {
+                const result = await window.electronAPI.finishOnboarding(settings);
 
-            if (!result || !result.success) {
-                throw new Error(result?.error || 'Неизвестная ошибка');
+                if (!result || !result.success) {
+                    throw new Error(result?.error || 'Неизвестная ошибка');
+                }
+
+                console.log('[Onboarding] Finished:', settings);
             }
-
-            console.log('[Onboarding] Finished:', settings);
         } catch (error) {
             console.error('[Onboarding] Ошибка запуска:', error);
 

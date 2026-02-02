@@ -42,6 +42,11 @@ function setupIPC(handlers) {
     }
   });
 
+  ipcMain.handle('window:set-always-on-top', (event, alwaysOnTop) => {
+    const win = windowManager.getMainWindow();
+    if (win) win.setAlwaysOnTop(alwaysOnTop);
+  });
+
   ipcMain.handle('window:move', (event, direction) => {
     const win = windowManager.getMainWindow();
     if (!win) return;
@@ -232,6 +237,8 @@ function setupIPC(handlers) {
   ipcMain.handle('settings:getAll', () => store.store);
   ipcMain.handle('settings:reset', () => {
     store.clear();
+    require('electron').app.relaunch();
+    require('electron').app.exit(0);
     return true;
   });
 

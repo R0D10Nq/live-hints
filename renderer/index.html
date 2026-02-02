@@ -1,309 +1,368 @@
 <!doctype html>
 <html lang="ru" data-theme="dark">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta
-      http-equiv="Content-Security-Policy"
-      content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; connect-src 'self' ws://localhost:8765 ws://localhost:8764 http://localhost:8766"
-    />
-    <title>Live Hints</title>
-    <link rel="stylesheet" href="styles/app.css" />
-  </head>
-  <body>
-    <div id="app" class="app-container">
-      <!-- Header -->
-      <header class="app-header">
-        <div class="header-left">
-          <div class="logo">
-            <div class="logo-icon">
-              <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M12 2L2 7L12 12L22 7L12 2Z" fill="currentColor" opacity="0.6"/>
-                <path d="M2 17L12 22L22 17" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                <path d="M2 12L12 17L22 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-              </svg>
-            </div>
-            <span class="logo-text">Live Hints</span>
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="Content-Security-Policy"
+    content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' ws://localhost:8765 ws://localhost:8764 http://localhost:8766" />
+  <title>Live Hints</title>
+  <link rel="stylesheet" href="styles/app.css" />
+</head>
+
+<body>
+  <div id="app" class="app-container" data-testid="app-container">
+    <!-- Header -->
+    <header class="app-header" data-testid="header">
+      <div class="header-left">
+        <div class="logo">
+          <div class="logo-icon">
+            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M12 2L2 7L12 12L22 7L12 2Z" fill="currentColor" opacity="0.6" />
+              <path d="M2 17L12 22L22 17" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                stroke-linejoin="round" />
+              <path d="M2 12L12 17L22 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                stroke-linejoin="round" />
+            </svg>
           </div>
-        </div>
-
-        <div class="header-center">
-          <div id="status-indicator" class="status-indicator idle">
-            <span class="status-dot"></span>
-            <span class="status-text">Готов</span>
-          </div>
-        </div>
-
-        <div class="header-right">
-          <button id="btn-settings" class="btn btn-icon btn-ghost" title="Настройки (Ctrl+,)">
-            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <circle cx="12" cy="12" r="3"/>
-              <path d="M12 1v6m0 6v6m4.22-10.22l4.24-4.24M6.34 6.34L2.1 2.1m17.9 10h-6m-6 0H1.9m16.32 4.24l4.24 4.24M6.34 17.66l-4.24 4.24"/>
-            </svg>
-          </button>
-          <div class="window-controls">
-            <button id="btn-minimize" class="window-btn" title="Свернуть">−</button>
-            <button id="btn-close" class="window-btn window-btn-close" title="Закрыть">×</button>
-          </div>
-        </div>
-      </header>
-
-      <!-- Main Layout -->
-      <div class="main-layout">
-        <!-- Transcript Sidebar -->
-        <aside id="transcript-sidebar" class="sidebar">
-          <div class="sidebar-header">
-            <span class="sidebar-title">Транскрипт</span>
-            <div class="sidebar-actions">
-              <button id="btn-toggle-sidebar" class="btn btn-sm btn-ghost" title="Свернуть">◀</button>
-              <button id="btn-clear-transcript" class="btn btn-sm btn-ghost" title="Очистить">
-                <svg class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M18 6L6 18M6 6l12 12"/>
-                </svg>
-              </button>
-            </div>
-          </div>
-          <div id="transcript-feed" class="sidebar-content transcript-feed">
-            <div class="empty-state">
-              <svg class="empty-state-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
-                <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
-                <line x1="12" y1="19" x2="12" y2="23"/>
-                <line x1="8" y1="23" x2="16" y2="23"/>
-              </svg>
-              <div class="empty-state-title">Ожидание речи</div>
-              <div class="empty-state-text">Начните сессию для записи транскрипта</div>
-            </div>
-          </div>
-        </aside>
-
-        <!-- Content Area -->
-        <main class="content-area">
-          <!-- Hints Container -->
-          <div class="hints-container">
-            <div class="hints-header">
-              <span class="hints-title">Подсказки</span>
-              <div class="hints-controls">
-                <div class="pagination">
-                  <button id="btn-prev-hint" class="pagination-btn" disabled>←</button>
-                  <span id="hints-counter" class="pagination-counter">0 / 0</span>
-                  <button id="btn-next-hint" class="pagination-btn" disabled>→</button>
-                </div>
-                <div class="divider-vertical"></div>
-                <button id="btn-copy-hint" class="btn btn-sm btn-ghost" title="Копировать (Ctrl+C)">
-                  <svg class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
-                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
-                  </svg>
-                </button>
-                <button id="btn-clear-hints" class="btn btn-sm btn-ghost" title="Очистить все">
-                  <svg class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
-                  </svg>
-                </button>
-              </div>
-            </div>
-
-            <div id="hints-feed" class="hints-feed">
-              <div id="hints-empty-state" class="empty-state">
-                <svg class="empty-state-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                  <path d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/>
-                </svg>
-                <div class="empty-state-title">Подсказки появятся здесь</div>
-                <div class="empty-state-text">Запустите сессию и начните говорить. AI проанализирует разговор и предложит ответы.</div>
-              </div>
-
-              <div id="hints-loading-state" class="empty-state hidden">
-                <div class="loading-dots">
-                  <span></span>
-                  <span></span>
-                  <span></span>
-                </div>
-                <div class="empty-state-title">Анализирую контекст</div>
-              </div>
-            </div>
-
-            <!-- Direct Message Input -->
-            <div class="direct-message-container" id="direct-message-container">
-              <input 
-                type="text" 
-                id="direct-message-input" 
-                class="direct-message-input" 
-                placeholder="Уточни ответ, попроси подробнее..."
-              />
-              <button id="btn-send-direct" class="btn btn-primary">
-                <svg class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <line x1="22" y1="2" x2="11" y2="13"/>
-                  <polygon points="22 2 15 22 11 13 2 9 22 2"/>
-                </svg>
-                Отправить
-              </button>
-            </div>
-          </div>
-        </main>
-      </div>
-
-      <!-- Control Bar -->
-      <div class="control-bar">
-        <div class="control-group">
-          <button id="btn-toggle" class="btn btn-primary">
-            <svg id="icon-toggle" class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <polygon points="5 3 19 12 5 21 5 3"/>
-            </svg>
-            <span id="text-toggle">Старт</span>
-          </button>
-          <button id="btn-pause" class="btn btn-ghost" disabled>
-            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <rect x="6" y="4" width="4" height="16"/>
-              <rect x="14" y="4" width="4" height="16"/>
-            </svg>
-            Пауза
-          </button>
-        </div>
-        <div class="control-group">
-          <button id="btn-ask" class="btn btn-ghost" disabled>
-            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
-            </svg>
-            Спросить
-          </button>
-          <button id="btn-screenshot" class="btn btn-ghost">
-            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
-              <circle cx="12" cy="13" r="4"/>
-            </svg>
-            Скриншот
-          </button>
-        </div>
-        <div class="control-group">
-          <button id="btn-history" class="btn btn-ghost" title="История сессий">
-            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
-            </svg>
-          </button>
-          <button id="btn-help" class="btn btn-ghost" title="Справка (F1)">
-            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <circle cx="12" cy="12" r="10"/>
-              <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
-              <line x1="12" y1="17" x2="12.01" y2="17"/>
-            </svg>
-          </button>
+          <span class="logo-text">Live Hints</span>
         </div>
       </div>
 
-      <!-- Settings Panel -->
-      <aside id="settings-panel" class="settings-panel">
+      <div class="header-center">
+        <div id="status-indicator" class="status-indicator idle" data-testid="status-indicator">
+          <span class="status-dot"></span>
+          <span class="status-text" data-testid="status-text">Готов</span>
+        </div>
+      </div>
+
+      <div class="header-right">
+        <button id="btn-settings" class="btn btn-icon btn-ghost" title="Настройки (Ctrl+,)" data-testid="btn-settings">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="3" />
+            <path
+              d="M12 1v6m0 6v6m4.22-10.22l4.24-4.24M6.34 6.34L2.1 2.1m17.9 10h-6m-6 0H1.9m16.32 4.24l4.24 4.24M6.34 17.66l-4.24 4.24" />
+          </svg>
+        </button>
+        <div class="window-controls">
+          <button id="btn-minimize" class="window-btn" title="Свернуть" data-testid="btn-minimize">−</button>
+          <button id="btn-close" class="window-btn window-btn-close" title="Закрыть" data-testid="btn-close">×</button>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main Layout -->
+    <div class="main-layout">
+      <!-- Transcript Sidebar -->
+      <aside id="transcript-sidebar" class="sidebar">
         <div class="sidebar-header">
-          <span class="sidebar-title">Настройки</span>
-          <button id="btn-close-settings" class="btn btn-sm btn-ghost">✕</button>
+          <span class="sidebar-title">Транскрипт</span>
+          <div class="sidebar-actions">
+            <button id="btn-toggle-sidebar" class="btn btn-sm btn-ghost" title="Свернуть">◀</button>
+            <button id="btn-clear-transcript" class="btn btn-sm btn-ghost" title="Очистить">
+              <svg class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M18 6L6 18M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
         </div>
-        <div class="sidebar-content">
-          <!-- Provider -->
-          <div class="settings-section">
-            <div class="settings-group">
-              <label class="settings-label">Провайдер LLM</label>
-              <select id="llm-provider" class="select">
-                <option value="ollama" selected>Ollama (Local)</option>
-                <option value="openai">OpenAI</option>
-                <option value="gemini">Gemini</option>
-                <option value="claude">Claude</option>
-                <option value="openrouter">OpenRouter</option>
-                <option value="gigachat_free">GigaChat Free</option>
-                <option value="gigachat_max">GigaChat Max</option>
-              </select>
-            </div>
-          </div>
-
-          <!-- Profile -->
-          <div class="settings-section">
-            <div class="settings-group">
-              <label class="settings-label">Профиль</label>
-              <select id="ai-profile" class="select">
-                <option value="job_interview_ru" selected>Собеседование</option>
-                <option value="business_meeting">Переговоры</option>
-                <option value="daily_sync">Созвоны</option>
-                <option value="presentation">Презентация</option>
-                <option value="custom">Свой сценарий</option>
-              </select>
-            </div>
-            <div id="custom-prompt-group" class="settings-group hidden">
-              <label class="settings-label">Пользовательские инструкции</label>
-              <textarea id="custom-instructions" class="textarea" rows="4" placeholder="Введите инструкции для AI..."></textarea>
-            </div>
-          </div>
-
-          <!-- Audio -->
-          <div class="settings-section">
-            <div class="settings-group">
-              <label class="toggle">
-                <input type="checkbox" id="auto-hints" class="toggle-input">
-                <span class="toggle-label">Авто-подсказки</span>
-              </label>
-            </div>
-            <div class="settings-group">
-              <label class="toggle">
-                <input type="checkbox" id="dual-audio" class="toggle-input">
-                <span class="toggle-label">Dual Audio (микрофон + система)</span>
-              </label>
-            </div>
-          </div>
-
-          <!-- Appearance -->
-          <div class="settings-section">
-            <div class="settings-group">
-              <label class="settings-label">Тема</label>
-              <select id="theme-select" class="select">
-                <option value="dark" selected>Тёмная</option>
-                <option value="deep-dark">Глубокая тьма</option>
-                <option value="midnight">Полночь</option>
-              </select>
-            </div>
-            <div class="settings-group">
-              <label class="settings-label">Прозрачность окна</label>
-              <div class="slider-container">
-                <input type="range" id="opacity-slider" class="slider" min="50" max="100" value="100">
-                <span id="opacity-value" class="slider-value">100%</span>
-              </div>
-            </div>
+        <div id="transcript-feed" class="sidebar-content transcript-feed" data-testid="transcript-feed">
+          <div class="empty-state">
+            <svg class="empty-state-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
+              <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+              <line x1="12" y1="19" x2="12" y2="23" />
+              <line x1="8" y1="23" x2="16" y2="23" />
+            </svg>
+            <div class="empty-state-title">Ожидание речи</div>
+            <div class="empty-state-text">Начните сессию для записи транскрипта</div>
           </div>
         </div>
       </aside>
 
-      <!-- History Modal -->
-      <div id="history-modal" class="modal-backdrop hidden">
-        <div class="modal">
-          <div class="modal-header">
-            <span class="modal-title">История сессий</span>
-            <button id="btn-close-history" class="btn btn-icon btn-ghost">✕</button>
-          </div>
-          <div class="modal-content">
-            <div id="sessions-list">
-              <div class="empty-state">
-                <div class="empty-state-title">Нет сохранённых сессий</div>
+      <!-- Content Area -->
+      <main class="content-area">
+        <!-- Hints Container -->
+        <div class="hints-container">
+          <div class="hints-header">
+            <span class="hints-title">Подсказки</span>
+            <div class="hints-controls">
+              <div class="pagination">
+                <button id="btn-prev-hint" class="pagination-btn" disabled>←</button>
+                <span id="hints-counter" class="pagination-counter">0 / 0</span>
+                <button id="btn-next-hint" class="pagination-btn" disabled>→</button>
               </div>
+              <div class="divider-vertical"></div>
+              <button id="btn-copy-hint" class="btn btn-sm btn-ghost" title="Копировать (Ctrl+C)">
+                <svg class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                </svg>
+              </button>
+              <button id="btn-clear-hints" class="btn btn-sm btn-ghost" title="Очистить все">
+                <svg class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          <div id="hints-feed" class="hints-feed" data-testid="hints-feed">
+            <div id="hints-empty-state" class="empty-state">
+              <svg class="empty-state-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <path
+                  d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+              </svg>
+              <div class="empty-state-title">Подсказки появятся здесь</div>
+              <div class="empty-state-text">Запустите сессию и начните говорить. AI проанализирует разговор и предложит
+                ответы.</div>
+            </div>
+
+            <div id="hints-loading-state" class="empty-state hidden">
+              <div class="loading-dots">
+                <span></span>
+                <span></span>
+                <span></span>
+              </div>
+              <div class="empty-state-title">Анализирую контекст</div>
+            </div>
+          </div>
+
+          <!-- Direct Message Input -->
+          <div class="direct-message-container" id="direct-message-container">
+            <input type="text" id="direct-message-input" class="direct-message-input"
+              placeholder="Уточни ответ, попроси подробнее..." />
+            <button id="btn-send-direct" class="btn btn-primary">
+              <svg class="icon icon-sm" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="22" y1="2" x2="11" y2="13" />
+                <polygon points="22 2 15 22 11 13 2 9 22 2" />
+              </svg>
+              Отправить
+            </button>
+          </div>
+        </div>
+      </main>
+    </div>
+
+    <!-- Control Bar -->
+    <div class="control-bar">
+      <div class="control-group">
+        <button id="btn-toggle" class="btn btn-primary" data-testid="btn-toggle">
+          <svg id="icon-toggle" class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polygon points="5 3 19 12 5 21 5 3" />
+          </svg>
+          <span id="text-toggle">Старт</span>
+        </button>
+        <button id="btn-pause" class="btn btn-ghost" disabled>
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="6" y="4" width="4" height="16" />
+            <rect x="14" y="4" width="4" height="16" />
+          </svg>
+          Пауза
+        </button>
+      </div>
+      <div class="control-group">
+        <button id="btn-ask" class="btn btn-ghost" disabled data-testid="btn-get-hint">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+          </svg>
+          Спросить
+        </button>
+        <button id="btn-screenshot" class="btn btn-ghost">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+            <circle cx="12" cy="13" r="4" />
+          </svg>
+          Скриншот
+        </button>
+      </div>
+      <div class="control-group">
+        <button id="btn-history" class="btn btn-ghost" title="История сессий" data-testid="btn-history">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+          </svg>
+        </button>
+        <button id="btn-help" class="btn btn-ghost" title="Справка (F1)" data-testid="btn-help">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10" />
+            <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
+            <line x1="12" y1="17" x2="12.01" y2="17" />
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- Settings Panel -->
+    <aside id="settings-panel" class="settings-panel" data-testid="settings-panel">
+      <div class="sidebar-header">
+        <span class="sidebar-title">Настройки</span>
+        <div class="settings-tabs" data-testid="settings-tabs">
+          <button id="btn-settings-basic" class="btn btn-sm btn-ghost active"
+            data-testid="btn-settings-basic">Базовые</button>
+          <button id="btn-settings-advanced" class="btn btn-sm btn-ghost"
+            data-testid="btn-settings-advanced">Расширенные</button>
+        </div>
+        <button id="btn-close-settings" class="btn btn-sm btn-ghost" data-testid="btn-close-settings">✕</button>
+      </div>
+      <div class="sidebar-content">
+        <!-- Provider -->
+        <div class="settings-section">
+          <div class="settings-group">
+            <label class="settings-label">Провайдер LLM</label>
+            <select id="llm-provider" class="select" data-testid="llm-provider-select">
+              <option value="ollama" selected>Ollama (Local)</option>
+              <option value="openai">OpenAI</option>
+              <option value="gemini">Gemini</option>
+              <option value="claude">Claude</option>
+              <option value="openrouter">OpenRouter</option>
+              <option value="gigachat_free">GigaChat Free</option>
+              <option value="gigachat_max">GigaChat Max</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Profile -->
+        <div class="settings-section">
+          <div class="settings-group">
+            <label class="settings-label">Профиль</label>
+            <select id="ai-profile" class="select" data-testid="ai-profile-select">
+              <option value="job_interview_ru" selected>Собеседование</option>
+              <option value="business_meeting">Переговоры</option>
+              <option value="daily_sync">Созвоны</option>
+              <option value="presentation">Презентация</option>
+              <option value="custom">Свой сценарий</option>
+            </select>
+          </div>
+          <div id="custom-prompt-group" class="settings-group hidden" data-testid="custom-instructions-container">
+            <label class="settings-label">Пользовательские инструкции</label>
+            <textarea id="custom-instructions" class="textarea" rows="4"
+              placeholder="Введите инструкции для AI..."></textarea>
+          </div>
+        </div>
+
+        <!-- Audio & Behavior -->
+        <div class="settings-section">
+          <div class="settings-group">
+            <label class="toggle">
+              <input type="checkbox" id="auto-hints" class="toggle-input" data-testid="auto-hints-checkbox">
+              <span class="toggle-label">Авто-подсказки</span>
+            </label>
+          </div>
+          <div class="settings-group">
+            <label class="toggle">
+              <input type="checkbox" id="dual-audio" class="toggle-input">
+              <span class="toggle-label">Dual Audio (системный звук)</span>
+            </label>
+          </div>
+          <div class="settings-group">
+            <label class="toggle">
+              <input type="checkbox" id="always-on-top" class="toggle-input" checked>
+              <span class="toggle-label">Поверх всех окон</span>
+            </label>
+          </div>
+          <div class="settings-group">
+            <label class="toggle">
+              <input type="checkbox" id="compact-mode" class="toggle-input">
+              <span class="toggle-label">Компактный режим</span>
+            </label>
+          </div>
+        </div>
+
+        <!-- Appearance -->
+        <div class="settings-section">
+          <div class="settings-group">
+            <label class="settings-label">Тема</label>
+            <select id="theme-select" class="select">
+              <option value="dark" selected>Тёмная</option>
+              <option value="deep-dark">Глубокая тьма</option>
+              <option value="midnight">Полночь</option>
+            </select>
+          </div>
+          <div class="settings-group">
+            <label class="settings-label">Прозрачность окна</label>
+            <div class="slider-container">
+              <input type="range" id="opacity-slider" class="slider" min="50" max="100" value="100"
+                data-testid="opacity-slider">
+              <span id="opacity-value" class="slider-value">100%</span>
             </div>
           </div>
         </div>
       </div>
+    </aside>
 
-      <!-- Session View Modal -->
-      <div id="session-view-modal" class="modal-backdrop hidden">
-        <div class="modal">
-          <div class="modal-header">
-            <span id="session-view-title" class="modal-title">Сессия</span>
-            <button id="btn-close-session-view" class="btn btn-icon btn-ghost">✕</button>
-          </div>
-          <div class="modal-content">
-            <div id="session-view-content"></div>
+    <!-- History Modal -->
+    <div id="history-modal" class="modal-backdrop hidden" data-testid="history-modal">
+      <div class="modal">
+        <div class="modal-header">
+          <span class="modal-title">История сессий</span>
+          <button id="btn-close-history" class="btn btn-icon btn-ghost" data-testid="btn-close-modal">✕</button>
+        </div>
+        <div class="modal-content">
+          <div id="sessions-list" data-testid="sessions-list">
+            <div class="empty-state">
+              <div class="empty-state-title">Нет сохранённых сессий</div>
+            </div>
           </div>
         </div>
       </div>
-
-      <!-- Toast Container -->
-      <div id="toast-container" class="toast-container"></div>
     </div>
 
-    <!-- Scripts -->
-    <script type="module" src="app.js"></script>
-  </body>
+    <!-- Help Modal -->
+    <div id="help-modal" class="modal-backdrop hidden" data-testid="help-modal">
+      <div class="modal">
+        <div class="modal-header">
+          <span class="modal-title">Справка и горячие клавиши</span>
+          <button id="btn-close-help" class="btn btn-icon btn-ghost">✕</button>
+        </div>
+        <div class="modal-content">
+          <div class="help-grid">
+            <div class="help-item">
+              <kbd>Ctrl + Space</kbd>
+              <span>Старт / Стоп сессии</span>
+            </div>
+            <div class="help-item">
+              <kbd>Ctrl + H</kbd>
+              <span>Получить подсказку</span>
+            </div>
+            <div class="help-item">
+              <kbd>Ctrl + ,</kbd>
+              <span>Настройки</span>
+            </div>
+            <div class="help-item">
+              <kbd>Ctrl + /</kbd>
+              <span>Скрыть / Показать окно</span>
+            </div>
+            <div class="help-item">
+              <kbd>F1</kbd>
+              <span>Справка</span>
+            </div>
+          </div>
+          <div class="help-footer">
+            <button id="btn-onboarding-reset" class="btn btn-ghost btn-sm">Сбросить онбординг</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Session View Modal -->
+    <div id="session-view-modal" class="modal-backdrop hidden">
+      <div class="modal">
+        <div class="modal-header">
+          <span id="session-view-title" class="modal-title">Сессия</span>
+          <button id="btn-close-session-view" class="btn btn-icon btn-ghost">✕</button>
+        </div>
+        <div class="modal-content">
+          <div id="session-view-content"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div id="toast-container" class="toast-container"></div>
+  </div>
+
+  <!-- Scripts -->
+  <script type="module" src="app.js"></script>
+</body>
+
 </html>

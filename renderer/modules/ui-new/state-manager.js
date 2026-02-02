@@ -28,6 +28,8 @@ export class StateManager {
         profile: 'job_interview_ru',
         autoHints: false,
         dualAudio: false,
+        alwaysOnTop: true,
+        compactMode: false,
         theme: 'dark',
         opacity: 100
       }
@@ -56,7 +58,7 @@ export class StateManager {
     const keys = path.split('.');
     const lastKey = keys.pop();
     let target = this.state;
-    
+
     for (const key of keys) {
       if (!(key in target)) {
         target[key] = {};
@@ -216,6 +218,10 @@ export class StateManager {
    */
   updateSetting(key, value) {
     this.set(`settings.${key}`, value);
+    // Persist to electron store
+    if (window.electron) {
+      window.electron.send('settings:set', key, value);
+    }
   }
 
   /**

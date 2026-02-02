@@ -26,9 +26,13 @@ DEVICE = 'cuda'
 COMPUTE_TYPE = 'float16'
 
 # Streaming параметры
+# MIN_CHUNK_SECONDS: минимальная длительность аудио для транскрипции (избегает слишком коротких фрагментов)
 MIN_CHUNK_SECONDS = 0.25
+# MAX_BUFFER_SECONDS: максимальный размер буфера перед принудительной транскрипцией
 MAX_BUFFER_SECONDS = 4.0
+# SILENCE_THRESHOLD: RMS порог для определения тишины (0.015 ≈ -36 dB)
 SILENCE_THRESHOLD = 0.015
+# SILENCE_TRIGGER_SEC: длительность тишины для срабатывания транскрипции после речи
 SILENCE_TRIGGER_SEC = 0.8
 
 

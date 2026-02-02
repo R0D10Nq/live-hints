@@ -1,6 +1,6 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
-contextBridge.exposeInMainWorld('electronAPI', {
+contextBridge.exposeInMainWorld('electron', {
   minimizeWindow: () => ipcRenderer.invoke('window:minimize'),
   closeWindow: () => ipcRenderer.invoke('window:close'),
   getDisplays: () => ipcRenderer.invoke('window:get-displays'),

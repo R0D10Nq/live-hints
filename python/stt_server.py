@@ -172,6 +172,12 @@ class DynamicSTTServer:
     async def stop_server(self):
         """Остановить сервер"""
         self.running = False
+        # Graceful shutdown: закрыть все активные WebSocket соединения
+        for client in list(self.clients):
+            try:
+                await client.close(1001, "Server shutting down")
+            except Exception:
+                pass  # Клиент уже отключён
         self.stop_audio_capture()
         logger.info('STT server stopped')
 

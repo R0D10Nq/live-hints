@@ -70,3 +70,44 @@ class TestMain:
             pass
         
         mock_server.start_server.assert_called_once()
+
+
+class TestGracefulShutdown:
+    """Тесты для graceful shutdown"""
+    
+    @pytest.mark.asyncio
+    @patch('stt_server.StreamingTranscriber')
+    async def test_stop_server_closes_clients(self, mock_transcriber):
+        """stop_server закрывает все WebSocket клиенты"""
+        from stt_server import DynamicSTTServer
+        
+        server = DynamicSTTServer()
+        
+        # Создаём mock клиентов
+        mock_client1 = AsyncMock()
+        mock_client2 = AsyncMock()
+        server.clients = {mock_client1, mock_client2}
+        
+        await server.stop_server()
+        
+        mock_client1.close.assert_called_once_with(1001, "Server shutting down")
+        mock_client2.close.assert_called_once_with(1001, "Server shutting down")
+        assert server.running is False
+    
+    @pytest.mark.asyncio
+    @patch('stt_server.StreamingTranscriber')
+    async def test_stop_server_handles_already_closed(self, mock_transcriber):
+        """stop_server обрабатывает уже закрытых клиентов"""
+        from stt_server import DynamicSTTServer
+        
+        server = DynamicSTTServer()
+        
+        # Клиент который бросит исключение
+        mock_client = AsyncMock()
+        mock_client.close.side_effect = Exception("Already closed")
+        server.clients = {mock_client}
+        
+        # Не должен упасть
+        await server.stop_server()
+        
+        assert server.running is False

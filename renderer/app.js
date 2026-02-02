@@ -7,13 +7,7 @@
 import { NewUIController } from './modules/ui-new/index.js';
 import { state } from './modules/ui-new/state-manager.js';
 import { animations } from './modules/ui-new/animation-engine.js';
-
-// Constants
-const SERVERS = {
-  STT: 'ws://localhost:8765',
-  LLM: 'http://localhost:8766',
-  VISION: 'http://localhost:8767'
-};
+import { SERVERS } from './modules/constants.js';
 
 // Main Application Class
 class LiveHintsApp {
