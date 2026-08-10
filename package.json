@@ -23,8 +23,9 @@
     "python:stt": ".\\venv\\Scripts\\python.exe python\\stt_server.py",
     "python:llm": ".\\venv\\Scripts\\python.exe python\\llm_server.py",
     "setup": "powershell -ExecutionPolicy Bypass -File scripts/dev.ps1",
-    "build": "electron-builder --win",
-    "build:portable": "electron-builder --win portable"
+    "build": "electron-builder --win nsis",
+    "build:portable": "electron-builder --win portable",
+    "build:installer": "powershell -ExecutionPolicy Bypass -Command .\\scripts\\nsis-wrapper.ps1"
   },
   "keywords": [
     "electron",
@@ -91,11 +92,15 @@
       "icon": "renderer/icon.ico"
     },
     "nsis": {
-      "oneClick": false,
-      "allowToChangeInstallationDirectory": true,
+      "oneClick": true,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": false,
       "createDesktopShortcut": true,
-      "createStartMenuShortcut": true,
-      "shortcutName": "Live Hints"
+      "createStartMenuShortcut": false,
+      "shortcutName": "Live Hints",
+      "installerIcon": "renderer/icon.ico",
+      "uninstallerIcon": "renderer/icon.ico",
+      "runAfterFinish": true
     },
     "portable": {
       "artifactName": "LiveHints-Portable-${version}.exe"
