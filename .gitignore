@@ -207,3 +207,8 @@ models/
 *.gguf
 *.bin
 *.onnx
+# Standalone launcher (PyInstaller build artifact)
+.LiveHints-Standalone.spec
+build_LiveHints.standalone*
+python/launcher.py.bundle
+dist/LiveHints-Standalone.exe
