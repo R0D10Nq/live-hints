@@ -179,15 +179,7 @@ export class AudioManager {
         this.app.ui.addTranscriptItem(data.text, new Date().toISOString(), source);
 
         // Сохраняем в контекст для подсказок
-        if (!this.app.transcriptContext) {
-          this.app.transcriptContext = [];
-        }
-        this.app.transcriptContext.push({ text: data.text, source, timestamp: Date.now() });
-
-        // Ограничиваем контекст
-        if (this.app.transcriptContext.length > 50) {
-          this.app.transcriptContext = this.app.transcriptContext.slice(-50);
-        }
+        this._appendTranscriptContext({ text: data.text, source, timestamp: Date.now() });
 
         if (this.app.autoHintsEnabled) {
           this.app.hints.requestHint(data.text, source);
@@ -225,7 +217,12 @@ export class AudioManager {
           this._micSentCount++;
 
           if (this._micSentCount === 1) {
-            logger.info('MIC', 'Первый чанк аудио отправлен, размер:', data.length || data.byteLength, 'байт');
+            logger.info(
+              'MIC',
+              'Первый чанк аудио отправлен, размер:',
+              data.length || data.byteLength,
+              'байт'
+            );
           } else if (this._micSentCount % 100 === 0) {
             logger.info('MIC', 'Отправлено чанков:', this._micSentCount);
           }
@@ -235,7 +232,13 @@ export class AudioManager {
           logger.error('MIC', 'Ошибка отправки аудио:', e);
         }
       } else if (!this._micWsWarningShown && this.dualAudioEnabled) {
-        logger.warn('MIC', 'WebSocket не открыт или muted, состояние:', this.wsMicrophone?.readyState, 'muted:', this.micMuted);
+        logger.warn(
+          'MIC',
+          'WebSocket не открыт или muted, состояние:',
+          this.wsMicrophone?.readyState,
+          'muted:',
+          this.micMuted
+        );
         this._micWsWarningShown = true;
       }
     } else {
@@ -246,7 +249,12 @@ export class AudioManager {
           this._audioSentCount++;
 
           if (this._audioSentCount === 1) {
-            logger.info('AUDIO', 'Первый чанк аудио отправлен, размер:', data.length || data.byteLength, 'байт');
+            logger.info(
+              'AUDIO',
+              'Первый чанк аудио отправлен, размер:',
+              data.length || data.byteLength,
+              'байт'
+            );
           } else if (this._audioSentCount % 100 === 0) {
             logger.info('AUDIO', 'Отправлено чанков:', this._audioSentCount);
           }
@@ -267,6 +275,10 @@ export class AudioManager {
   connectMicrophone() {
     if (!this.dualAudioEnabled) return;
 
+    // Перед созданием нового WebSocket обязательно отписываемся от старого,
+    // чтобы не накапливать слушателей на каждом переподключении
+    this.disconnectMicrophone();
+
     try {
       this.wsMicrophone = new WebSocket(SERVERS.STT_MIC);
 
@@ -286,20 +298,11 @@ export class AudioManager {
               'candidate'
             );
 
-            // ВАЖНО: накапливаем контекст от микрофона тоже
-            if (!this.app.transcriptContext) {
-              this.app.transcriptContext = [];
-            }
-            this.app.transcriptContext.push({
+            this._appendTranscriptContext({
               text: data.text,
               source: 'candidate',
               timestamp: Date.now(),
             });
-
-            // Ограничиваем контекст
-            if (this.app.transcriptContext.length > 50) {
-              this.app.transcriptContext = this.app.transcriptContext.slice(-50);
-            }
 
             // Автоматический запрос подсказки если включён
             if (this.app.autoHintsEnabled) {
@@ -345,6 +348,15 @@ export class AudioManager {
 
   toggleMute() {
     this.toggleMicMute();
+  }
+
+  // Общий аккумулятор контекста транскрипта — одна точка накопления вместо дублирования
+  _appendTranscriptContext(entry) {
+    if (!this.app.transcriptContext) this.app.transcriptContext = [];
+    this.app.transcriptContext.push(entry);
+    if (this.app.transcriptContext.length > 50) {
+      this.app.transcriptContext = this.app.transcriptContext.slice(-50);
+    }
   }
 
   disconnect() {

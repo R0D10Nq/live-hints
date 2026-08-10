@@ -27,7 +27,7 @@ export class NewUIController {
     // Initialize components
     this.hints = new HintComponent(document.getElementById('hints-feed'), {
       onCopy: () => this.showToast('Скопировано в буфер обмена', 'success'),
-      onNavigate: (dir) => this.navigateHint(dir)
+      onNavigate: (dir) => this.navigateHint(dir),
     });
 
     this.transcripts = new TranscriptComponent(document.getElementById('transcript-feed'));
@@ -256,7 +256,7 @@ export class NewUIController {
     } else {
       state.startSession();
       this.updateToggleButton(true);
-      window.electron?.send('start-recording');
+      void window.electron?.startSTT();
     }
   }
 
@@ -301,11 +301,11 @@ export class NewUIController {
     const text = indicator?.querySelector('.status-text');
 
     const statusMap = {
-      'idle': { text: 'Готов', class: 'idle' },
-      'recording': { text: 'Запись', class: 'recording' },
-      'paused': { text: 'Пауза', class: 'paused' },
-      'processing': { text: 'Обработка', class: 'processing' },
-      'error': { text: 'Ошибка', class: 'error' }
+      idle: { text: 'Готов', class: 'idle' },
+      recording: { text: 'Запись', class: 'recording' },
+      paused: { text: 'Пауза', class: 'paused' },
+      processing: { text: 'Обработка', class: 'processing' },
+      error: { text: 'Ошибка', class: 'error' },
     };
 
     const config = statusMap[status];
@@ -329,7 +329,7 @@ export class NewUIController {
       timestamp: Date.now(),
       type: hintData.type || 'general',
       confidence: hintData.confidence || 'medium',
-      context: hintData.context
+      context: hintData.context,
     });
 
     state.set('ui.status', 'recording');
@@ -392,7 +392,7 @@ export class NewUIController {
       basicBtn?.classList.remove('active');
       advancedBtn?.classList.add('active');
       // Show all sections
-      sections.forEach(s => s.classList.remove('hidden'));
+      sections.forEach((s) => s.classList.remove('hidden'));
     }
   }
 

@@ -98,10 +98,4 @@ contextBridge.exposeInMainWorld('electron', {
   onShortcutToggleMute: (callback) => ipcRenderer.on('shortcut:toggle-mute', callback),
   onShortcutHelp: (callback) => ipcRenderer.on('shortcut:help', callback),
   onShortcutToggleSession: (callback) => ipcRenderer.on('shortcut:toggle-session', callback),
-
-  // Generic IPC
-  send: (channel, data) => ipcRenderer.send(channel, data),
-  on: (channel, func) => ipcRenderer.on(channel, (event, ...args) => func(...args)),
-  once: (channel, func) => ipcRenderer.once(channel, (event, ...args) => func(...args)),
-  invoke: (channel, ...args) => ipcRenderer.invoke(channel, ...args),
 });

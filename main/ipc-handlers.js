@@ -5,13 +5,7 @@
 const { ipcMain, screen } = require('electron');
 
 function setupIPC(handlers) {
-  const {
-    windowManager,
-    stealthManager,
-    processManager,
-    store,
-    onStealthToggle,
-  } = handlers;
+  const { windowManager, stealthManager, processManager, store, onStealthToggle } = handlers;
 
   // Window controls
   ipcMain.handle('window:minimize', () => {
@@ -53,10 +47,18 @@ function setupIPC(handlers) {
     const [x, y] = win.getPosition();
     const step = 20;
     switch (direction) {
-      case 'up': win.setPosition(x, y - step); break;
-      case 'down': win.setPosition(x, y + step); break;
-      case 'left': win.setPosition(x - step, y); break;
-      case 'right': win.setPosition(x + step, y); break;
+      case 'up':
+        win.setPosition(x, y - step);
+        break;
+      case 'down':
+        win.setPosition(x, y + step);
+        break;
+      case 'left':
+        win.setPosition(x - step, y);
+        break;
+      case 'right':
+        win.setPosition(x + step, y);
+        break;
     }
   });
 
@@ -245,15 +247,21 @@ function setupIPC(handlers) {
   // File operations
   ipcMain.handle('file:parse', async (event, filePath, type) => {
     const fs = require('fs');
+    const pathModule = require('path');
+    // Защищаем от чтения произвольных файлов — только относительные пути в пределах проекта
+    if (pathModule.isAbsolute(filePath)) {
+      return Promise.reject(new Error('Доступ запрещён: допускаются только относительные пути'));
+    }
     try {
+      const resolved = pathModule.resolve(__dirname, '..', filePath);
       if (type === 'pdf') {
         try {
           const pdfParse = require('pdf-parse');
-          const dataBuffer = fs.readFileSync(filePath);
+          const dataBuffer = fs.readFileSync(resolved);
           const data = await pdfParse(dataBuffer);
           return data.text;
         } catch (e) {
-          return fs.readFileSync(filePath, 'utf-8');
+          return fs.readFileSync(resolved, 'utf-8');
         }
       } else if (type === 'docx') {
         try {

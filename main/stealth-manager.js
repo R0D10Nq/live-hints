@@ -17,7 +17,9 @@ function setMainWindow(window) {
 function activateStealth() {
   if (!mainWindow) return;
 
-  mainWindow.setContentProtection(true);
+  try {
+    mainWindow.setContentProtection(true);
+  } catch (_) {}
   stealthMode = true;
   mainWindow.webContents.send('stealth:activated');
   console.log('[Stealth] Режим активирован - окно защищено от записи экрана');
@@ -26,7 +28,9 @@ function activateStealth() {
 function deactivateStealth() {
   if (!mainWindow) return;
 
-  mainWindow.setContentProtection(false);
+  try {
+    mainWindow.setContentProtection(false);
+  } catch (_) {}
   stealthMode = false;
   mainWindow.webContents.send('stealth:deactivated');
   console.log('[Stealth] Режим деактивирован - окно видно на записи');
@@ -84,19 +88,25 @@ async function checkScreenSharing() {
 function startScreenSharingMonitor() {
   if (stealthCheckInterval) return;
 
-  stealthCheckInterval = setInterval(async () => {
-    const isSharing = await checkScreenSharing();
+  const tick = () => {
+    checkScreenSharing()
+      .then((isSharing) => {
+        if (isSharing && !StealthMode) {
+          console.log('[Stealth] Обнаружен screen sharing - активация stealth');
+          stealthMode = true;
+          activateStealth();
 
-    if (isSharing && !stealthMode) {
-      console.log('[Stealth] Обнаружен screen sharing - активация stealth');
-      stealthMode = true;
-      activateStealth();
+          if (mainWindow) {
+            mainWindow.webContents.send('stealth:auto-activated');
+          }
+        }
+      })
+      .catch((err) => {
+        console.error('[Stealth] Ошибка проверки screen sharing:', err);
+      });
+  };
 
-      if (mainWindow) {
-        mainWindow.webContents.send('stealth:auto-activated');
-      }
-    }
-  }, 2000);
+  stealthCheckInterval = setInterval(tick, 2000);
 
   console.log('[Stealth] Мониторинг screen sharing запущен');
 }
@@ -138,7 +148,10 @@ module.exports = {
   setStealthMode,
   setMainWindow,
   isStealthMode: () => stealthMode,
-  setStealthModeState: (v) => { stealthMode = v; },
+  // setStealthModeState переименован — прямой доступ к внутреннему флагу отсутствует.
+  // Используйте activateStealth() / deactivateStealth() вместо этого.
   getStealthStrategy: () => stealthStrategy,
-  setStealthStrategy: (s) => { stealthStrategy = s; },
+  setStealthStrategy: (s) => {
+    stealthStrategy = s;
+  },
 };

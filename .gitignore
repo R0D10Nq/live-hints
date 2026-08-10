@@ -197,6 +197,11 @@ audio_cache/
 uploads/
 user_data/
 
+# Personal context files (sensitive PII, generated at runtime)
+python/user_context.txt
+python/vacancy.txt
+python/mode_context.txt
+
 # Model downloads (large files)
 models/
 *.gguf

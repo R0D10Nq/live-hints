@@ -13,7 +13,7 @@ export class StateManager {
         isPaused: false,
         startTime: null,
         transcriptCount: 0,
-        hintCount: 0
+        hintCount: 0,
       },
       ui: {
         sidebarOpen: true,
@@ -21,7 +21,7 @@ export class StateManager {
         currentHintIndex: 0,
         hints: [],
         transcripts: [],
-        status: 'idle'
+        status: 'idle',
       },
       settings: {
         provider: 'ollama',
@@ -31,8 +31,8 @@ export class StateManager {
         alwaysOnTop: true,
         compactMode: false,
         theme: 'dark',
-        opacity: 100
-      }
+        opacity: 100,
+      },
     };
 
     this.listeners = new Map();
@@ -98,16 +98,17 @@ export class StateManager {
   /**
    * Notify listeners of state change
    */
-  _notify(path, newValue, oldValue) {
+  _notify(path, newValue, oldValue, visited = new Set()) {
     const callbacks = this.listeners.get(path);
     if (callbacks) {
-      callbacks.forEach(cb => cb(newValue, oldValue, path));
+      callbacks.forEach((cb) => cb(newValue, oldValue, path));
     }
 
-    // Notify parent path listeners
+    // Предотвращаем бесконечную рекурсию при глубокой вложенности ключей
     const parentPath = path.split('.').slice(0, -1).join('.');
-    if (parentPath) {
-      this._notify(parentPath, this.get(parentPath), null);
+    if (parentPath && !visited.has(parentPath)) {
+      visited.add(parentPath);
+      this._notify(parentPath, this.get(parentPath), null, visited);
     }
   }
 
@@ -178,11 +179,14 @@ export class StateManager {
    * Transcript actions
    */
   addTranscript(text) {
-    const transcripts = [...this.get('ui.transcripts'), {
-      text,
-      timestamp: Date.now(),
-      id: `t_${Date.now()}`
-    }];
+    const transcripts = [
+      ...this.get('ui.transcripts'),
+      {
+        text,
+        timestamp: Date.now(),
+        id: `t_${Date.now()}`,
+      },
+    ];
     this.set('ui.transcripts', transcripts);
     this.set('session.transcriptCount', transcripts.length);
   }
@@ -218,9 +222,9 @@ export class StateManager {
    */
   updateSetting(key, value) {
     this.set(`settings.${key}`, value);
-    // Persist to electron store
-    if (window.electron) {
-      window.electron.send('settings:set', key, value);
+    // Persist to electron store через безопасный invoke API
+    if (window.electron?.settingsSet) {
+      void window.electron.settingsSet(key, value);
     }
   }
 
@@ -243,7 +247,7 @@ export class StateManager {
         isPaused: false,
         startTime: null,
         transcriptCount: 0,
-        hintCount: 0
+        hintCount: 0,
       },
       ui: {
         sidebarOpen: true,
@@ -251,9 +255,9 @@ export class StateManager {
         currentHintIndex: 0,
         hints: [],
         transcripts: [],
-        status: 'idle'
+        status: 'idle',
       },
-      settings: { ...this.state.settings }
+      settings: { ...this.state.settings },
     };
     this.listeners.clear();
   }

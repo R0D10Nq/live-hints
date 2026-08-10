@@ -164,7 +164,11 @@ ${session.hints || 'Нет данных'}
         }
       }
 
-      existingSessions.sort((a, b) => new Date(b.startTime) - new Date(a.startTime));
+      existingSessions.sort((a, b) => {
+        const da = a.date ? new Date(a.date).getTime() : 0;
+        const db = b.date ? new Date(b.date).getTime() : 0;
+        return db - da;
+      });
       localStorage.setItem('live-hints-sessions', JSON.stringify(existingSessions));
 
       this.app.ui.showToast(`Импортировано ${imported} новых сессий`, 'success');

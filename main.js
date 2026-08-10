@@ -5,6 +5,13 @@
 
 const { app, BrowserWindow } = require('electron');
 
+// Single-instance guard: предотвращает запуск нескольких копий приложения одновременно
+if (!app.requestSingleInstanceLock()) {
+  console.log('[Main] Другой экземпляр уже запущен, выходим.');
+  app.quit();
+  process.exit(0);
+}
+
 const windowManager = require('./main/window-manager');
 const stealthManager = require('./main/stealth-manager');
 const processManager = require('./main/process-manager');
@@ -71,6 +78,18 @@ app.whenReady().then(() => {
 });
 
 app.on('window-all-closed', () => {
+  stealthManager.stopScreenSharingMonitor();
   processManager.stopAllProcesses();
   app.quit();
+});
+
+app.on('second-instance', () => {
+  // Если пользователь пытается запустить вторую копию — фокусируем ужеRunning окно
+  const mainWin = windowManager.getMainWindow();
+  if (mainWin) {
+    if (mainWin.isMinimized()) mainWin.restore();
+    mainWin.focus();
+  } else {
+    console.log('[Main] Второй экземпляр: главное окно отсутствует');
+  }
 });

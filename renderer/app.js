@@ -50,41 +50,24 @@ class LiveHintsApp {
       return;
     }
 
-    // Transcript received
-    window.electron.on('transcript', (data) => {
-      console.log('[APP] Transcript received:', data.text);
-      state.addTranscript(data.text);
-    });
-
-    // Hint received
-    window.electron.on('hint', (data) => {
-      console.log('[APP] Hint received');
+    // Обработка событий: делегирование NewUIController для уникальной обработки без дублирования
+    window.electron.onHint((data) => {
       state.set('ui.status', 'recording');
       state.addHint({
         text: data.text,
         timestamp: Date.now(),
         type: data.type || 'general',
-        confidence: data.confidence || 'medium'
+        confidence: data.confidence || 'medium',
       });
-      this.ui.showToast('Подсказка получена', 'success');
     });
 
-    // Error received
-    window.electron.on('error', (data) => {
+    window.electron.onError((data) => {
       console.error('[APP] Error:', data.message);
       state.set('ui.status', 'error');
       this.ui.showToast(data.message, 'error');
     });
 
-    // Status updates
-    window.electron.on('status', (data) => {
-      state.set('ui.status', data.status);
-    });
-
-    // Settings updated
-    window.electron.on('settings-updated', () => {
-      this.loadSettings();
-    });
+    window.electron.onStatusChange((status) => state.set('ui.status', status));
   }
 
   connectWebSocket() {
@@ -182,11 +165,11 @@ class LiveHintsApp {
     });
   }
 
-  loadSettings() {
-    if (!window.electron) return;
+  async loadSettings() {
+    if (!window.electron?.settingsGetAll) return;
 
-    window.electron.send('get-settings');
-    window.electron.once('settings', (settings) => {
+    try {
+      const settings = await window.electron.settingsGetAll();
       if (settings.theme) {
         document.documentElement.setAttribute('data-theme', settings.theme);
         state.updateSetting('theme', settings.theme);
@@ -201,7 +184,9 @@ class LiveHintsApp {
         const profileSelect = document.getElementById('ai-profile');
         if (profileSelect) profileSelect.value = settings.profile;
       }
-    });
+    } catch (err) {
+      console.error('[APP] Не удалось загрузить настройки:', err);
+    }
   }
 
   setupParticles() {
