@@ -182,57 +182,41 @@ $env:YANDEX_FOLDER_ID = "..."
 
 ## Тестирование
 
-### Python Unit тесты (pytest)
+### Запуск всех тестов
 
 ```bash
-# Все тесты
-cd python && pytest tests/unit -v
-
-# С покрытием
-pytest tests/unit -v --cov=. --cov-report=term
-```
-
-**Статус:** 200+ тестов, 13 модулей со 100% покрытием
-
-### JavaScript Unit тесты (Jest)
-
-```bash
+# JavaScript unit + интеграционные (Jest) — 296 тестов
 npm test
-```
 
-### E2E тесты (Playwright)
+# Python LLM сервера (pytest) — 55 тестов
+npm run test:python
 
-```bash
+# E2E через Playwright (30 сценариев)
 npm run test:e2e
-```
 
-## Тестирование
+# Полный набор JS + Python
+npm run test:all
+```
 
 ### Покрытие кода
 
-| Модуль | Покрытие | Тесты |
-|--------|----------|-------|
-| hint-manager.js | 59.59% | 74 |
-| session-manager.js | 82.14% | ~60 |
-| audio-manager.js | ~40% | 34 |
-| logger.js | 100% | 6 |
-| **Всего** | **55.62%** | **296** |
+| Тип                         | Тестов  | Статус          |
+| --------------------------- | ------- | --------------- |
+| JavaScript unit/integration | 296     | ✅ зелёные      |
+| Python LLM/STT server       | 55      | ✅ зелёные      |
+| E2E Playwright              | 30      | ✅ зелёные      |
+| **Итого**                   | **381** | ✅ все проходят |
 
-### Запуск тестов
+### Покрытие JS модулей (Jest + coverage)
 
-```bash
-# Все тесты с покрытием
-npm test
+| Модуль             | Строки | Функций | Lines % | Примечание              |
+| ------------------ | ------ | ------- | ------- | ----------------------- |
+| hint-manager.js    | 61.32% | 73.68%  | 59.59%  | Основной LLM flow       |
+| session-manager.js | 83.49% | 77.27%  | 82.45%  | История, импорт/экспорт |
+| ui-controller.js   | 37.82% | 12.32%  | 31.38%  | Старый UI (deprecated)  |
+| logger.js          | 100%   | 100%    | 100%    | Логирование             |
 
-# Unit тесты только
-npm run test:unit
-
-# Python тесты
-npm run test:python
-
-# Наблюдение за изменениями
-npm run test:watch
-```
+**Общее покрытие:** Statements 55.79% · Branches 48.14% · Functions 39.83% · Lines 59.82%
 
 ### Структура тестов
 
@@ -250,9 +234,14 @@ tests/
 │   └── llm-api.test.js         # LLM API тесты
 └── e2e/                        # E2E тесты (Playwright)
     ├── app.spec.js
-    ├── ui.spec.js
-    └── app.e2e.test.js
 ```
+
+## Безопасность
+
+- **IPC Whitelist** — `preload.js` не предоставляет произвольные `send/on/once/invoke`; только явно разрешённые каналы через `contextBridge`. Любая попытка XSS → нет доступа к IPC без явного allowlist.
+- **Валидация путей файлов** — `parseFile` принимает только относительные пути; абсолютные пути блокируются (`path.isAbsolute`). Нельзя прочитать произвольный файл диска из рендерера.
+- **Single-instance guard** — через `app.requestSingleInstanceLock()` гарантируется только один процесс приложения, предотвращает двойную регистрацию хоткеев и дублирование STT-процессов.
+- **Личные данные** — файлы `python/user_context.txt`, `vacancy.txt`, `mode_context.txt` исключены из `.gitignore` — они не коммитятся.
 
 ## Структура проекта
 
