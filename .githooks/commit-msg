@@ -18,12 +18,11 @@ if [ ${#commit_msg} -gt 72 ]; then
     echo "⚠️  Предупреждение: первая строка сообщения длиннее 72 символов"
 fi
 
-# Проверка на тип коммита (conventional commits)
+# Проверка на тип коммита (conventional commits) — по умолчанию запрещена для совместимости с правилами AGENTS.md
+# Правила проекта требуют русский язык без префиксов: «Доработал…», «Исправил…» и т.д.
 valid_types="feat|fix|docs|style|refactor|test|chore|perf|ci|build"
-if ! echo "$commit_msg" | grep -qE "^($valid_types):"; then
-    echo "⚠️  Предупреждение: сообщение должно начинаться с типа коммита"
-    echo "   Допустимые типы: feat, fix, docs, style, refactor, test, chore, perf, ci, build"
-    echo "   Пример: feat: добавить новую функцию"
+if echo "$commit_msg" | grep -qE "^($valid_types):"; then
+    echo "⚠️  Предупреждение: правила AGENTS.md запрещают префиксы типа коммита (feat:, fix: и т.д.). Используйте глагол совершенного вида на русском."
 fi
 
 echo "✓ Сообщение коммита прошло проверку"
