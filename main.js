@@ -49,8 +49,12 @@ app.whenReady().then(() => {
   Store = require('electron-store');
   store = new Store();
 
-  const onboardingCompleted = store.get('onboardingCompleted');
-  const isTest = process.env.NODE_ENV === 'test';
+  const forceOnboarding =
+    process.argv.includes('--onboarding') ||
+    process.env.FORCE_ONBOARDING === '1';
+  const onboardingCompleted =
+    !forceOnboarding && Boolean(store.get('onboardingCompleted'));
+  const isTest = process.env.NODE_ENV === 'test' && !forceOnboarding;
   console.log('[Main] NODE_ENV:', process.env.NODE_ENV);
   console.log('[Main] Onboarding completed:', onboardingCompleted);
   console.log('[Main] Is Test:', isTest);
