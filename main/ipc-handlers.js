@@ -233,6 +233,26 @@ function setupIPC(handlers) {
     }
   });
 
+  // Парсинг загруженных пользователем файлов из буфера
+  ipcMain.handle('file:parse-buffer', async (event, bufferData, type) => {
+    try {
+      const buffer = Buffer.from(bufferData);
+      if (type === 'pdf') {
+        const pdfParse = require('pdf-parse');
+        const data = await pdfParse(buffer);
+        return data.text;
+      } else if (type === 'docx') {
+        const mammoth = require('mammoth');
+        const result = await mammoth.extractRawText({ buffer });
+        return result.value;
+      }
+      return buffer.toString('utf-8');
+    } catch (err) {
+      console.error('[File] Parse buffer error:', err);
+      throw err;
+    }
+  });
+
   // Settings
   ipcMain.handle('settings:get', (event, key) => store.get(key));
   ipcMain.handle('settings:set', (event, key, value) => store.set(key, value));
@@ -285,7 +305,7 @@ function setupIPC(handlers) {
     const fs = require('fs');
     const path = require('path');
     try {
-      const pythonDir = path.join(process.cwd(), 'python');
+      const pythonDir = path.resolve(__dirname, '..', 'python');
       const fileMap = {
         resume: 'user_context.txt',
         vacancy: 'vacancy.txt',

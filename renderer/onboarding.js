@@ -1,80 +1,103 @@
 /**
  * Live Hints Onboarding — Adaptive Wizard
- * Шаги динамически меняются в зависимости от выбранного режима
+ * Шаги динамически меняются в зависимости от выбранного режима.
+ * Каждый шаг определяется типом (mode, resume, context, vacancy, audio),
+ * а не порядковым номером — это исключает рассогласование навигации.
  */
 
-// Конфигурация режимов и их обязательных/опциональных шагов
 const MODE_CONFIG = {
   job_interview_ru: {
     name: 'Собеседование',
     icon: '🎯',
-    requiredSteps: [1, 2, 3, 4], // Все шаги
-    optionalAfterUpload: [3], // Вакансия опциональна после загрузки резюме
-    needsResume: true, // Резюме обязательно
-    needsVacancy: false, // Вакансия опциональна
-    badgeText: 'Шаг {n} из 4',
+    description: 'Технические вопросы и ответы по вашему опыту',
+    steps: ['mode', 'resume', 'vacancy', 'audio'],
   },
   business_meeting: {
     name: 'Переговоры',
     icon: '🤝',
-    requiredSteps: [1, 2], // Только сценарий + контекст
-    optionalAfterUpload: [],
-    needsResume: false,
-    needsVacancy: false,
-    badgeText: 'Шаг {n} из 2',
+    description: 'Аргументы и контраргументы для встреч',
+    steps: ['mode', 'context'],
   },
   daily_sync: {
     name: 'Созвоны',
     icon: '📞',
-    requiredSteps: [1, 2], // Только сценарий + контекст
-    optionalAfterUpload: [],
-    needsResume: false,
-    needsVacancy: false,
-    badgeText: 'Шаг {n} из 2',
+    description: 'Краткие статусы и обсуждение задач',
+    steps: ['mode', 'context'],
   },
   presentation: {
     name: 'Презентация',
     icon: '📊',
-    requiredSteps: [1, 3, 4], // Сценарий + контекст + аудио
-    optionalAfterUpload: [],
-    needsResume: false,
-    needsVacancy: true,
-    badgeText: 'Шаг {n} из 3',
+    description: 'Убедительные питчи и демонстрации',
+    steps: ['mode', 'context', 'audio'],
   },
   custom: {
     name: 'Свой сценарий',
     icon: '⚙️',
-    requiredSteps: [1, 2], // Сценарий + контекст
-    optionalAfterUpload: [],
-    needsResume: false,
-    needsVacancy: false,
-    badgeText: 'Шаг {n} из 2',
+    description: 'Полностью кастомные инструкции',
+    steps: ['mode', 'context'],
   },
 };
 
+const STEP_LABELS = {
+  mode: 'Сценарий',
+  resume: 'Резюме',
+  context: 'Контекст',
+  vacancy: 'Вакансия',
+  audio: 'Аудио',
+};
+
+const MAX_FILE_SIZE = 10 * 1024 * 1024;
+
 class OnboardingController {
   constructor() {
-    this.currentStep = 1;
+    this.stepIndex = 0;
     this.selectedMode = null;
-    this.hasResume = false;
-    this.hasVacancy = false;
 
-    // Кэш DOM
+    // Накопленные данные пользователя
+    this.resumeText = '';
+    this.contextText = '';
+    this.vacancyText = '';
+    this.selectedMic = '';
+
+    // Состояние теста микрофона
+    this._micStream = null;
+    this._micCtx = null;
+    this._testingMic = false;
+
     this.els = {};
     this.init();
   }
 
+  // -- Вычисляемые свойства навигации --
+
+  get steps() {
+    if (!this.selectedMode) return ['mode'];
+    return MODE_CONFIG[this.selectedMode].steps;
+  }
+
+  get totalSteps() {
+    return this.steps.length;
+  }
+
+  get currentType() {
+    return this.steps[this.stepIndex] || 'mode';
+  }
+
+  get isLastStep() {
+    return this.stepIndex >= this.totalSteps - 1;
+  }
+
+  // -- Инициализация --
+
   init() {
     this.cacheDOM();
     this.bindEvents();
-    this.renderStepIndicator();
-    this.renderStep();
-    this.updateNav();
+    this.render();
   }
 
   cacheDOM() {
-    this.els.stepIndicator = document.getElementById('stepIndicator');
-    this.els.stepCard = document.getElementById('stepCard');
+    this.els.indicator = document.getElementById('stepIndicator');
+    this.els.card = document.getElementById('stepCard');
     this.els.btnBack = document.getElementById('btnBack');
     this.els.btnNext = document.getElementById('btnNext');
     this.els.btnFinish = document.getElementById('btnFinish');
@@ -84,13 +107,11 @@ class OnboardingController {
   }
 
   bindEvents() {
-    // Навигация
     this.els.btnBack.addEventListener('click', () => this.prevStep());
     this.els.btnNext.addEventListener('click', () => this.nextStep());
     this.els.btnFinish.addEventListener('click', () => this.finish());
     this.els.btnSkip.addEventListener('click', () => this.nextStep());
 
-    // Управление окном
     document.getElementById('btnMin').addEventListener('click', () => {
       window.electron?.minimizeWindow?.();
     });
@@ -98,275 +119,299 @@ class OnboardingController {
       window.electron?.closeWindow?.();
     });
 
-    // Клавиатура
     document.addEventListener('keydown', (e) => {
       const tag = e.target?.tagName || '';
-      if (tag === 'TEXTAREA' || tag === 'INPUT') return;
-      if (e.key === 'ArrowRight' || e.key === 'Enter') this.nextStep();
-      else if (e.key === 'ArrowLeft') this.prevStep();
+      if (tag === 'TEXTAREA' || tag === 'INPUT' || tag === 'SELECT') {
+        return;
+      }
+      if (e.key === 'Enter' && !this.els.btnNext.disabled) {
+        this.nextStep();
+      } else if (e.key === 'ArrowLeft') {
+        this.prevStep();
+      }
     });
   }
 
-  // ---- RENDERING STEP INDICATOR ----
-  renderStepIndicator() {
-    const total = MODE_CONFIG[this.selectedMode]?.requiredSteps?.length || 2;
-    this.els.totalSteps.textContent = total;
+  // -- Сбор данных текущего шага перед уходом --
 
-    this.els.stepIndicator.innerHTML = '';
-    for (let i = 1; i <= total; i++) {
+  collectCurrentStepData() {
+    switch (this.currentType) {
+      case 'resume': {
+        const ta = document.getElementById('resumeTextarea');
+        if (ta && ta.value.trim()) this.resumeText = ta.value.trim();
+        break;
+      }
+      case 'context': {
+        const ta = document.getElementById('contextTextarea');
+        if (ta && ta.value.trim()) this.contextText = ta.value.trim();
+        break;
+      }
+      case 'vacancy': {
+        const ta = document.getElementById('vacancyTextarea');
+        if (ta && ta.value.trim()) this.vacancyText = ta.value.trim();
+        break;
+      }
+      case 'audio': {
+        const sel = document.getElementById('micSelect');
+        if (sel && sel.value) this.selectedMic = sel.value;
+        break;
+      }
+    }
+  }
+
+  // -- Отрисовка --
+
+  render() {
+    this.stopMicTest();
+    this.renderIndicator();
+    this.renderContent();
+    this.updateNav();
+  }
+
+  renderIndicator() {
+    const total = this.totalSteps;
+    this.els.totalSteps.textContent = total;
+    this.els.curStep.textContent = this.stepIndex + 1;
+
+    this.els.indicator.innerHTML = '';
+    for (let i = 0; i < total; i++) {
       const dot = document.createElement('div');
       dot.className = 'step-dot';
-      if (i === this.currentStep) dot.classList.add('active');
-      else if (i < this.currentStep) dot.classList.add('done');
+      if (i === this.stepIndex) dot.classList.add('active');
+      else if (i < this.stepIndex) dot.classList.add('done');
 
+      const label = STEP_LABELS[this.steps[i]] || '';
       dot.innerHTML = `
-        <div class="dot-num">${i < this.currentStep ? '✓' : i}</div>
-        ${this.getStepLabel(i)}
+        <div class="dot-num">${i < this.stepIndex ? '✓' : i + 1}</div>
+        <span class="step-label">${label}</span>
       `;
-      this.els.stepIndicator.appendChild(dot);
+      this.els.indicator.appendChild(dot);
     }
   }
 
-  getStepLabel(step) {
-    const labels = ['Сценарий', 'Контекст/Резюме', 'Вакансия', 'Аудио'];
-    return `<span class="step-label">${labels[step - 1] || step}</span>`;
-  }
-
-  // ---- RENDER STEP CONTENT ----
-  renderStep() {
-    const steps = this.getSteps();
-    if (this.currentStep > steps.length) {
-      this.renderFinish();
-      return;
-    }
-
-    const config = MODE_CONFIG['job_interview_ru'] || MODE_CONFIG.business_meeting; // fallback
-    const total = config.requiredSteps?.length || 3;
-
-    const badge = `Шаг ${this.currentStep} из ${total}`;
-    this.els.curStep.textContent = this.currentStep;
-
-    switch (this.currentStep) {
-      case 1:
+  renderContent() {
+    switch (this.currentType) {
+      case 'mode':
         return this.renderModeSelection();
-      case 2:
-        return this.selectedMode === 'job_interview_ru'
-          ? this.renderResume()
-          : this.renderContext();
-      case 3:
-        if (this.shouldShowVacancy()) return this.renderVacancy();
-        // Если вакансия не нужна, пропускаем на шаг 4 или finish
-        if (this.currentStep < total) {
-          this.nextStep();
-          return;
-        }
-        throw new Error('Invalid step');
-      case 4:
+      case 'resume':
+        return this.renderResume();
+      case 'context':
+        return this.renderContext();
+      case 'vacancy':
+        return this.renderVacancy();
+      case 'audio':
         return this.renderAudio();
       default:
-        return this.renderFinish();
+        return this.renderFinishScreen();
     }
   }
 
-  getSteps() {
-    const cfg = MODE_CONFIG[this.selectedMode];
-    if (!cfg) return [1, 2, 3, 4]; // fallback to all steps
-    return cfg.requiredSteps;
-  }
-
-  shouldShowVacancy() {
-    return this.selectedMode === 'presentation' || (this.hasResume && Math.random() > 0.5); // optional для остальных
-  }
+  // -- Шаг: Выбор сценария --
 
   renderModeSelection() {
     const modes = Object.entries(MODE_CONFIG)
       .map(
         ([id, cfg]) => `
-      <div class="mode-card ${this.selectedMode === id ? 'sel' : ''}" data-mode="${id}">
+      <div class="mode-card ${this.selectedMode === id ? 'sel' : ''}"
+           data-mode="${id}">
         <div class="mode-icon">${cfg.icon}</div>
         <div class="mode-name">${cfg.name}</div>
-        <div class="mode-desc">${
-          cfg.name === 'job_interview_ru'
-            ? 'Технические вопросы и ответы по вашему опыту'
-            : cfg.name === 'business_meeting'
-              ? 'Аргументы и контраргументы для встреч'
-              : cfg.name === 'daily_sync'
-                ? 'Краткие статусы и обсуждение задач'
-                : cfg.name === 'presentation'
-                  ? 'Убедительные питчи и демонстрации'
-                  : 'Полностью кастомные инструкции'
-        }</div>
+        <div class="mode-desc">${cfg.description}</div>
       </div>
     `
       )
       .join('');
 
-    this.els.stepCard.innerHTML = `
-      <div class="badge">Шаг 1 из 4</div>
+    this.els.card.innerHTML = `
+      <div class="badge">Шаг 1 из ${this.totalSteps}</div>
       <h2>Выберите сценарий</h2>
-      <p class="subtitle">AI подстроит стиль подсказок под вашу ситуацию</p>
+      <p class="subtitle">
+        AI подстроит стиль подсказок под вашу ситуацию
+      </p>
       <div class="mode-grid">${modes}</div>
     `;
 
-    // Bind mode selection
-    this.els.stepCard.querySelectorAll('.mode-card').forEach((card) => {
+    this.els.btnNext.disabled = !this.selectedMode;
+
+    this.els.card.querySelectorAll('.mode-card').forEach((card) => {
       card.addEventListener('click', () => this.selectMode(card));
     });
   }
 
   selectMode(card) {
-    const id = card.dataset.mode;
-    this.selectedMode = id;
+    this.selectedMode = card.dataset.mode;
 
-    // Update visual state
     document.querySelectorAll('.mode-card').forEach((c) => c.classList.remove('sel'));
     card.classList.add('sel');
 
-    // Re-render indicator with new step count
-    this.renderStepIndicator();
+    this.els.btnNext.disabled = false;
+    this.renderIndicator();
+    this.updateNav();
   }
+
+  // -- Шаг: Загрузка резюме --
 
   renderResume() {
-    const hasText = !!document.querySelector('#resumeInput')?.value;
-    const nextDisabled = !this.hasResume && !hasText;
+    const stepNum = this.stepIndex + 1;
+    this.els.card.innerHTML = `
+      <div class="badge">Шаг ${stepNum} из ${this.totalSteps}</div>
+      <h2>Загрузите резюме</h2>
+      <p class="subtitle">
+        AI будет опираться на ваш опыт при формулировке ответов.
+      </p>
 
-    this.els.btnNext.disabled = nextDisabled;
-
-    if (!this.hasResume) {
-      this.els.stepCard.innerHTML = `
-        <div class="badge">Шаг 2 из 4 — Резюме (обязательно)</div>
-        <h2>Загрузите резюме</h2>
-        <p class="subtitle">AI будет опираться на ваш опыт при формулировке ответов. 
-           Для режима "Собеседование" это обязательно.</p>
-
-        <div class="upload-zone" id="resumeDrop">
-          <div class="upload-icon">📄</div>
-          <div class="upload-title">Перетащите файл или нажмите для выбора</div>
-          <div class="upload-hint">PDF, DOCX, TXT — до 10MB</div>
+      <div class="upload-zone" id="resumeDrop">
+        <div class="upload-icon">📄</div>
+        <div class="upload-title">
+          Перетащите файл или нажмите для выбора
         </div>
-        <input type="file" id="resumeInput" accept=".txt,.pdf,.docx" multiple>
+        <div class="upload-hint">PDF, DOCX, TXT — до 10 МБ</div>
+      </div>
+      <input type="file" id="resumeInput"
+             accept=".txt,.pdf,.docx">
 
-        <button class="meta-link" id="toggleResumeText">Или вставить текст вручную</button>
-        <textarea class="text-input hidden" id="resumeTextarea" rows="6" 
-                  placeholder="Вставьте текст резюме..."></textarea>
+      <button class="meta-link" id="toggleResumeText">
+        Или вставить текст вручную
+      </button>
+      <textarea class="text-input hidden" id="resumeTextarea"
+                rows="6"
+                placeholder="Вставьте текст резюме..."
+      >${this.escapeHtml(this.resumeText)}</textarea>
 
-        <div id="resumeResult" class="hidden" style="margin-top:12px;padding:12px;background:var(--success);border-radius:8px;color:white;font-size:13px;"></div>
-      `;
+      <div id="resumeResult" class="hidden"
+           style="margin-top:12px;padding:12px;
+                  background:var(--success);border-radius:8px;
+                  color:white;font-size:13px;"></div>
+    `;
 
-      const drop = document.getElementById('resumeDrop');
-      const input = document.getElementById('resumeInput');
-      const toggleBtn = document.getElementById('toggleResumeText');
-      const textarea = document.getElementById('resumeTextarea');
-
-      drop.addEventListener('click', () => input.click());
-      input.addEventListener('change', (e) => this.handleFile(e, 'resume'));
-
-      toggleBtn.addEventListener('click', () => {
-        textarea.classList.toggle('hidden');
-        drop.classList.toggle('hidden');
-        toggleBtn.textContent = textarea.classList.contains('hidden')
-          ? 'Или вставить текст вручную'
-          : 'Скрыть текстовое поле';
-      });
-
-      textarea.addEventListener('input', () => {
-        this.els.btnNext.disabled = !textarea.value.trim();
-      });
-    } else {
-      this.els.stepCard.innerHTML = `
-        <div class="badge">Шаг 2 из 4 — Резюме (загружено)</div>
-        <h2>Резюме уже загружено</h2>
-        <p class="subtitle">Ваше резюме сохранено и будет использоваться для подсказок.</p>
-        <div id="resumeResult" style="margin-top:12px;padding:12px;background:var(--success);border-radius:8px;color:white;font-size:13px;">✓ Резюме активно</div>
-      `;
+    if (this.resumeText) {
+      this.showUploadResult(
+        'resumeResult',
+        'Резюме загружено (' + this.resumeText.length + ' символов)'
+      );
     }
+
+    const drop = document.getElementById('resumeDrop');
+    const input = document.getElementById('resumeInput');
+    const toggle = document.getElementById('toggleResumeText');
+    const textarea = document.getElementById('resumeTextarea');
+
+    drop.addEventListener('click', () => input.click());
+    input.addEventListener('change', (e) => this.handleFileUpload(e.target.files[0], 'resume'));
+
+    this.setupDragDrop(drop, input);
+
+    toggle.addEventListener('click', () => {
+      textarea.classList.toggle('hidden');
+      drop.classList.toggle('hidden');
+      toggle.textContent = textarea.classList.contains('hidden')
+        ? 'Или вставить текст вручную'
+        : 'Загрузить файл';
+    });
+
+    textarea.addEventListener('input', () => {
+      this.els.btnNext.disabled = false;
+    });
+
+    this.els.btnNext.disabled = !this.resumeText;
+    this.els.btnSkip.classList.remove('hidden');
   }
 
-  handleFile(e, type) {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  // -- Шаг: Контекст --
 
-    if (type === 'resume') this.hasResume = true;
-    else if (type === 'vacancy') this.hasVacancy = true;
+  renderContext() {
+    const stepNum = this.stepIndex + 1;
+    this.els.card.innerHTML = `
+      <div class="badge">Шаг ${stepNum} из ${this.totalSteps}</div>
+      <h2>Дополнительный контекст</h2>
+      <p class="subtitle">
+        Опишите ситуацию: роль, проект, команда, ключевые моменты.
+        Это поможет AI давать более точные подсказки.
+      </p>
 
-    const resultId = type + 'Result';
-    const result = document.getElementById(resultId);
-    if (result) {
-      result.textContent = `✓ ${file.name} загружен`;
-      result.classList.remove('hidden');
-    }
+      <textarea class="text-input" id="contextTextarea" rows="6"
+                placeholder="Например: frontend-разработчик с 5-летним опытом, работаю над проектом X, ожидаю технических вопросов по React и TypeScript..."
+      >${this.escapeHtml(this.contextText)}</textarea>
+    `;
 
     this.els.btnNext.disabled = false;
   }
 
-  renderContext() {
-    this.els.stepCard.innerHTML = `
-      <div class="badge">Шаг 2 — Контекст</div>
-      <h2>Дополнительный контекст</h2>
-      <p class="subtitle">Опишите ситуацию: роль, проект, команда, ключевые моменты. 
-         Это поможет AI давать более точные подсказки.</p>
-
-      <textarea class="text-input" id="contextTextarea" rows="6"
-                placeholder="Например: Я frontend-разработчик с 5-летним опытом, работаю над проектом X, ожидаю технических вопросов по React и TypeScript..."></textarea>
-
-      ${
-        this.selectedMode === 'custom'
-          ? `
-        <div style="margin-top:12px;">
-          <button class="meta-link" id="saveContextBtn">Сохранить контекст</button>
-        </div>
-      `
-          : ''
-      }
-    `;
-
-    const textarea = document.getElementById('contextTextarea');
-    this.els.btnNext.disabled = false; // context is never required (optional)
-  }
+  // -- Шаг: Вакансия --
 
   renderVacancy() {
-    const hasText = !!document.querySelector('#vacancyInput')?.value;
-
-    this.els.stepCard.innerHTML = `
-      <div class="badge">Шаг ${this.currentStep} — Вакансия</div>
+    const stepNum = this.stepIndex + 1;
+    this.els.card.innerHTML = `
+      <div class="badge">
+        Шаг ${stepNum} из ${this.totalSteps} — необязательно
+      </div>
       <h2>Описание вакансии</h2>
-      <p class="subtitle">Загрузите текст или PDF с описанием позиции. 
-         AI подстроит акценты под требования работодателя.</p>
+      <p class="subtitle">
+        Загрузите текст или PDF с описанием позиции.
+        AI подстроит акценты под требования работодателя.
+      </p>
 
       <div class="upload-zone" id="vacancyDrop">
-        <div class="upgrade-icon">☁️</div>
-        <div class="upload-title">Загрузить вакансию (PDF/TXT)</div>
+        <div class="upload-icon">☁️</div>
+        <div class="upload-title">
+          Загрузить вакансию (PDF / TXT)
+        </div>
       </div>
-      <input type="file" id="vacancyInput" accept=".txt,.pdf" multiple>
+      <input type="file" id="vacancyInput" accept=".txt,.pdf">
 
-      <button class "meta-link" id="toggleVacancyText">Или вставить текст вручную</button>
-      <textarea class="text-input hidden" id="vacancyTextarea" rows="5" 
-                placeholder="Вставьте описание вакансии..."></textarea>
+      <button class="meta-link" id="toggleVacancyText">
+        Или вставить текст вручную
+      </button>
+      <textarea class="text-input hidden" id="vacancyTextarea"
+                rows="5"
+                placeholder="Вставьте описание вакансии..."
+      >${this.escapeHtml(this.vacancyText)}</textarea>
+
+      <div id="vacancyResult" class="hidden"
+           style="margin-top:12px;padding:12px;
+                  background:var(--success);border-radius:8px;
+                  color:white;font-size:13px;"></div>
     `;
+
+    if (this.vacancyText) {
+      this.showUploadResult(
+        'vacancyResult',
+        'Вакансия загружена (' + this.vacancyText.length + ' символов)'
+      );
+    }
 
     const drop = document.getElementById('vacancyDrop');
     const input = document.getElementById('vacancyInput');
-    const toggleBtn = document.getElementById('toggleVacancyText');
+    const toggle = document.getElementById('toggleVacancyText');
     const textarea = document.getElementById('vacancyTextarea');
 
     drop.addEventListener('click', () => input.click());
-    input.addEventListener('change', (e) => this.handleFile(e, 'vacancy'));
+    input.addEventListener('change', (e) => this.handleFileUpload(e.target.files[0], 'vacancy'));
 
-    toggleBtn.addEventListener('click', () => {
+    this.setupDragDrop(drop, input);
+
+    toggle.addEventListener('click', () => {
       textarea.classList.toggle('hidden');
       drop.classList.toggle('hidden');
-      toggleBtn.textContent = 'Скрыть текстовое поле';
+      toggle.textContent = textarea.classList.contains('hidden')
+        ? 'Или вставить текст вручную'
+        : 'Загрузить файл';
     });
 
-    // Vacancy is optional - always allows next
     this.els.btnNext.disabled = false;
+    this.els.btnSkip.classList.remove('hidden');
   }
 
+  // -- Шаг: Аудио --
+
   renderAudio() {
-    this.els.stepCard.innerHTML = `
-      <div class="badge">Шаг ${this.currentStep} — Аудио</div>
+    const stepNum = this.stepIndex + 1;
+    this.els.card.innerHTML = `
+      <div class="badge">Шаг ${stepNum} из ${this.totalSteps}</div>
       <h2>Настройка микрофона</h2>
-      <p class="subtitle">Выберите устройство для захвата голоса перед началом сессии</p>
+      <p class="subtitle">
+        Выберите устройство для захвата голоса и проверьте звук
+      </p>
 
       <select class="form-select" id="micSelect">
         <option value="">Загрузка устройств...</option>
@@ -375,24 +420,22 @@ class OnboardingController {
       <div class="audio-visualizer" id="viz">
         ${Array(16)
           .fill(0)
-          .map(() => `<div class="wave"></div>`)
+          .map(() => '<div class="wave"></div>')
           .join('')}
       </div>
 
-      <button class="btn btn-primary" id="testMic" style="width:100%">
-        ▶ Тест микрофона
+      <button class="btn btn-primary" id="testMic"
+              style="width:100%">
+        Тест микрофона
       </button>
+      <div id="micStatus" style="margin-top:8px;font-size:12px;
+           color:var(--muted);text-align:center;"></div>
     `;
 
     this.loadMicrophones();
 
     document.getElementById('testMic').addEventListener('click', () => {
-      const select = document.getElementById('micSelect');
-      if (!select.value) return alert('Сначала выберите микрофон');
-
-      // Simple visual feedback
-      document.getElementById('viz').style.animation = 'pulse 0.5s';
-      setTimeout(() => (document.getElementById('viz').style.animation = ''), 500);
+      this.toggleMicTest();
     });
 
     this.els.btnNext.disabled = false;
@@ -406,66 +449,271 @@ class OnboardingController {
       const mics = devices.filter((d) => d.kind === 'audioinput');
 
       select.innerHTML = '<option value="">Выберите микрофон...</option>';
-      mics.forEach((mic) => {
+      mics.forEach((mic, i) => {
         const opt = document.createElement('option');
         opt.value = mic.deviceId;
-        opt.textContent = mic.label || `Микрофон ${select.options.length}`;
+        opt.textContent = mic.label || `Микрофон ${i + 1}`;
+        if (this.selectedMic === mic.deviceId) opt.selected = true;
         select.appendChild(opt);
       });
-    } catch (err) {
+    } catch {
       select.innerHTML = '<option>Нет доступа к микрофону</option>';
+      const status = document.getElementById('micStatus');
+      if (status) {
+        status.textContent = 'Предоставьте разрешение на доступ к микрофону';
+        status.style.color = 'var(--error)';
+      }
     }
   }
 
-  renderFinish() {
-    this.els.stepCard.innerHTML = `
+  async toggleMicTest() {
+    if (this._testingMic) {
+      this.stopMicTest();
+      return;
+    }
+
+    const select = document.getElementById('micSelect');
+    if (!select || !select.value) {
+      const status = document.getElementById('micStatus');
+      if (status) {
+        status.textContent = 'Сначала выберите микрофон';
+        status.style.color = 'var(--error)';
+      }
+      return;
+    }
+
+    try {
+      this._micStream = await navigator.mediaDevices.getUserMedia({
+        audio: { deviceId: { exact: select.value } },
+      });
+
+      this._micCtx = new AudioContext();
+      const source = this._micCtx.createMediaStreamSource(this._micStream);
+      const analyser = this._micCtx.createAnalyser();
+      analyser.fftSize = 64;
+      source.connect(analyser);
+
+      const bars = document.querySelectorAll('#viz .wave');
+      const data = new Uint8Array(analyser.frequencyBinCount);
+      this._testingMic = true;
+
+      const btn = document.getElementById('testMic');
+      if (btn) btn.textContent = 'Остановить тест';
+      const status = document.getElementById('micStatus');
+      if (status) {
+        status.textContent = 'Говорите в микрофон...';
+        status.style.color = 'var(--success)';
+      }
+
+      const draw = () => {
+        if (!this._testingMic) return;
+        analyser.getByteFrequencyData(data);
+        bars.forEach((bar, i) => {
+          const val = data[i % data.length] || 0;
+          const pct = Math.max(10, (val / 255) * 100);
+          bar.style.height = `${pct}%`;
+        });
+        requestAnimationFrame(draw);
+      };
+      draw();
+
+      // Автоостановка через 10 секунд
+      this._micTimer = setTimeout(() => this.stopMicTest(), 10000);
+    } catch (err) {
+      const status = document.getElementById('micStatus');
+      if (status) {
+        status.textContent = 'Ошибка: ' + (err.message || err);
+        status.style.color = 'var(--error)';
+      }
+    }
+  }
+
+  stopMicTest() {
+    this._testingMic = false;
+    if (this._micTimer) {
+      clearTimeout(this._micTimer);
+      this._micTimer = null;
+    }
+    if (this._micStream) {
+      this._micStream.getTracks().forEach((t) => t.stop());
+      this._micStream = null;
+    }
+    if (this._micCtx) {
+      this._micCtx.close().catch(() => {});
+      this._micCtx = null;
+    }
+
+    const btn = document.getElementById('testMic');
+    if (btn) btn.textContent = 'Тест микрофона';
+    const bars = document.querySelectorAll('#viz .wave');
+    bars.forEach((bar) => (bar.style.height = '20%'));
+    const status = document.getElementById('micStatus');
+    if (status && status.style.color !== 'var(--error)') {
+      status.textContent = '';
+    }
+  }
+
+  // -- Финальный экран --
+
+  renderFinishScreen() {
+    const cfg = MODE_CONFIG[this.selectedMode];
+    this.els.card.innerHTML = `
       <div style="text-align:center;padding:40px;">
-        <div style="font-size:64px;margin-bottom:20px;">🎉</div>
+        <div style="font-size:64px;margin-bottom:20px;">
+          ${cfg?.icon || '🎉'}
+        </div>
         <h2 style="margin-bottom:12px;">Всё готово!</h2>
         <p class="subtitle">
-          Режим: ${
-            this.selectedMode === 'job_interview_ru'
-              ? 'Собеседование'
-              : this.selectedMode || 'Не выбран'
-          }<br>
+          Режим: ${cfg?.name || 'Не выбран'}<br>
           Аудио захват будет активен с начала разговора.
         </p>
       </div>
     `;
   }
 
-  // ---- NAVIGATION ──
-  nextStep() {
-    const steps = this.getSteps();
-    if (this.currentStep >= steps.length) return;
+  // -- Загрузка и парсинг файлов --
 
-    this.currentStep++;
-    this.renderStep();
-    this.updateNav();
+  setupDragDrop(dropZone, fileInput) {
+    dropZone.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      dropZone.style.borderColor = 'var(--accent)';
+      dropZone.style.background = 'var(--accent-dim)';
+    });
+
+    dropZone.addEventListener('dragleave', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      dropZone.style.borderColor = '';
+      dropZone.style.background = '';
+    });
+
+    dropZone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      dropZone.style.borderColor = '';
+      dropZone.style.background = '';
+
+      const file = e.dataTransfer?.files?.[0];
+      if (!file) return;
+
+      const field = fileInput.id === 'resumeInput' ? 'resume' : 'vacancy';
+      this.handleFileUpload(file, field);
+    });
+  }
+
+  async handleFileUpload(file, field) {
+    if (!file) return;
+
+    if (file.size > MAX_FILE_SIZE) {
+      const resultId = field + 'Result';
+      this.showUploadResult(resultId, 'Файл слишком большой (макс. 10 МБ)', true);
+      return;
+    }
+
+    const ext = file.name.split('.').pop().toLowerCase();
+    const allowedExts = ['txt', 'pdf', 'docx'];
+    if (!allowedExts.includes(ext)) {
+      const resultId = field + 'Result';
+      this.showUploadResult(
+        resultId,
+        'Формат не поддерживается. Используйте PDF, DOCX или TXT',
+        true
+      );
+      return;
+    }
+
+    const resultId = field + 'Result';
+
+    try {
+      const arrayBuffer = await file.arrayBuffer();
+      const uint8 = new Uint8Array(arrayBuffer);
+      const text = await window.electron.parseFileBuffer(uint8, ext);
+
+      if (!text || !text.trim()) {
+        this.showUploadResult(resultId, 'Файл пуст или не удалось извлечь текст', true);
+        return;
+      }
+
+      if (field === 'resume') {
+        this.resumeText = text.trim();
+      } else {
+        this.vacancyText = text.trim();
+      }
+
+      this.showUploadResult(
+        resultId,
+        file.name + ' загружен (' + text.trim().length + ' символов)'
+      );
+      this.els.btnNext.disabled = false;
+    } catch (err) {
+      this.showUploadResult(resultId, 'Ошибка чтения файла: ' + (err.message || err), true);
+    }
+  }
+
+  showUploadResult(elementId, message, isError = false) {
+    const el = document.getElementById(elementId);
+    if (!el) return;
+    el.textContent = (isError ? '✗ ' : '✓ ') + message;
+    el.style.background = isError ? 'var(--error)' : 'var(--success)';
+    el.classList.remove('hidden');
+  }
+
+  // -- Навигация --
+
+  nextStep() {
+    if (this.els.btnNext.disabled) return;
+    this.collectCurrentStepData();
+
+    if (this.stepIndex >= this.totalSteps - 1) return;
+    this.stepIndex++;
+    this.render();
   }
 
   prevStep() {
-    if (this.currentStep <= 1) return;
-    this.currentStep--;
-    this.renderStep();
-    this.updateNav();
+    if (this.stepIndex <= 0) return;
+    this.collectCurrentStepData();
+    this.stepIndex--;
+    this.render();
   }
 
   updateNav() {
-    const steps = this.getSteps();
-    const isLast = this.currentStep === steps.length;
+    this.els.btnBack.classList.toggle('hidden', this.stepIndex === 0);
+    this.els.btnNext.classList.toggle('hidden', this.isLastStep);
+    this.els.btnFinish.classList.toggle('hidden', !this.isLastStep);
+    this.els.btnSkip.classList.add('hidden');
 
-    this.els.btnBack.classList.toggle('hidden', this.currentStep === 1);
-    this.els.btnNext.classList.toggle('hidden', isLast);
-    this.els.btnFinish.classList.toggle('hidden', !isLast);
-    this.els.btnSkip.classList.toggle('hidden', true); // skip not allowed in this version
-
-    if (this.els.curStep) this.els.curStep.textContent = this.currentStep;
+    if (this.els.curStep) {
+      this.els.curStep.textContent = this.stepIndex + 1;
+    }
   }
 
+  // -- Завершение --
+
   async finish() {
+    this.collectCurrentStepData();
+
+    // Сохранение контекстных файлов на бэкенд
+    try {
+      if (this.resumeText) {
+        await window.electron?.saveContextFile?.('resume', this.resumeText);
+      }
+      if (this.contextText) {
+        await window.electron?.saveContextFile?.('user_context', this.contextText);
+      }
+      if (this.vacancyText) {
+        await window.electron?.saveContextFile?.('vacancy', this.vacancyText);
+      }
+    } catch (err) {
+      console.error('[Onboarding] Ошибка сохранения контекста:', err);
+    }
+
     const settings = {
       mode: this.selectedMode,
+      selectedMic: this.selectedMic,
+      hasResume: !!this.resumeText,
+      hasVacancy: !!this.vacancyText,
+      hasContext: !!this.contextText,
       timestamp: Date.now(),
     };
 
@@ -474,13 +722,26 @@ class OnboardingController {
 
     try {
       await window.electron?.finishOnboarding(settings);
-      console.log('[Onboarding] Complete:', settings);
     } catch (err) {
-      alert('Ошибка: ' + err.message);
+      const msg = err?.message || 'Неизвестная ошибка';
+      alert('Ошибка запуска: ' + msg);
       this.els.btnFinish.disabled = false;
       this.els.btnFinish.textContent = 'Запустить ✓';
     }
   }
+
+  // -- Утилиты --
+
+  escapeHtml(str) {
+    if (!str) return '';
+    return str
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
 }
 
-document.addEventListener('DOMContentLoaded', () => new OnboardingController());
+document.addEventListener('DOMContentLoaded', () => {
+  new OnboardingController();
+});
