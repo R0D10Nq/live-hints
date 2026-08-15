@@ -5,34 +5,54 @@
  * а не порядковым номером — это исключает рассогласование навигации.
  */
 
+const ICONS = {
+  interview:
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>',
+  meeting:
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>',
+  call: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>',
+  presentation:
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>',
+  custom:
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg>',
+  resume:
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>',
+  vacancy:
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>',
+  finish:
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>',
+  check:
+    '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>',
+};
+
 const MODE_CONFIG = {
   job_interview_ru: {
     name: 'Собеседование',
-    icon: '🎯',
+    icon: ICONS.interview,
     description: 'Технические вопросы и ответы по вашему опыту',
     steps: ['mode', 'resume', 'vacancy', 'audio'],
   },
   business_meeting: {
     name: 'Переговоры',
-    icon: '🤝',
+    icon: ICONS.meeting,
     description: 'Аргументы и контраргументы для встреч',
     steps: ['mode', 'context'],
   },
   daily_sync: {
     name: 'Созвоны',
-    icon: '📞',
+    icon: ICONS.call,
     description: 'Краткие статусы и обсуждение задач',
     steps: ['mode', 'context'],
   },
   presentation: {
     name: 'Презентация',
-    icon: '📊',
+    icon: ICONS.presentation,
     description: 'Убедительные питчи и демонстрации',
     steps: ['mode', 'context', 'audio'],
   },
   custom: {
     name: 'Свой сценарий',
-    icon: '⚙️',
+    icon: ICONS.custom,
     description: 'Полностью кастомные инструкции',
     steps: ['mode', 'context'],
   },
@@ -182,7 +202,7 @@ class OnboardingController {
 
       const label = STEP_LABELS[this.steps[i]] || '';
       dot.innerHTML = `
-        <div class="dot-num">${i < this.stepIndex ? '✓' : i + 1}</div>
+        <div class="dot-num">${i < this.stepIndex ? ICONS.check : i + 1}</div>
         <span class="step-label">${label}</span>
       `;
       this.els.indicator.appendChild(dot);
@@ -261,7 +281,7 @@ class OnboardingController {
       </p>
 
       <div class="upload-zone" id="resumeDrop">
-        <div class="upload-icon">📄</div>
+        <div class="upload-icon">${ICONS.resume}</div>
         <div class="upload-title">
           Перетащите файл или нажмите для выбора
         </div>
@@ -325,12 +345,12 @@ class OnboardingController {
       <div class="badge">Шаг ${stepNum} из ${this.totalSteps}</div>
       <h2>Дополнительный контекст</h2>
       <p class="subtitle">
-        Опишите ситуацию: роль, проект, команда, ключевые моменты.
-        Это поможет AI давать более точные подсказки.
+        Опишите тему встречи, проект или специфику обсуждения.
       </p>
 
-      <textarea class="text-input" id="contextTextarea" rows="6"
-                placeholder="Например: frontend-разработчик с 5-летним опытом, работаю над проектом X, ожидаю технических вопросов по React и TypeScript..."
+      <textarea class="text-input" id="contextTextarea"
+                rows="6"
+                placeholder="Например: Обсуждаем квартальный отчёт, основные метрики — MRR и Churn..."
       >${this.escapeHtml(this.contextText)}</textarea>
     `;
 
@@ -352,7 +372,7 @@ class OnboardingController {
       </p>
 
       <div class="upload-zone" id="vacancyDrop">
-        <div class="upload-icon">☁️</div>
+        <div class="upload-icon">${ICONS.vacancy}</div>
         <div class="upload-title">
           Загрузить вакансию (PDF / TXT)
         </div>
@@ -559,8 +579,8 @@ class OnboardingController {
     const cfg = MODE_CONFIG[this.selectedMode];
     this.els.card.innerHTML = `
       <div style="text-align:center;padding:40px;">
-        <div style="font-size:64px;margin-bottom:20px;">
-          ${cfg?.icon || '🎉'}
+        <div class="finish-icon">
+          ${ICONS.finish}
         </div>
         <h2 style="margin-bottom:12px;">Всё готово!</h2>
         <p class="subtitle">

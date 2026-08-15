@@ -229,8 +229,31 @@
       }
 
       .mode-icon {
-        font-size: 28px;
-        margin-bottom: 12px;
+        width: 44px;
+        height: 44px;
+        border-radius: 10px;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 14px;
+        color: var(--accent-bright);
+        transition: all 0.2s ease;
+      }
+      .mode-card:hover .mode-icon {
+        background: var(--accent);
+        border-color: var(--accent);
+        color: #ffffff;
+      }
+      .mode-card.sel .mode-icon {
+        background: var(--accent);
+        border-color: var(--accent);
+        color: #ffffff;
+      }
+      .mode-icon svg {
+        width: 22px;
+        height: 22px;
       }
       .mode-name {
         font-weight: 600;
@@ -247,7 +270,7 @@
       .upload-zone {
         border: 2px dashed var(--border);
         border-radius: var(--radius);
-        padding: 48px 24px;
+        padding: 40px 24px;
         text-align: center;
         cursor: pointer;
         transition: all 0.2s;
@@ -259,8 +282,36 @@
       }
 
       .upload-icon {
-        font-size: 48px;
+        width: 56px;
+        height: 56px;
+        border-radius: 14px;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
         margin-bottom: 16px;
+        color: var(--accent-bright);
+      }
+      .upload-icon svg {
+        width: 28px;
+        height: 28px;
+      }
+      .finish-icon {
+        width: 72px;
+        height: 72px;
+        border-radius: 20px;
+        background: var(--accent-dim);
+        border: 2px solid var(--accent);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 20px;
+        color: var(--accent-bright);
+      }
+      .finish-icon svg {
+        width: 36px;
+        height: 36px;
       }
       .upload-title {
         font-weight: 600;

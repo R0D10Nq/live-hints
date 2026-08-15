@@ -43,12 +43,12 @@ function createWindow() {
 function createOnboardingWindow() {
   onboardingWindow = new BrowserWindow({
     title: 'Live Hints — Настройка',
-    width: 740,
-    height: 840,
+    width: 760,
+    height: 860,
     minWidth: 600,
     minHeight: 700,
     center: true,
-    frame: false,
+    frame: true,
     transparent: false,
     backgroundColor: '#0f1117',
     resizable: true,

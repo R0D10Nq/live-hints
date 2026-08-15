@@ -44,9 +44,18 @@ export class UIHints {
     this.hideEmptyState();
     const hint = this.hints[this.currentHintIndex];
 
-    const typeIcons = { technical: '💻', experience: '📋', general: '💬' };
+    const typeIcons = {
+      technical:
+        '<svg class="type-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>',
+      experience:
+        '<svg class="type-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg>',
+      general:
+        '<svg class="type-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>',
+    };
     const typeLabels = { technical: 'Технический', experience: 'Опыт', general: 'Общий' };
-    const typeIcon = typeIcons[hint.questionType] || '💡';
+    const typeIcon =
+      typeIcons[hint.questionType] ||
+      '<svg class="type-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="9" y1="18" x2="15" y2="18"/><line x1="10" y1="22" x2="14" y2="22"/><path d="M15.09 14c.18-.98.65-1.74 1.41-2.5A4.65 4.65 0 0 0 18 8 6 6 0 0 0 6 8c0 1 .23 2.23 1.5 3.5A4.61 4.61 0 0 1 8.91 14"/></svg>';
     const typeLabel = typeLabels[hint.questionType] || '';
 
     const card = document.createElement('div');
@@ -78,7 +87,7 @@ export class UIHints {
       </div>
       <div class="hint-card-footer">
         <span class="hint-timestamp">${this.utils.formatTime(hint.timestamp)}</span>
-        <button class="hint-copy-btn" title="Копировать"><span>📋</span></button>
+        <button class="hint-copy-btn" title="Копировать"><svg class="icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button>
       </div>
     `;
 

@@ -469,10 +469,8 @@ describe('HintManager', () => {
       const context = hintManager.buildContext();
 
       expect(context).toHaveLength(2);
-      expect(context[0]).toContain('🎙️ Интервьюер');
-      expect(context[0]).toContain('Вопрос интервьюера');
-      expect(context[1]).toContain('🗣️ Ты');
-      expect(context[1]).toContain('Ответ кандидата');
+      expect(context[0]).toContain('Интервьюер: Вопрос интервьюера');
+      expect(context[1]).toContain('Ты: Ответ кандидата');
     });
 
     test('должен ограничивать контекст по maxContextChars', () => {

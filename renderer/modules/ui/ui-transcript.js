@@ -108,9 +108,8 @@ export class UITranscript {
     }
     this.lastTranscriptText = text;
 
-    const icon = source === 'candidate' ? '🗣️' : '🎙️';
     const label = source === 'candidate' ? 'Ты' : 'Интервьюер';
-    const formattedText = this.app.audio?.dualAudioEnabled ? `${icon} ${label}: ${text}` : text;
+    const formattedText = this.app.audio?.dualAudioEnabled ? `${label}: ${text}` : text;
 
     this.addFeedItem(formattedText, timestamp, source);
   }

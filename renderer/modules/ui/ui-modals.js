@@ -49,15 +49,15 @@ export class UIModals {
             </div>
             <div class="session-card-stats">
               <span class="session-stat">
-                <span class="stat-icon">🎙️</span>
+                <span class="stat-icon"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg></span>
                 <span class="stat-value">${transcriptLines.length} реплик</span>
               </span>
               <span class="session-stat">
-                <span class="stat-icon">💡</span>
+                <span class="stat-icon"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="9" y1="18" x2="15" y2="18"/><line x1="10" y1="22" x2="14" y2="22"/><path d="M15.09 14c.18-.98.65-1.74 1.41-2.5A4.65 4.65 0 0 0 18 8 6 6 0 0 0 6 8c0 1 .23 2.23 1.5 3.5A4.61 4.61 0 0 1 8.91 14"/></svg></span>
                 <span class="stat-value">${hintLines.length} подсказок</span>
               </span>
               <span class="session-stat">
-                <span class="stat-icon">⏱️</span>
+                <span class="stat-icon"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></span>
                 <span class="stat-value">${duration}</span>
               </span>
             </div>
@@ -122,7 +122,7 @@ export class UIModals {
             .map(
               (line) => `
               <div class="session-dialog-item">
-                <span class="dialog-icon">🎙️</span>
+                <span class="dialog-icon"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/></svg></span>
                 <span class="dialog-text">${this.utils.escapeHtml(line)}</span>
               </div>
             `
@@ -136,7 +136,7 @@ export class UIModals {
             .map(
               (line) => `
               <div class="session-dialog-item hint-item">
-                <span class="dialog-icon">💡</span>
+                <span class="dialog-icon"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="9" y1="18" x2="15" y2="18"/><path d="M15.09 14c.18-.98.65-1.74 1.41-2.5A4.65 4.65 0 0 0 18 8 6 6 0 0 0 6 8c0 1 .23 2.23 1.5 3.5A4.61 4.61 0 0 1 8.91 14"/></svg></span>
                 <span class="dialog-text">${this.utils.renderMarkdown(line)}</span>
               </div>
             `
