@@ -133,48 +133,40 @@ async function checkHealth() {
   console.log('[PERF] Проверка доступности серверов...');
 
   // Проверка STT
-  try {
-    await new Promise((resolve, reject) => {
-      const ws = new WebSocket(STT_URL);
-      const timeout = setTimeout(() => {
-        ws.close();
-        reject(new Error('STT сервер недоступен'));
-      }, 3000);
+  await new Promise((resolve, reject) => {
+    const ws = new WebSocket(STT_URL);
+    const timeout = setTimeout(() => {
+      ws.close();
+      reject(new Error('STT сервер недоступен'));
+    }, 3000);
 
-      ws.on('open', () => {
-        clearTimeout(timeout);
-        ws.close();
-        resolve();
-      });
-      ws.on('error', () => {
-        clearTimeout(timeout);
-        reject(new Error('STT сервер недоступен'));
-      });
+    ws.on('open', () => {
+      clearTimeout(timeout);
+      ws.close();
+      resolve();
     });
-    console.log('[PERF] ✓ STT сервер доступен');
-  } catch (e) {
-    throw e;
-  }
+    ws.on('error', () => {
+      clearTimeout(timeout);
+      reject(new Error('STT сервер недоступен'));
+    });
+  });
+  console.log('[PERF] ✓ STT сервер доступен');
 
   // Проверка LLM
-  try {
-    await new Promise((resolve, reject) => {
-      http
-        .get(`${LLM_URL}/health`, (res) => {
-          if (res.statusCode === 200) {
-            resolve();
-          } else {
-            reject(new Error('LLM сервер недоступен'));
-          }
-        })
-        .on('error', () => {
+  await new Promise((resolve, reject) => {
+    http
+      .get(`${LLM_URL}/health`, (res) => {
+        if (res.statusCode === 200) {
+          resolve();
+        } else {
           reject(new Error('LLM сервер недоступен'));
-        });
-    });
-    console.log('[PERF] ✓ LLM сервер доступен');
-  } catch (e) {
-    throw e;
-  }
+        }
+      })
+      .on('error', () => {
+        reject(new Error('LLM сервер недоступен'));
+      });
+  });
+  console.log('[PERF] ✓ LLM сервер доступен');
 }
 
 // Главная функция

@@ -2,7 +2,7 @@
  * Тесты для logger.js
  */
 
-import { logger, LOG_LEVELS } from '../../renderer/modules/utils/logger.js';
+import { logger } from '../../renderer/modules/utils/logger.js';
 
 describe('Logger', () => {
   beforeEach(() => {
@@ -59,9 +59,7 @@ describe('Logger', () => {
       logger.setDebugMode(true);
       const consoleSpy = jest.spyOn(console, 'debug').mockImplementation();
       logger.metric('latency', 100);
-      expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining('[METRIC]'),
-      );
+      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('[METRIC]'));
     });
   });
 });

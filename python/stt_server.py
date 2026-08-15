@@ -153,9 +153,10 @@ class DynamicSTTServer:
         self.init_model()
         self.start_audio_capture()
         self.running = True
+        self._shutdown_event = asyncio.Event()
         
         # Сохраняем loop для использования из других потоков
-        self.loop = asyncio.get_event_loop()
+        self.loop = asyncio.get_running_loop()
         
         logger.info(f'Starting STT server on {WEBSOCKET_HOST}:{WEBSOCKET_PORT}')
         
@@ -167,11 +168,13 @@ class DynamicSTTServer:
             ping_timeout=10
         ):
             logger.info(f'STT server ready (mode={self.mode})')
-            await asyncio.Future()  # Бесконечный цикл
+            await self._shutdown_event.wait()  # Ожидаем завершения
     
     async def stop_server(self):
         """Остановить сервер"""
         self.running = False
+        if hasattr(self, '_shutdown_event'):
+            self._shutdown_event.set()
         # Graceful shutdown: закрыть все активные WebSocket соединения
         for client in list(self.clients):
             try:

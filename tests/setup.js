@@ -112,7 +112,7 @@ class MockURL {
   static createObjectURL(blob) {
     return 'blob:mock-url';
   }
-  static revokeObjectURL(url) { }
+  static revokeObjectURL(url) {}
 }
 
 global.URL = MockURL;

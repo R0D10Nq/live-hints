@@ -32,9 +32,10 @@ export class HintManager {
 
   async requestHint(transcriptText, source = 'interviewer') {
     // Сохраняем с информацией об источнике
-    const entry = typeof transcriptText === 'object'
-      ? transcriptText
-      : { text: transcriptText, source, timestamp: Date.now() };
+    const entry =
+      typeof transcriptText === 'object'
+        ? transcriptText
+        : { text: transcriptText, source, timestamp: Date.now() };
 
     this.transcriptContext.push(entry);
     if (this.transcriptContext.length > this.contextWindowSize) {
@@ -62,7 +63,10 @@ export class HintManager {
     this.app.ui.showHintLoading();
 
     if (this.app.debugMode) {
-      logger.debug('LLM', `Streaming запрос: maxTokens=${this.maxTokens}, temperature=${this.temperature}`);
+      logger.debug(
+        'LLM',
+        `Streaming запрос: maxTokens=${this.maxTokens}, temperature=${this.temperature}`
+      );
     }
 
     try {
@@ -145,7 +149,10 @@ export class HintManager {
               }
 
               if (this.app.debugMode) {
-                logger.debug('LLM', `Streaming завершён: total=${totalLatency}ms, server=${data.latency_ms}ms, cached=${data.cached}`);
+                logger.debug(
+                  'LLM',
+                  `Streaming завершён: total=${totalLatency}ms, server=${data.latency_ms}ms, cached=${data.cached}`
+                );
               }
 
               if (hintElement && accumulatedHint.trim()) {
@@ -200,9 +207,9 @@ export class HintManager {
       if (typeof item === 'object' && item.source === 'interviewer') {
         return item.text;
       } else if (typeof item === 'string') {
-        // Для обратной совместимости — если это строка с иконкой интервьюера
-        if (item.includes('🎙️') || item.includes('Интервьюер')) {
-          return item.replace(/🎙️\s*Интервьюер:\s*/g, '');
+        // Для обратной совместимости — если это строка с меткой интервьюера
+        if (item.includes('Интервьюер')) {
+          return item.replace(/Интервьюер:\s*/g, '');
         }
         return item;
       }
@@ -228,8 +235,8 @@ export class HintManager {
       // Поддерживаем как объекты с source, так и простые строки
       let formattedText;
       if (typeof item === 'object' && item.text) {
-        const icon = item.source === 'candidate' ? '🗣️ Ты' : '🎙️ Интервьюер';
-        formattedText = `${icon}: ${item.text}`;
+        const label = item.source === 'candidate' ? 'Ты' : 'Интервьюер';
+        formattedText = `${label}: ${item.text}`;
       } else {
         formattedText = typeof item === 'string' ? item : String(item);
       }

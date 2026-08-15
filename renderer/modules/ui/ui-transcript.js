@@ -108,9 +108,8 @@ export class UITranscript {
     }
     this.lastTranscriptText = text;
 
-    const icon = source === 'candidate' ? '🗣️' : '🎙️';
     const label = source === 'candidate' ? 'Ты' : 'Интервьюер';
-    const formattedText = this.app.audio?.dualAudioEnabled ? `${icon} ${label}: ${text}` : text;
+    const formattedText = this.app.audio?.dualAudioEnabled ? `${label}: ${text}` : text;
 
     this.addFeedItem(formattedText, timestamp, source);
   }
@@ -149,8 +148,8 @@ export class UITranscript {
     const items = this.elements.transcriptFeed?.querySelectorAll('.feed-item-text');
     return items
       ? Array.from(items)
-        .map((el) => el.textContent)
-        .join('\n')
+          .map((el) => el.textContent)
+          .join('\n')
       : '';
   }
 }

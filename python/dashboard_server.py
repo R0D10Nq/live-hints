@@ -5,13 +5,26 @@ Live Hints Dashboard Server
 
 import json
 from datetime import datetime, timedelta
+import os
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException
-from fastapi.responses import HTMLResponse
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import HTMLResponse, JSONResponse
 import uvicorn
 
 app = FastAPI(title="Live Hints Dashboard")
+
+DASHBOARD_TOKEN = os.getenv('DASHBOARD_TOKEN')
+
+@app.middleware('http')
+async def verify_token(request: Request, call_next):
+    if DASHBOARD_TOKEN:
+        token = request.query_params.get('token') or request.headers.get('x-dashboard-token')
+        if token != DASHBOARD_TOKEN:
+            if request.url.path.startswith('/api/'):
+                return JSONResponse(status_code=401, content={'detail': 'Unauthorized'})
+            return HTMLResponse('<h1>Unauthorized</h1>', status_code=401)
+    return await call_next(request)
 
 # Пути к данным
 DATA_DIR = Path(__file__).parent.parent / "data"
@@ -179,5 +192,5 @@ async def export_metrics():
 # ========== MAIN ==========
 if __name__ == '__main__':
     ensure_data_dir()
-    print(f'[Dashboard] Запуск http://localhost:8767')
-    uvicorn.run(app, host='0.0.0.0', port=8767, log_level='warning')
+    print(f'[Dashboard] Запуск http://127.0.0.1:8767')
+    uvicorn.run(app, host='127.0.0.1', port=8767, log_level='warning')

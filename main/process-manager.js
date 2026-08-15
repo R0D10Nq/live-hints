@@ -25,12 +25,13 @@ function stopAllProcesses() {
 }
 
 function startSTTProcess(mode = 'auto') {
-  const venvPython = path.join(process.cwd(), 'venv', 'Scripts', 'python.exe');
+  const rootDir = path.resolve(__dirname, '..');
+  const venvPython = path.join(rootDir, 'venv', 'Scripts', 'python.exe');
   const pythonPath = require('fs').existsSync(venvPython) ? venvPython : 'python';
-  const scriptPath = path.join(process.cwd(), 'python', 'stt_server.py');
+  const scriptPath = path.join(rootDir, 'python', 'stt_server.py');
 
   sttProcess = spawn(pythonPath, [scriptPath, '--mode', mode], {
-    cwd: process.cwd(),
+    cwd: rootDir,
     stdio: ['pipe', 'pipe', 'pipe'],
   });
 
@@ -46,14 +47,15 @@ function startSTTProcess(mode = 'auto') {
 }
 
 function startAudioCaptureProcess(options = {}) {
-  const venvPython = path.join(process.cwd(), 'venv', 'Scripts', 'python.exe');
+  const rootDir = path.resolve(__dirname, '..');
+  const venvPython = path.join(rootDir, 'venv', 'Scripts', 'python.exe');
   const pythonPath = require('fs').existsSync(venvPython) ? venvPython : 'python';
-  const scriptPath = path.join(process.cwd(), 'python', 'audio_capture.py');
+  const scriptPath = path.join(rootDir, 'python', 'audio_capture.py');
   const { dualAudio = false, micDeviceIndex = null } = options;
 
   // Loopback (системный звук)
   audioCaptureProcess = spawn(pythonPath, [scriptPath, '--mode=loopback'], {
-    cwd: process.cwd(),
+    cwd: rootDir,
     stdio: ['pipe', 'pipe', 'pipe'],
   });
 
@@ -65,7 +67,7 @@ function startAudioCaptureProcess(options = {}) {
     }
 
     micCaptureProcess = spawn(pythonPath, [scriptPath, ...micArgs], {
-      cwd: process.cwd(),
+      cwd: rootDir,
       stdio: ['pipe', 'pipe', 'pipe'],
     });
   }
@@ -80,7 +82,13 @@ module.exports = {
   getSttProcess: () => sttProcess,
   getAudioCaptureProcess: () => audioCaptureProcess,
   getMicCaptureProcess: () => micCaptureProcess,
-  setSttProcess: (p) => { sttProcess = p; },
-  setAudioCaptureProcess: (p) => { audioCaptureProcess = p; },
-  setMicCaptureProcess: (p) => { micCaptureProcess = p; },
+  setSttProcess: (p) => {
+    sttProcess = p;
+  },
+  setAudioCaptureProcess: (p) => {
+    audioCaptureProcess = p;
+  },
+  setMicCaptureProcess: (p) => {
+    micCaptureProcess = p;
+  },
 };

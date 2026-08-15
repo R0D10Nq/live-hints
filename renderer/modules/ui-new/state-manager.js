@@ -3,8 +3,6 @@
  * Centralized UI state management for Live Hints
  */
 
-import { animations } from './animation-engine.js';
-
 export class StateManager {
   constructor() {
     this.state = {

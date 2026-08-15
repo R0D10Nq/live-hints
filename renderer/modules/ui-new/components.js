@@ -53,10 +53,7 @@ export class HintComponent {
     if (!text) return '';
 
     // Escape HTML
-    let formatted = text
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;');
+    let formatted = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
     // Bold text (**text**)
     formatted = formatted.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
@@ -83,10 +80,10 @@ export class HintComponent {
   formatTime(timestamp) {
     if (!timestamp) return '';
     const date = new Date(timestamp);
-    return date.toLocaleTimeString('ru-RU', { 
-      hour: '2-digit', 
+    return date.toLocaleTimeString('ru-RU', {
+      hour: '2-digit',
       minute: '2-digit',
-      second: '2-digit'
+      second: '2-digit',
     });
   }
 
@@ -95,9 +92,9 @@ export class HintComponent {
    */
   getConfidenceClass(confidence) {
     const map = {
-      'high': 'success',
-      'medium': 'warning',
-      'low': 'error'
+      high: 'success',
+      medium: 'warning',
+      low: 'error',
     };
     return map[confidence.toLowerCase()] || 'secondary';
   }
@@ -107,7 +104,7 @@ export class HintComponent {
    */
   displayHint(hint, index, total) {
     this.container.innerHTML = '';
-    
+
     const card = this.createHintCard(hint, index, total);
     this.container.appendChild(card);
 
@@ -184,7 +181,7 @@ export class TranscriptComponent {
     const time = new Date().toLocaleTimeString('ru-RU', {
       hour: '2-digit',
       minute: '2-digit',
-      second: '2-digit'
+      second: '2-digit',
     });
 
     entry.innerHTML = `
@@ -234,10 +231,7 @@ export class TranscriptComponent {
    * Escape HTML
    */
   escapeHtml(text) {
-    return text
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;');
+    return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   }
 }
 
@@ -258,7 +252,7 @@ export class ToastComponent {
       success: '✓',
       error: '✕',
       warning: '⚠',
-      info: 'ℹ'
+      info: 'ℹ',
     };
 
     toast.innerHTML = `
@@ -286,7 +280,7 @@ export class ToastComponent {
   async remove(toast) {
     await animations.fadeOut(toast, { duration: 200 });
     toast.remove();
-    
+
     const index = this.toasts.indexOf(toast);
     if (index > -1) {
       this.toasts.splice(index, 1);

@@ -1,8 +1,28 @@
 const js = require('@eslint/js');
 const prettier = require('eslint-plugin-prettier');
 const prettierConfig = require('eslint-config-prettier');
+const globals = require('globals');
 
 module.exports = [
+  {
+    ignores: [
+      '**/node_modules/**',
+      '**/dist/**',
+      '**/build/**',
+      '**/coverage/**',
+      '**/htmlcov/**',
+      '**/*.min.js',
+      '**/.history/**',
+      '**/venv/**',
+      '**/.venv/**',
+      '**/python/**',
+      '**/.pytest_cache/**',
+      '**/__pycache__/**',
+      '**/test-results/**',
+      '**/playwright-report/**',
+      '**/.benchmarks/**',
+    ],
+  },
   js.configs.recommended,
   prettierConfig,
   {
@@ -13,38 +33,9 @@ module.exports = [
       ecmaVersion: 'latest',
       sourceType: 'module',
       globals: {
-        // Browser globals
-        window: 'readonly',
-        document: 'readonly',
-        localStorage: 'readonly',
-        navigator: 'readonly',
-        fetch: 'readonly',
-        WebSocket: 'readonly',
-        URL: 'readonly',
-        Blob: 'readonly',
-        FileReader: 'readonly',
-        performance: 'readonly',
-        console: 'readonly',
-        setTimeout: 'readonly',
-        clearTimeout: 'readonly',
-        setInterval: 'readonly',
-        clearInterval: 'readonly',
-        confirm: 'readonly',
-        // Node globals
-        require: 'readonly',
-        module: 'readonly',
-        exports: 'readonly',
-        process: 'readonly',
-        __dirname: 'readonly',
-        Buffer: 'readonly',
-        // Jest globals
-        describe: 'readonly',
-        it: 'readonly',
-        test: 'readonly',
-        expect: 'readonly',
-        beforeEach: 'readonly',
-        afterEach: 'readonly',
-        jest: 'readonly',
+        ...globals.browser,
+        ...globals.node,
+        ...globals.jest,
         // Electron globals
         electronAPI: 'readonly',
       },
@@ -56,20 +47,8 @@ module.exports = [
       'no-var': 'error',
       eqeqeq: ['warn', 'smart'],
       'no-throw-literal': 'error',
+      'no-empty': ['warn', { allowEmptyCatch: true }],
       'prettier/prettier': 'warn',
     },
-  },
-  {
-    ignores: [
-      'node_modules/**',
-      'dist/**',
-      'build/**',
-      'coverage/**',
-      '*.min.js',
-      '.pytest_cache/**',
-      '__pycache__/**',
-      'test-results/**',
-      'playwright-report/**',
-    ],
   },
 ];

@@ -1,251 +1,493 @@
-<!DOCTYPE html>
-<html lang="ru" data-theme="dark">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; connect-src 'self' ws://localhost:8765 ws://localhost:8764 http://localhost:8766">
-  <title>Live Hints — Настройка</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="onboarding.css">
-</head>
-<body>
-  <div id="onboarding-app">
-    <!-- Background Particles -->
-    <div class="particles" id="particles"></div>
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Live Hints — Настройка</title>
+    <style>
+      /* ===== RESET & BASE ===== */
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
 
-    <!-- Header -->
-    <header class="onboarding-header">
+      :root {
+        --bg: #0f1117;
+        --surface: #1a1d26;
+        --elevated: #242836;
+        --accent: #6c5ce7;
+        --accent-bright: #8577ff;
+        --accent-dim: rgba(108, 92, 231, 0.15);
+        --success: #22c55e;
+        --error: #ef4444;
+        --text: #f1f5f9;
+        --text-secondary: #94a3b8;
+        --muted: #64748b;
+        --border: rgba(255, 255, 255, 0.08);
+        --radius: 12px;
+        --font: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      }
+
+      body {
+        font-family: var(--font);
+        background: var(--bg);
+        color: var(--text);
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+      }
+
+      /* ===== HEADER ===== */
+      .header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 16px 24px;
+        background: var(--surface);
+        border-bottom: 1px solid var(--border);
+        -webkit-app-region: drag;
+        user-select: none;
+      }
+
+      .logo {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-weight: 700;
+        font-size: 18px;
+      }
+
+      .logo-mark {
+        width: 28px;
+        height: 28px;
+        background: linear-gradient(135deg, var(--accent), var(--accent-bright));
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 12px;
+        font-weight: 900;
+      }
+
+      .window-btns {
+        display: flex;
+        gap: 8px;
+        -webkit-app-region: no-drag;
+      }
+
+      .win-btn {
+        width: 28px;
+        height: 28px;
+        border: none;
+        background: transparent;
+        color: var(--text-secondary);
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 14px;
+        -webkit-app-region: no-drag;
+      }
+      .win-btn:hover {
+        background: var(--elevated);
+      }
+      .win-btn.close:hover {
+        background: var(--error);
+        color: white;
+      }
+
+      /* ===== MAIN ===== */
+      main {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 24px;
+        overflow-y: auto;
+      }
+
+      .wizard {
+        width: 100%;
+        max-width: 660px;
+      }
+
+      /* ===== STEPS INDICATOR ===== */
+      .steps {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 24px;
+        margin-bottom: 40px;
+      }
+
+      .step-dot {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 8px;
+        opacity: 0.35;
+        transition: all 0.3s;
+      }
+      .step-dot.active {
+        opacity: 1;
+      }
+      .step-dot.done {
+        opacity: 0.6;
+      }
+
+      .dot-num {
+        width: 44px;
+        height: 44px;
+        border-radius: 50%;
+        background: var(--elevated);
+        border: 2px solid var(--border);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+        font-size: 14px;
+        transition: all 0.3s;
+      }
+      .step-dot.active .dot-num {
+        background: var(--accent);
+        border-color: var(--accent);
+        color: white;
+        box-shadow: 0 0 20px var(--accent-dim);
+      }
+      .step-dot.done .dot-num {
+        background: var(--success);
+        border-color: var(--success);
+        color: white;
+      }
+
+      .step-label {
+        font-size: 11px;
+        color: var(--muted);
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+      }
+      .step-dot.active .step-label {
+        color: var(--accent-bright);
+      }
+
+      /* ===== CARD ===== */
+      .card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 40px;
+      }
+
+      .badge {
+        display: inline-block;
+        padding: 4px 12px;
+        background: var(--accent-dim);
+        color: var(--accent-bright);
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 600;
+        margin-bottom: 16px;
+      }
+
+      h2 {
+        font-size: 24px;
+        font-weight: 700;
+        margin-bottom: 8px;
+      }
+
+      .subtitle {
+        color: var(--text-secondary);
+        font-size: 14px;
+        line-height: 1.6;
+        margin-bottom: 32px;
+      }
+
+      /* ===== MODE CARDS ===== */
+      .mode-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 16px;
+      }
+
+      .mode-card {
+        background: var(--elevated);
+        border: 2px solid var(--border);
+        border-radius: var(--radius);
+        padding: 20px;
+        cursor: pointer;
+        transition: all 0.2s;
+      }
+      .mode-card:hover {
+        border-color: rgba(108, 92, 231, 0.4);
+        transform: translateY(-2px);
+      }
+      .mode-card.sel {
+        border-color: var(--accent);
+        background: var(--accent-dim);
+      }
+
+      .mode-icon {
+        width: 44px;
+        height: 44px;
+        border-radius: 10px;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 14px;
+        color: var(--accent-bright);
+        transition: all 0.2s ease;
+      }
+      .mode-card:hover .mode-icon {
+        background: var(--accent);
+        border-color: var(--accent);
+        color: #ffffff;
+      }
+      .mode-card.sel .mode-icon {
+        background: var(--accent);
+        border-color: var(--accent);
+        color: #ffffff;
+      }
+      .mode-icon svg {
+        width: 22px;
+        height: 22px;
+      }
+      .mode-name {
+        font-weight: 600;
+        font-size: 15px;
+        margin-bottom: 4px;
+      }
+      .mode-desc {
+        font-size: 12px;
+        color: var(--muted);
+        line-height: 1.4;
+      }
+
+      /* ===== UPLOAD ZONE ===== */
+      .upload-zone {
+        border: 2px dashed var(--border);
+        border-radius: var(--radius);
+        padding: 40px 24px;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.2s;
+        background: var(--elevated);
+      }
+      .upload-zone:hover {
+        border-color: var(--accent);
+        background: var(--accent-dim);
+      }
+
+      .upload-icon {
+        width: 56px;
+        height: 56px;
+        border-radius: 14px;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 16px;
+        color: var(--accent-bright);
+      }
+      .upload-icon svg {
+        width: 28px;
+        height: 28px;
+      }
+      .finish-icon {
+        width: 72px;
+        height: 72px;
+        border-radius: 20px;
+        background: var(--accent-dim);
+        border: 2px solid var(--accent);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 20px;
+        color: var(--accent-bright);
+      }
+      .finish-icon svg {
+        width: 36px;
+        height: 36px;
+      }
+      .upload-title {
+        font-weight: 600;
+        font-size: 15px;
+        margin-bottom: 8px;
+      }
+      .upload-hint {
+        font-size: 12px;
+        color: var(--muted);
+      }
+
+      /* ===== TEXTAREA AREA ===== */
+      .text-input {
+        width: 100%;
+        min-height: 120px;
+        background: var(--elevated);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        color: var(--text);
+        font-family: var(--font);
+        font-size: 14px;
+        line-height: 1.6;
+        padding: 12px 16px;
+        resize: vertical;
+      }
+      .text-input:focus {
+        outline: none;
+        border-color: var(--accent);
+      }
+
+      /* ===== AUDIO SECTION ===== */
+      .audio-visualizer {
+        display: flex;
+        align-items: flex-end;
+        justify-content: center;
+        gap: 4px;
+        height: 100px;
+        background: var(--elevated);
+        border-radius: var(--radius);
+        padding: 20px 16px;
+        margin-bottom: 20px;
+      }
+
+      .wave {
+        width: 6px;
+        background: linear-gradient(to top, var(--accent), var(--accent-bright));
+        border-radius: 3px;
+        height: 20%;
+        opacity: 0.6;
+      }
+
+      select.form-select {
+        width: 100%;
+        padding: 12px 16px;
+        background: var(--elevated);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        color: var(--text);
+        font-family: var(--font);
+        font-size: 14px;
+        margin-bottom: 16px;
+      }
+
+      /* ===== FOOTER NAV ===== */
+      .footer {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 20px 24px;
+        background: var(--surface);
+        border-top: 1px solid var(--border);
+      }
+
+      .step-counter {
+        font-size: 13px;
+        color: var(--muted);
+      }
+
+      .btn-row {
+        display: flex;
+        gap: 10px;
+      }
+
+      .btn {
+        padding: 10px 20px;
+        border-radius: var(--radius);
+        font-family: var(--font);
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        border: none;
+        transition: all 0.2s;
+      }
+      .btn-ghost {
+        background: transparent;
+        color: var(--text-secondary);
+        border: 1px solid var(--border);
+      }
+      .btn-ghost:hover {
+        background: var(--elevated);
+        color: var(--text);
+      }
+
+      .btn-primary {
+        background: linear-gradient(135deg, var(--accent), var(--accent-bright));
+        color: white;
+      }
+      .btn-primary:hover:not(:disabled) {
+        opacity: 0.9;
+        transform: translateY(-1px);
+      }
+      .btn-primary:disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
+      }
+
+      /* ===== UTILITY ===== */
+      .hidden {
+        display: none !important;
+      }
+      input[type='file'] {
+        display: none;
+      }
+
+      .meta-link {
+        display: inline-block;
+        margin-top: 12px;
+        font-size: 13px;
+        color: var(--accent-bright);
+        cursor: pointer;
+        background: none;
+        border: none;
+        padding: 0;
+        text-decoration: underline;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- HEADER -->
+    <header class="header">
       <div class="logo">
         <div class="logo-mark">LH</div>
-        <span class="logo-text">Live Hints</span>
+        <span>Live Hints</span>
       </div>
-      <div class="window-controls">
-        <button id="btn-minimize" class="window-btn" title="Свернуть">−</button>
-        <button id="btn-close" class="window-btn window-btn-close" title="Закрыть">×</button>
+      <div class="window-btns">
+        <button class="win-btn" id="btnMin">−</button>
+        <button class="win-btn close" id="btnClose">×</button>
       </div>
     </header>
 
-    <!-- Progress Indicator -->
-    <div class="progress-container">
-      <div class="progress-orbit">
-        <div class="orbit-node active" data-step="1">
-          <div class="node-core">1</div>
-          <span class="node-label">Сценарий</span>
-        </div>
-        <div class="orbit-node" data-step="2">
-          <div class="node-core">2</div>
-          <span class="node-label">Резюме</span>
-        </div>
-        <div class="orbit-node" data-step="3">
-          <div class="node-core">3</div>
-          <span class="node-label">Вакансия</span>
-        </div>
-        <div class="orbit-node" data-step="4">
-          <div class="node-core">4</div>
-          <span class="node-label">Аудио</span>
-        </div>
-      </div>
-    </div>
+    <!-- MAIN -->
+    <main>
+      <div class="wizard">
+        <!-- STEPS INDICATOR -->
+        <div class="steps" id="stepIndicator"></div>
 
-    <!-- Step Content -->
-    <main class="step-container">
-      <!-- Step 1: Mode Selection -->
-      <div class="step-content active" data-step="1">
-        <div class="step-header">
-          <div class="step-badge">Шаг 1 из 4</div>
-          <h2 class="step-title">Выберите сценарий использования</h2>
-          <p class="step-subtitle">AI адаптирует стиль подсказок под вашу ситуацию</p>
+        <!-- STEP CARD -->
+        <div class="card" id="stepCard">
+          <!-- Dynamic content injected here -->
         </div>
-        
-        <div class="mode-grid" id="mode-grid">
-          <div class="mode-card selected" data-mode="job_interview_ru">
-            <div class="card-icon">◈</div>
-            <div class="card-title">Собеседование</div>
-            <div class="card-desc">Технические вопросы и ответы по вашему опыту</div>
-            <div class="card-check">✓</div>
-          </div>
-          
-          <div class="mode-card" data-mode="business_meeting">
-            <div class="card-icon">◆</div>
-            <div class="card-title">Переговоры</div>
-            <div class="card-desc">Аргументы и контраргументы для бизнес-встреч</div>
-            <div class="card-check">✓</div>
-          </div>
-          
-          <div class="mode-card" data-mode="daily_sync">
-            <div class="card-icon">◉</div>
-            <div class="card-title">Созвоны</div>
-            <div class="card-desc">Краткие статусы и обсуждение задач</div>
-            <div class="card-check">✓</div>
-          </div>
-          
-          <div class="mode-card" data-mode="presentation">
-            <div class="card-icon">★</div>
-            <div class="card-title">Презентация</div>
-            <div class="card-desc">Убедительные питчи и демонстрации</div>
-            <div class="card-check">✓</div>
-          </div>
-          
-          <div class="mode-card" data-mode="custom">
-            <div class="card-icon">◎</div>
-            <div class="card-title">Свой сценарий</div>
-            <div class="card-desc">Полностью кастомные инструкции</div>
-            <div class="card-check">✓</div>
-          </div>
-        </div>
-
-        <div class="mode-context hidden" id="mode-context-area">
-          <textarea 
-            id="mode-context" 
-            class="form-textarea" 
-            rows="4"
-            placeholder="Дополнительный контекст: проект, роль, команда..."></textarea>
-        </div>
-      </div>
-
-      <!-- Step 2: Resume -->
-      <div class="step-content" data-step="2">
-        <div class="step-header">
-          <div class="step-badge">Шаг 2 из 4</div>
-          <h2 class="step-title">Загрузите резюме</h2>
-          <p class="step-subtitle" id="resume-subtitle">AI будет опираться на ваш реальный опыт при формулировке ответов. Обязательно только для режима "Собеседование".</p>
-        </div>
-
-        <div class="upload-zone" id="resume-upload">
-          <div class="upload-icon-main">↗</div>
-          <div class="upload-title">Перетащите файл или кликните для выбора</div>
-          <div class="upload-hint">PDF, DOCX, TXT — до 10MB</div>
-          <input type="file" id="resume-input" accept=".txt,.pdf,.docx" hidden>
-        </div>
-
-        <div class="file-result hidden" id="resume-result">
-          <div class="file-info-card">
-            <div class="file-icon">◈</div>
-            <div class="file-meta">
-              <span class="file-name" id="resume-filename">resume.pdf</span>
-              <span class="file-size" id="resume-filesize">2.4 MB</span>
-            </div>
-            <button class="file-replace" id="resume-replace" title="Заменить файл">↻</button>
-            <button class="file-remove" id="resume-remove" title="Удалить">×</button>
-          </div>
-        </div>
-
-        <div class="text-toggle">
-          <button class="btn-text" id="toggle-resume-text">Или вставить текст вручную</button>
-          <button class="btn-text hidden" id="skip-resume">Пропустить шаг →</button>
-        </div>
-
-        <div class="text-area hidden" id="resume-text-area">
-          <textarea class="form-textarea" rows="8" placeholder="Вставьте текст резюме..."></textarea>
-        </div>
-      </div>
-
-      <!-- Step 3: Vacancy -->
-      <div class="step-content" data-step="3">
-        <div class="step-header">
-          <div class="step-badge">Шаг 3 из 4</div>
-          <h2 class="step-title">Описание вакансии</h2>
-          <p class="step-subtitle">AI подстроит акценты под требования позиции</p>
-        </div>
-
-        <div class="upload-zone" id="vacancy-upload">
-          <div class="upload-icon-main">☁</div>
-          <div class="upload-title">Загрузите описание вакансии</div>
-          <div class="upload-hint">PDF, TXT — или пропустите этот шаг</div>
-          <input type="file" id="vacancy-input" accept=".txt,.pdf" hidden>
-        </div>
-
-        <div class="file-result hidden" id="vacancy-result">
-          <div class="file-info-card">
-            <div class="file-icon">◈</div>
-            <div class="file-meta">
-              <span class="file-name" id="vacancy-filename">vacancy.pdf</span>
-              <span class="file-size" id="vacancy-filesize">1.2 MB</span>
-            </div>
-            <button class="file-replace" id="vacancy-replace" title="Заменить файл">↻</button>
-            <button class="file-remove" id="vacancy-remove" title="Удалить">×</button>
-          </div>
-        </div>
-
-        <div class="text-toggle">
-          <button class="btn-text" id="toggle-vacancy-text">Вставить текст вручную</button>
-        </div>
-
-        <div class="text-area hidden" id="vacancy-text-area">
-          <textarea class="form-textarea" rows="8" placeholder="Вставьте описание вакансии..."></textarea>
-        </div>
-      </div>
-
-      <!-- Step 4: Audio -->
-      <div class="step-content" data-step="4">
-        <div class="step-header">
-          <div class="step-badge">Шаг 4 из 4</div>
-          <h2 class="step-title">Настройка захвата аудио</h2>
-          <p class="step-subtitle">Проверьте микрофон перед началом сессии</p>
-        </div>
-
-        <div class="audio-visualizer" id="audio-viz">
-          <div class="wave-bar" style="height: 20%"></div>
-          <div class="wave-bar" style="height: 40%"></div>
-          <div class="wave-bar" style="height: 60%"></div>
-          <div class="wave-bar" style="height: 80%"></div>
-          <div class="wave-bar" style="height: 100%"></div>
-          <div class="wave-bar" style="height: 80%"></div>
-          <div class="wave-bar" style="height: 60%"></div>
-          <div class="wave-bar" style="height: 40%"></div>
-          <div class="wave-bar" style="height: 20%"></div>
-          <div class="wave-bar" style="height: 35%"></div>
-          <div class="wave-bar" style="height: 55%"></div>
-          <div class="wave-bar" style="height: 75%"></div>
-          <div class="wave-bar" style="height: 90%"></div>
-          <div class="wave-bar" style="height: 65%"></div>
-          <div class="wave-bar" style="height: 45%"></div>
-          <div class="wave-bar" style="height: 25%"></div>
-        </div>
-
-        <div class="audio-controls">
-          <select class="form-select" id="mic-select">
-            <option value="">Выберите микрофон...</option>
-          </select>
-          
-          <button class="btn btn-primary" id="btn-test-mic">
-            <span class="btn-icon">◉</span>
-            Тест микрофона
-          </button>
-        </div>
-
-        <label class="checkbox-modern">
-          <input type="checkbox" id="dual-audio">
-          <span class="check-label">
-            <strong>Dual Audio Mode <span class="tooltip-icon">?</span></strong>
-            <span>Раздельный захват микрофона и системного звука</span>
-          </span>
-        </label>
       </div>
     </main>
 
-    <!-- Footer -->
-    <footer class="onboarding-footer">
-      <button id="btn-back" class="btn btn-ghost">
-        ← Назад
-      </button>
-      
+    <!-- FOOTER NAV -->
+    <footer class="footer">
+      <button class="btn btn-ghost" id="btnBack">← Назад</button>
       <span class="step-counter">
-        <span id="current-step">1</span> / 4
+        <span id="curStep">1</span> / <span id="totalSteps">3</span>
       </span>
-      
-      <div class="footer-actions">
-        <button id="btn-next" class="btn btn-primary">
-          Далее →
-        </button>
-        <button id="btn-finish" class="btn btn-success hidden">
-          Запустить сессию ✓
-        </button>
+      <div class="btn-row">
+        <button class="btn btn-ghost hidden" id="btnSkip">Пропустить →</button>
+        <button class="btn btn-primary" id="btnNext">Далее →</button>
+        <button class="btn btn-success hidden" id="btnFinish">Запустить ✓</button>
       </div>
     </footer>
-  </div>
 
-  <script type="module" src="onboarding.js"></script>
-</body>
+    <script type="module" src="onboarding.js"></script>
+  </body>
 </html>

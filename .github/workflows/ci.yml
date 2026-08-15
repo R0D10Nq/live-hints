@@ -1,5 +1,5 @@
-Created ci.yml
-
+name: CI
+on:
   push:
     branches: [main, develop]
   pull_request:
@@ -11,30 +11,33 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup Node.js
+      - name: Настройка Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: '22'
           cache: 'npm'
           cache-dependency-path: package-lock.json
 
-      - name: Установить зависимости
+      - name: Настройка Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+          cache-dependency-path: python/requirements.txt
+
+      - name: Установка Node.js зависимостей
         run: npm ci
 
-      - name: Python ленивый venv
-        shell: bash
+      - name: Установка Python зависимостей
         run: |
-          python -m venv venv
-          .venv/Scripts/python.exe -m pip install -q --upgrade pip
-          .venv/Scripts/python.exe -m pip install -q -r python/requirements.txt
+          python -m pip install --upgrade pip
+          pip install -r python/requirements.txt pytest pytest-cov pytest-asyncio pytest-mock
 
-      - name: Python unit тесты pytest
-        shell: bash
-        run: .venv/Scripts/python.exe -m pytest tests/unit -q
+      - name: Проверка линтера (ESLint)
+        run: npm run lint
 
-      - name: JavaScript unit/integration (Jest)
+      - name: Модульные тесты Python (pytest)
+        run: python -m pytest tests/unit -v
+
+      - name: Модульные и интеграционные тесты JavaScript (Jest)
         run: npm test
-
-      - name: Сборка артефактов
-        if: github.event_name == 'pull_request'
-        run: npx playwright install chromium --with-deps || true

@@ -278,9 +278,7 @@ describe('HintManager', () => {
     });
 
     test('должен возвращать null если нет вопросов интервьюера', () => {
-      hintManager.transcriptContext = [
-        { text: 'ответ кандидата', source: 'candidate' },
-      ];
+      hintManager.transcriptContext = [{ text: 'ответ кандидата', source: 'candidate' }];
       expect(hintManager.getLastInterviewerQuestion()).toBeNull();
     });
 
@@ -331,10 +329,7 @@ describe('HintManager', () => {
 
       await hintManager.checkHealth();
 
-      expect(mockApp.ui.showToast).toHaveBeenCalledWith(
-        'LLM: ok, модель: test-model',
-        'success'
-      );
+      expect(mockApp.ui.showToast).toHaveBeenCalledWith('LLM: ok, модель: test-model', 'success');
     });
 
     test('должен показывать ошибку при неуспешном ответе', async () => {
@@ -474,16 +469,18 @@ describe('HintManager', () => {
       const context = hintManager.buildContext();
 
       expect(context).toHaveLength(2);
-      expect(context[0]).toContain('🎙️ Интервьюер');
-      expect(context[0]).toContain('Вопрос интервьюера');
-      expect(context[1]).toContain('🗣️ Ты');
-      expect(context[1]).toContain('Ответ кандидата');
+      expect(context[0]).toContain('Интервьюер: Вопрос интервьюера');
+      expect(context[1]).toContain('Ты: Ответ кандидата');
     });
 
     test('должен ограничивать контекст по maxContextChars', () => {
       hintManager.transcriptContext = [
         { text: 'Короткий текст', source: 'candidate', timestamp: Date.now() },
-        { text: 'Очень длинный текст который не поместится в лимит символов', source: 'interviewer', timestamp: Date.now() },
+        {
+          text: 'Очень длинный текст который не поместится в лимит символов',
+          source: 'interviewer',
+          timestamp: Date.now(),
+        },
       ];
       hintManager.maxContextChars = 30;
 

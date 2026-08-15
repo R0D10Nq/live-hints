@@ -4,11 +4,13 @@ GPU-only режим (Ollama) для RTX 5060 Ti 16GB
 Рефакторинг: использует модули из llm/
 """
 
+import asyncio
 import json
 import logging
 import os
 import sys
 import time
+import threading
 from typing import Optional
 
 import requests
@@ -152,10 +154,13 @@ ollama = OllamaClient(OLLAMA_URL, DEFAULT_MODEL, hint_cache, FULL_CONTEXT, USER_
 app = FastAPI(title='Live Hints LLM Server')
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=['*'],
-    allow_credentials=True,
-    allow_methods=['*'],
-    allow_headers=['*']
+    allow_origins=[
+        'http://localhost:*',
+        'http://127.0.0.1:*',
+    ],
+    allow_credentials=False,
+    allow_methods=['GET', 'POST'],
+    allow_headers=['Content-Type']
 )
 
 # Обработчик ошибок валидации - возвращаем 400 вместо 422
@@ -193,33 +198,37 @@ async def health():
     }
 
 
+_ollama_lock = threading.Lock()
+
 @app.post('/hint')
 async def generate_hint(hint_request: HintRequest):
-    """Генерация подсказки (синхронно)"""
+    """Генерация подсказки (неблокирующий вызов через threadpool)"""
     request = hint_request
     if not request.text or len(request.text.strip()) < 5:
         raise HTTPException(400, 'Текст слишком короткий')
-    
-    original_model = ollama.model
-    original_profile = ollama.profile
-    
-    if request.model:
-        ollama.model = request.model
-    if request.profile and request.profile != ollama.profile:
-        ollama.profile = request.profile
-    
-    try:
-        hint = ollama.generate(
-            text=request.text,
-            context=request.context,
-            max_tokens=request.max_tokens,
-            temperature=request.temperature
-        )
-        stats = ollama.metrics.get_stats()
-        return {'hint': hint, 'latency_ms': stats['total_ms'], 'ttft_ms': stats['ttft_ms']}
-    finally:
-        ollama.model = original_model
-        ollama.profile = original_profile
+
+    def _generate_sync():
+        with _ollama_lock:
+            original_model = ollama.model
+            original_profile = ollama.profile
+            if request.model:
+                ollama.model = request.model
+            if request.profile and request.profile != ollama.profile:
+                ollama.profile = request.profile
+            try:
+                hint = ollama.generate(
+                    text=request.text,
+                    context=request.context,
+                    max_tokens=request.max_tokens,
+                    temperature=request.temperature
+                )
+                stats = ollama.metrics.get_stats()
+                return {'hint': hint, 'latency_ms': stats['total_ms'], 'ttft_ms': stats['ttft_ms']}
+            finally:
+                ollama.model = original_model
+                ollama.profile = original_profile
+
+    return await asyncio.to_thread(_generate_sync)
 
 
 @app.post('/hint/stream')
@@ -229,40 +238,39 @@ async def generate_hint_stream(hint_request: HintRequest):
     if not request.text or len(request.text.strip()) < 5:
         raise HTTPException(400, 'Текст слишком короткий')
     
-    original_model = ollama.model
-    original_profile = ollama.profile
-    
-    if request.model:
-        ollama.model = request.model
-    if request.profile and request.profile != ollama.profile:
-        ollama.profile = request.profile
-    
     vector_db = get_vector_db()
     instant_answer = vector_db.get_instant_answer(request.text)
     cached = instant_answer or hint_cache.get(request.text, request.context or [])
     question_type = classify_question(request.text)
     
     async def stream():
-        try:
-            if cached:
-                log_cache_hit(request.text)
-                log_llm_response(0, 0, len(cached), cached=True, question_type=question_type)
-                yield f"data: {json.dumps({'chunk': cached, 'cached': True, 'question_type': question_type}, ensure_ascii=False)}\n\n"
-                yield f"data: {json.dumps({'done': True, 'cached': True, 'question_type': question_type, 'latency_ms': 0, 'ttft_ms': 0}, ensure_ascii=False)}\n\n"
-            else:
-                async for chunk in ollama.generate_stream(
-                    request.text, request.context,
-                    request.max_tokens, request.temperature,
-                    request.system_prompt, request.user_context
-                ):
-                    yield f"data: {json.dumps({'chunk': chunk}, ensure_ascii=False)}\n\n"
-                
-                stats = ollama.metrics.get_stats()
-                q_type = getattr(ollama, '_last_question_type', question_type)
-                yield f"data: {json.dumps({'done': True, 'question_type': q_type, 'latency_ms': stats['total_ms'], 'ttft_ms': stats['ttft_ms']}, ensure_ascii=False)}\n\n"
-        finally:
-            ollama.model = original_model
-            ollama.profile = original_profile
+        with _ollama_lock:
+            original_model = ollama.model
+            original_profile = ollama.profile
+            if request.model:
+                ollama.model = request.model
+            if request.profile and request.profile != ollama.profile:
+                ollama.profile = request.profile
+            try:
+                if cached:
+                    log_cache_hit(request.text)
+                    log_llm_response(0, 0, len(cached), cached=True, question_type=question_type)
+                    yield f"data: {json.dumps({'chunk': cached, 'cached': True, 'question_type': question_type}, ensure_ascii=False)}\n\n"
+                    yield f"data: {json.dumps({'done': True, 'cached': True, 'question_type': question_type, 'latency_ms': 0, 'ttft_ms': 0}, ensure_ascii=False)}\n\n"
+                else:
+                    async for chunk in ollama.generate_stream(
+                        request.text, request.context,
+                        request.max_tokens, request.temperature,
+                        request.system_prompt, request.user_context
+                    ):
+                        yield f"data: {json.dumps({'chunk': chunk}, ensure_ascii=False)}\n\n"
+                    
+                    stats = ollama.metrics.get_stats()
+                    q_type = getattr(ollama, '_last_question_type', question_type)
+                    yield f"data: {json.dumps({'done': True, 'question_type': q_type, 'latency_ms': stats['total_ms'], 'ttft_ms': stats['ttft_ms']}, ensure_ascii=False)}\n\n"
+            finally:
+                ollama.model = original_model
+                ollama.profile = original_profile
     
     return StreamingResponse(stream(), media_type='text/event-stream')
 

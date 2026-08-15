@@ -122,7 +122,9 @@ class AudioManager {
     }
 
     this.reconnectAttempts++;
-    console.log(`[STT] Попытка переподключения ${this.reconnectAttempts}/${this.maxReconnectAttempts}`);
+    console.log(
+      `[STT] Попытка переподключения ${this.reconnectAttempts}/${this.maxReconnectAttempts}`
+    );
 
     setTimeout(() => {
       this.connectToSTT().catch(console.error);

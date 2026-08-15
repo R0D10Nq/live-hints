@@ -6,11 +6,7 @@ module.exports = {
   testEnvironment: 'node',
   roots: ['<rootDir>/tests/unit', '<rootDir>/tests/integration'],
   testMatch: ['**/*.test.js'],
-  testPathIgnorePatterns: [
-    '/node_modules/',
-    '/.history/',
-    '/tests/e2e/',
-  ],
+  testPathIgnorePatterns: ['/node_modules/', '/.history/', '/tests/e2e/'],
   transform: {
     '^.+\\.js$': 'babel-jest',
   },
