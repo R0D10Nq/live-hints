@@ -40,17 +40,16 @@ function createWindow() {
 }
 
 function createOnboardingWindow() {
-  const primaryDisplay = screen.getPrimaryDisplay();
-  const { width, height } = primaryDisplay.workAreaSize;
-
   onboardingWindow = new BrowserWindow({
-    width: 520,
-    height: 640,
-    x: Math.floor((width - 520) / 2),
-    y: Math.floor((height - 640) / 2),
+    width: 720,
+    height: 820,
+    center: true,
     frame: false,
-    transparent: true,
-    resizable: false,
+    transparent: false,
+    backgroundColor: '#0f1117',
+    resizable: true,
+    alwaysOnTop: true,
+    show: false,
     webPreferences: {
       preload: path.join(__dirname, '..', 'renderer', 'preload-onboarding.js'),
       contextIsolation: true,
@@ -59,6 +58,12 @@ function createOnboardingWindow() {
   });
 
   onboardingWindow.loadFile(path.join(__dirname, '..', 'renderer', 'onboarding.html'));
+
+  onboardingWindow.once('ready-to-show', () => {
+    onboardingWindow.show();
+    onboardingWindow.focus();
+    onboardingWindow.setAlwaysOnTop(true, 'screen-saver');
+  });
 
   onboardingWindow.on('closed', () => {
     onboardingWindow = null;
