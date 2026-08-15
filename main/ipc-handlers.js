@@ -281,7 +281,7 @@ function setupIPC(handlers) {
           const dataBuffer = fs.readFileSync(resolved);
           const data = await pdfParse(dataBuffer);
           return data.text;
-        } catch (e) {
+        } catch {
           return fs.readFileSync(resolved, 'utf-8');
         }
       } else if (type === 'docx') {
@@ -289,7 +289,7 @@ function setupIPC(handlers) {
           const mammoth = require('mammoth');
           const result = await mammoth.extractRawText({ path: resolved });
           return result.value;
-        } catch (e) {
+        } catch {
           return '';
         }
       } else {

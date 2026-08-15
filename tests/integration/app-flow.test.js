@@ -6,7 +6,6 @@
  */
 
 import { SessionManager } from '../../renderer/modules/session-manager.js';
-import { HintManager } from '../../renderer/modules/hint-manager.js';
 
 // Мок для модулей ES6
 jest.mock('../../renderer/modules/constants.js', () => ({

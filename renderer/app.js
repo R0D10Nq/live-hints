@@ -6,7 +6,6 @@
 
 import { NewUIController } from './modules/ui-new/index.js';
 import { state } from './modules/ui-new/state-manager.js';
-import { animations } from './modules/ui-new/animation-engine.js';
 import { SERVERS } from './modules/constants.js';
 
 // Main Application Class

@@ -19,7 +19,7 @@ function activateStealth() {
 
   try {
     mainWindow.setContentProtection(true);
-  } catch (_) {}
+  } catch {}
   stealthMode = true;
   mainWindow.webContents.send('stealth:activated');
   console.log('[Stealth] Режим активирован - окно защищено от записи экрана');
@@ -30,7 +30,7 @@ function deactivateStealth() {
 
   try {
     mainWindow.setContentProtection(false);
-  } catch (_) {}
+  } catch {}
   stealthMode = false;
   mainWindow.webContents.send('stealth:deactivated');
   console.log('[Stealth] Режим деактивирован - окно видно на записи');

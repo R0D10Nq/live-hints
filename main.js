@@ -3,7 +3,7 @@
  * Refactored: modular architecture
  */
 
-const { app, BrowserWindow } = require('electron');
+const { app } = require('electron');
 
 // Single-instance guard: предотвращает запуск нескольких копий приложения одновременно
 if (!app.requestSingleInstanceLock()) {

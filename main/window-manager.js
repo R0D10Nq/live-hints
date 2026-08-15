@@ -10,7 +10,7 @@ let onboardingWindow = null;
 
 function createWindow() {
   const primaryDisplay = screen.getPrimaryDisplay();
-  const { width, height } = primaryDisplay.workAreaSize;
+  const { width } = primaryDisplay.workAreaSize;
 
   mainWindow = new BrowserWindow({
     width: 1280,

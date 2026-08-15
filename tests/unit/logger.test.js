@@ -2,7 +2,7 @@
  * Тесты для logger.js
  */
 
-import { logger, LOG_LEVELS } from '../../renderer/modules/utils/logger.js';
+import { logger } from '../../renderer/modules/utils/logger.js';
 
 describe('Logger', () => {
   beforeEach(() => {
