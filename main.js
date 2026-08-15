@@ -58,11 +58,18 @@ app.whenReady().then(() => {
   if (onboardingCompleted || isTest) {
     const mainWin = windowManager.createWindow();
     windowManager.setMainWindow(mainWin);
-    onFinishOnboarding(); // Setups shortcuts
+    onFinishOnboarding();
   } else {
-    // If onboarding not completed, always show it unless it's a test
     const onboardingWin = windowManager.createOnboardingWindow();
     windowManager.setOnboardingWindow(onboardingWin);
+
+    onboardingWin.webContents.on('did-fail-load', (event, errorCode, errorDescription) => {
+      console.error('[Onboarding] Ошибка загрузки:', errorCode, errorDescription);
+    });
+
+    onboardingWin.webContents.on('console-message', (event, level, message) => {
+      console.log('[Onboarding Console]', message);
+    });
   }
 
   setupIPC({
@@ -82,12 +89,14 @@ app.on('window-all-closed', () => {
 });
 
 app.on('second-instance', () => {
-  // Если пользователь пытается запустить вторую копию — фокусируем ужеRunning окно
   const mainWin = windowManager.getMainWindow();
-  if (mainWin) {
-    if (mainWin.isMinimized()) mainWin.restore();
-    mainWin.focus();
+  const onboardingWin = windowManager.getOnboardingWindow();
+  const targetWin = mainWin || onboardingWin;
+  if (targetWin) {
+    if (targetWin.isMinimized()) targetWin.restore();
+    targetWin.show();
+    targetWin.focus();
   } else {
-    console.log('[Main] Второй экземпляр: главное окно отсутствует');
+    console.log('[Main] Второй экземпляр: окна отсутствуют');
   }
 });

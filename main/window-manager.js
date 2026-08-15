@@ -13,6 +13,7 @@ function createWindow() {
   const { width } = primaryDisplay.workAreaSize;
 
   mainWindow = new BrowserWindow({
+    title: 'Live Hints',
     width: 1280,
     height: 600,
     x: Math.max(0, width - 1300),
@@ -30,7 +31,7 @@ function createWindow() {
   });
 
   mainWindow.loadFile(path.join(__dirname, '..', 'renderer', 'index.html'));
-  mainWindow.setAlwaysOnTop(true, 'screen-saver');
+  mainWindow.setAlwaysOnTop(true);
 
   mainWindow.on('closed', () => {
     mainWindow = null;
@@ -41,15 +42,20 @@ function createWindow() {
 
 function createOnboardingWindow() {
   onboardingWindow = new BrowserWindow({
-    width: 720,
-    height: 820,
+    title: 'Live Hints — Настройка',
+    width: 740,
+    height: 840,
+    minWidth: 600,
+    minHeight: 700,
     center: true,
     frame: false,
     transparent: false,
     backgroundColor: '#0f1117',
     resizable: true,
     alwaysOnTop: true,
-    show: false,
+    show: true,
+    skipTaskbar: false,
+    autoHideMenuBar: true,
     webPreferences: {
       preload: path.join(__dirname, '..', 'renderer', 'preload-onboarding.js'),
       contextIsolation: true,
@@ -59,11 +65,10 @@ function createOnboardingWindow() {
 
   onboardingWindow.loadFile(path.join(__dirname, '..', 'renderer', 'onboarding.html'));
 
-  onboardingWindow.once('ready-to-show', () => {
-    onboardingWindow.show();
-    onboardingWindow.focus();
-    onboardingWindow.setAlwaysOnTop(true, 'screen-saver');
-  });
+  onboardingWindow.show();
+  onboardingWindow.focus();
+  onboardingWindow.moveTop();
+  onboardingWindow.setAlwaysOnTop(true);
 
   onboardingWindow.on('closed', () => {
     onboardingWindow = null;
