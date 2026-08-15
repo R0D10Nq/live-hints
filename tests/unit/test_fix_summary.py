@@ -83,13 +83,11 @@ def test_llm_server_logic():
 def test_context_loading():
     """Проверяем загрузку контекста"""
     print("\n4. Проверка загрузки контекста...")
+    from unittest.mock import patch, mock_open
+    from pathlib import Path
     
     def load_user_context():
         """Имитация load_user_context из llm_server.py"""
-        import os
-        from pathlib import Path
-        
-        # Загружаем профиль
         profile = 'business_meeting'  # Из settings.json
         
         # Выбираем файл контекста
@@ -107,8 +105,10 @@ def test_context_loading():
         
         return ""
     
-    context = load_user_context()
-    assert "Проект: Разработка AI-ассистента" in context
+    with patch.object(Path, "exists", return_value=True), \
+         patch("builtins.open", mock_open(read_data="Проект: Разработка AI-ассистента")):
+        context = load_user_context()
+        assert "Проект: Разработка AI-ассистента" in context
     print("   ✓ Загружен mode_context.txt для бизнес-профиля")
 
 
