@@ -149,8 +149,8 @@ export class UITranscript {
     const items = this.elements.transcriptFeed?.querySelectorAll('.feed-item-text');
     return items
       ? Array.from(items)
-        .map((el) => el.textContent)
-        .join('\n')
+          .map((el) => el.textContent)
+          .join('\n')
       : '';
   }
 }

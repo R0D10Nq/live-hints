@@ -59,9 +59,7 @@ describe('Logger', () => {
       logger.setDebugMode(true);
       const consoleSpy = jest.spyOn(console, 'debug').mockImplementation();
       logger.metric('latency', 100);
-      expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining('[METRIC]'),
-      );
+      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('[METRIC]'));
     });
   });
 });

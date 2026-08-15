@@ -16,7 +16,13 @@ export class AppIPC {
       this._pcmLogCount++;
 
       if (this._pcmLogCount === 1) {
-        logger.info('IPC', 'Первый PCM чанк получен, source:', source, 'размер:', data?.length || data?.byteLength);
+        logger.info(
+          'IPC',
+          'Первый PCM чанк получен, source:',
+          source,
+          'размер:',
+          data?.length || data?.byteLength
+        );
       } else if (this._pcmLogCount % 100 === 0) {
         logger.info('IPC', 'PCM чанков получено:', this._pcmLogCount, 'source:', source);
       }

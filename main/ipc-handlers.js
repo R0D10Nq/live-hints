@@ -248,12 +248,13 @@ function setupIPC(handlers) {
   ipcMain.handle('file:parse', async (event, filePath, type) => {
     const fs = require('fs');
     const pathModule = require('path');
-    // Защищаем от чтения произвольных файлов — только относительные пути в пределах проекта
-    if (pathModule.isAbsolute(filePath)) {
-      return Promise.reject(new Error('Доступ запрещён: допускаются только относительные пути'));
+    // Защита от Path Traversal: проверяем что путь внутри проекта
+    const projectRoot = pathModule.resolve(__dirname, '..');
+    const resolved = pathModule.resolve(projectRoot, filePath);
+    if (!resolved.startsWith(projectRoot + pathModule.sep)) {
+      return Promise.reject(new Error('Доступ запрещён: путь за пределами проекта'));
     }
     try {
-      const resolved = pathModule.resolve(__dirname, '..', filePath);
       if (type === 'pdf') {
         try {
           const pdfParse = require('pdf-parse');
@@ -266,13 +267,13 @@ function setupIPC(handlers) {
       } else if (type === 'docx') {
         try {
           const mammoth = require('mammoth');
-          const result = await mammoth.extractRawText({ path: filePath });
+          const result = await mammoth.extractRawText({ path: resolved });
           return result.value;
         } catch (e) {
           return '';
         }
       } else {
-        return fs.readFileSync(filePath, 'utf-8');
+        return fs.readFileSync(resolved, 'utf-8');
       }
     } catch (err) {
       console.error('[File] Parse error:', err);

@@ -21,12 +21,10 @@ let Store;
 let store;
 
 function onStealthToggle() {
-  const isStealth = !stealthManager.isStealthMode();
-  stealthManager.setStealthModeState(isStealth);
-  if (isStealth) {
-    stealthManager.activateStealth();
-  } else {
+  if (stealthManager.isStealthMode()) {
     stealthManager.deactivateStealth();
+  } else {
+    stealthManager.activateStealth();
   }
 }
 

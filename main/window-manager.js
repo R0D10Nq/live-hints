@@ -140,6 +140,10 @@ module.exports = {
   setupLocalShortcuts,
   getMainWindow: () => mainWindow,
   getOnboardingWindow: () => onboardingWindow,
-  setMainWindow: (w) => { mainWindow = w; },
-  setOnboardingWindow: (w) => { onboardingWindow = w; },
+  setMainWindow: (w) => {
+    mainWindow = w;
+  },
+  setOnboardingWindow: (w) => {
+    onboardingWindow = w;
+  },
 };

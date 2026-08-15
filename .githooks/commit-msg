@@ -18,11 +18,13 @@ if [ ${#commit_msg} -gt 72 ]; then
     echo "⚠️  Предупреждение: первая строка сообщения длиннее 72 символов"
 fi
 
-# Проверка на тип коммита (conventional commits) — по умолчанию запрещена для совместимости с правилами AGENTS.md
+# Проверка на запрещённые префиксы (conventional commits)
 # Правила проекта требуют русский язык без префиксов: «Доработал…», «Исправил…» и т.д.
-valid_types="feat|fix|docs|style|refactor|test|chore|perf|ci|build"
-if echo "$commit_msg" | grep -qE "^($valid_types):"; then
-    echo "⚠️  Предупреждение: правила AGENTS.md запрещают префиксы типа коммита (feat:, fix: и т.д.). Используйте глагол совершенного вида на русском."
+forbidden_types="feat|fix|docs|style|refactor|test|chore|perf|ci|build|merge|wip"
+if echo "$commit_msg" | grep -qiE "^($forbidden_types)(\([^)]+\))?:"; then
+    echo "❌ Ошибка: правила проекта запрещают префиксы коммитов (feat:, fix: и т.д.)."
+    echo "   Сообщение должно начинаться с глагола совершенного вида на русском (например: «Исправил...», «Доработал...»)."
+    exit 1
 fi
 
 echo "✓ Сообщение коммита прошло проверку"

@@ -32,9 +32,10 @@ export class HintManager {
 
   async requestHint(transcriptText, source = 'interviewer') {
     // Сохраняем с информацией об источнике
-    const entry = typeof transcriptText === 'object'
-      ? transcriptText
-      : { text: transcriptText, source, timestamp: Date.now() };
+    const entry =
+      typeof transcriptText === 'object'
+        ? transcriptText
+        : { text: transcriptText, source, timestamp: Date.now() };
 
     this.transcriptContext.push(entry);
     if (this.transcriptContext.length > this.contextWindowSize) {
@@ -62,7 +63,10 @@ export class HintManager {
     this.app.ui.showHintLoading();
 
     if (this.app.debugMode) {
-      logger.debug('LLM', `Streaming запрос: maxTokens=${this.maxTokens}, temperature=${this.temperature}`);
+      logger.debug(
+        'LLM',
+        `Streaming запрос: maxTokens=${this.maxTokens}, temperature=${this.temperature}`
+      );
     }
 
     try {
@@ -145,7 +149,10 @@ export class HintManager {
               }
 
               if (this.app.debugMode) {
-                logger.debug('LLM', `Streaming завершён: total=${totalLatency}ms, server=${data.latency_ms}ms, cached=${data.cached}`);
+                logger.debug(
+                  'LLM',
+                  `Streaming завершён: total=${totalLatency}ms, server=${data.latency_ms}ms, cached=${data.cached}`
+                );
               }
 
               if (hintElement && accumulatedHint.trim()) {

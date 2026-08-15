@@ -94,10 +94,7 @@ describe('Интеграционные тесты Live Hints', () => {
 
       // Assert - Экспорт сессии
       sessionManager.exportSession(sessionId);
-      expect(mockApp.ui.showToast).toHaveBeenCalledWith(
-        'Сессия экспортирована',
-        'success'
-      );
+      expect(mockApp.ui.showToast).toHaveBeenCalledWith('Сессия экспортирована', 'success');
 
       blobSpy.mockRestore();
     });
@@ -119,10 +116,7 @@ describe('Интеграционные тесты Live Hints', () => {
       await sessionManager.importSessions(file);
 
       // Assert
-      expect(mockApp.ui.showToast).toHaveBeenCalledWith(
-        'Импортировано 2 новых сессий',
-        'success'
-      );
+      expect(mockApp.ui.showToast).toHaveBeenCalledWith('Импортировано 2 новых сессий', 'success');
 
       // Act - Поиск сессии
       const foundSession = sessionManager.getById('session_1');
@@ -148,10 +142,7 @@ describe('Интеграционные тесты Live Hints', () => {
       await sessionManager.importSessions(file);
 
       // Assert - Импортирована только 1 новая сессия
-      expect(mockApp.ui.showToast).toHaveBeenCalledWith(
-        'Импортировано 1 новых сессий',
-        'success'
-      );
+      expect(mockApp.ui.showToast).toHaveBeenCalledWith('Импортировано 1 новых сессий', 'success');
 
       const allSessions = sessionManager.getAll();
       expect(allSessions).toHaveLength(2);
@@ -189,10 +180,7 @@ describe('Интеграционные тесты Live Hints', () => {
 
       // Assert
       expect(sessionManager.getAll()).toHaveLength(0);
-      expect(mockApp.ui.showToast).toHaveBeenCalledWith(
-        'Все сессии удалены',
-        'info'
-      );
+      expect(mockApp.ui.showToast).toHaveBeenCalledWith('Все сессии удалены', 'info');
     });
   });
 

@@ -120,7 +120,7 @@ export class SettingsPanel {
 
   open() {
     if (!this.panel) return;
-    
+
     this.panel.classList.add('open');
     this.isOpen = true;
 
@@ -131,7 +131,7 @@ export class SettingsPanel {
 
   close() {
     if (!this.panel) return;
-    
+
     this.panel.classList.remove('open');
     this.isOpen = false;
   }
@@ -158,7 +158,7 @@ export class SidebarManager {
     if (!this.sidebar) return;
 
     this.isOpen = !this.isOpen;
-    
+
     if (this.isOpen) {
       this.sidebar.classList.remove('collapsed');
       await animations.sidebarToggle(this.sidebar, true);

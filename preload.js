@@ -17,28 +17,59 @@ contextBridge.exposeInMainWorld('electron', {
 
   // События от main process
   onPCMData: (callback) => {
-    ipcRenderer.on('audio:pcm-data', (event, data, source) => callback(data, source));
+    const handler = (event, data, source) => callback(data, source);
+    ipcRenderer.on('audio:pcm-data', handler);
+    return () => ipcRenderer.removeListener('audio:pcm-data', handler);
   },
 
   onTranscript: (callback) => {
-    ipcRenderer.on('stt:transcript', (event, data) => callback(data));
+    const handler = (event, data) => callback(data);
+    ipcRenderer.on('stt:transcript', handler);
+    return () => ipcRenderer.removeListener('stt:transcript', handler);
   },
 
   onHint: (callback) => {
-    ipcRenderer.on('llm:hint', (event, data) => callback(data));
+    const handler = (event, data) => callback(data);
+    ipcRenderer.on('llm:hint', handler);
+    return () => ipcRenderer.removeListener('llm:hint', handler);
   },
 
   onStatusChange: (callback) => {
-    ipcRenderer.on('status:change', (event, status) => callback(status));
+    const handler = (event, status) => callback(status);
+    ipcRenderer.on('status:change', handler);
+    return () => ipcRenderer.removeListener('status:change', handler);
   },
 
   onError: (callback) => {
-    ipcRenderer.on('error', (event, error) => callback(error));
+    const handler = (event, error) => callback(error);
+    ipcRenderer.on('error', handler);
+    return () => ipcRenderer.removeListener('error', handler);
   },
 
   // Удаление слушателей
   removeAllListeners: (channel) => {
-    ipcRenderer.removeAllListeners(channel);
+    const allowed = [
+      'audio:pcm-data',
+      'stt:transcript',
+      'llm:hint',
+      'status:change',
+      'error',
+      'stealth:activated',
+      'stealth:deactivated',
+      'stealth:auto-activated',
+      'shortcut:ask',
+      'shortcut:screenshot',
+      'shortcut:toggle-transcript',
+      'shortcut:prev-hint',
+      'shortcut:next-hint',
+      'shortcut:settings',
+      'shortcut:toggle-mute',
+      'shortcut:help',
+      'shortcut:toggle-session',
+    ];
+    if (allowed.includes(channel)) {
+      ipcRenderer.removeAllListeners(channel);
+    }
   },
 
   // Прозрачность окна
@@ -65,9 +96,21 @@ contextBridge.exposeInMainWorld('electron', {
   stealthStopMonitoring: () => ipcRenderer.invoke('stealth:stop-monitoring'),
 
   // Stealth события
-  onStealthActivated: (callback) => ipcRenderer.on('stealth:activated', callback),
-  onStealthDeactivated: (callback) => ipcRenderer.on('stealth:deactivated', callback),
-  onStealthAutoActivated: (callback) => ipcRenderer.on('stealth:auto-activated', callback),
+  onStealthActivated: (callback) => {
+    const handler = (event, ...args) => callback(...args);
+    ipcRenderer.on('stealth:activated', handler);
+    return () => ipcRenderer.removeListener('stealth:activated', handler);
+  },
+  onStealthDeactivated: (callback) => {
+    const handler = (event, ...args) => callback(...args);
+    ipcRenderer.on('stealth:deactivated', handler);
+    return () => ipcRenderer.removeListener('stealth:deactivated', handler);
+  },
+  onStealthAutoActivated: (callback) => {
+    const handler = (event, ...args) => callback(...args);
+    ipcRenderer.on('stealth:auto-activated', handler);
+    return () => ipcRenderer.removeListener('stealth:auto-activated', handler);
+  },
 
   // ===== MULTI-MONITOR =====
   getDisplays: () => ipcRenderer.invoke('window:get-displays'),
@@ -89,13 +132,49 @@ contextBridge.exposeInMainWorld('electron', {
   finishOnboarding: (settings) => ipcRenderer.invoke('onboarding:finish', settings),
 
   // ===== SHORTCUTS =====
-  onShortcutAsk: (callback) => ipcRenderer.on('shortcut:ask', callback),
-  onShortcutScreenshot: (callback) => ipcRenderer.on('shortcut:screenshot', callback),
-  onShortcutToggleTranscript: (callback) => ipcRenderer.on('shortcut:toggle-transcript', callback),
-  onShortcutPrevHint: (callback) => ipcRenderer.on('shortcut:prev-hint', callback),
-  onShortcutNextHint: (callback) => ipcRenderer.on('shortcut:next-hint', callback),
-  onShortcutSettings: (callback) => ipcRenderer.on('shortcut:settings', callback),
-  onShortcutToggleMute: (callback) => ipcRenderer.on('shortcut:toggle-mute', callback),
-  onShortcutHelp: (callback) => ipcRenderer.on('shortcut:help', callback),
-  onShortcutToggleSession: (callback) => ipcRenderer.on('shortcut:toggle-session', callback),
+  onShortcutAsk: (callback) => {
+    const handler = (event, ...args) => callback(...args);
+    ipcRenderer.on('shortcut:ask', handler);
+    return () => ipcRenderer.removeListener('shortcut:ask', handler);
+  },
+  onShortcutScreenshot: (callback) => {
+    const handler = (event, ...args) => callback(...args);
+    ipcRenderer.on('shortcut:screenshot', handler);
+    return () => ipcRenderer.removeListener('shortcut:screenshot', handler);
+  },
+  onShortcutToggleTranscript: (callback) => {
+    const handler = (event, ...args) => callback(...args);
+    ipcRenderer.on('shortcut:toggle-transcript', handler);
+    return () => ipcRenderer.removeListener('shortcut:toggle-transcript', handler);
+  },
+  onShortcutPrevHint: (callback) => {
+    const handler = (event, ...args) => callback(...args);
+    ipcRenderer.on('shortcut:prev-hint', handler);
+    return () => ipcRenderer.removeListener('shortcut:prev-hint', handler);
+  },
+  onShortcutNextHint: (callback) => {
+    const handler = (event, ...args) => callback(...args);
+    ipcRenderer.on('shortcut:next-hint', handler);
+    return () => ipcRenderer.removeListener('shortcut:next-hint', handler);
+  },
+  onShortcutSettings: (callback) => {
+    const handler = (event, ...args) => callback(...args);
+    ipcRenderer.on('shortcut:settings', handler);
+    return () => ipcRenderer.removeListener('shortcut:settings', handler);
+  },
+  onShortcutToggleMute: (callback) => {
+    const handler = (event, ...args) => callback(...args);
+    ipcRenderer.on('shortcut:toggle-mute', handler);
+    return () => ipcRenderer.removeListener('shortcut:toggle-mute', handler);
+  },
+  onShortcutHelp: (callback) => {
+    const handler = (event, ...args) => callback(...args);
+    ipcRenderer.on('shortcut:help', handler);
+    return () => ipcRenderer.removeListener('shortcut:help', handler);
+  },
+  onShortcutToggleSession: (callback) => {
+    const handler = (event, ...args) => callback(...args);
+    ipcRenderer.on('shortcut:toggle-session', handler);
+    return () => ipcRenderer.removeListener('shortcut:toggle-session', handler);
+  },
 });

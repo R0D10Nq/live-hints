@@ -288,10 +288,7 @@ describe('SessionManager', () => {
 
       await sessionManager.importSessions(file);
 
-      expect(localStorage.setItem).toHaveBeenCalledWith(
-        'live-hints-sessions',
-        expect.any(String)
-      );
+      expect(localStorage.setItem).toHaveBeenCalledWith('live-hints-sessions', expect.any(String));
       expect(mockApp.ui.showToast).toHaveBeenCalledWith('Импортировано 2 новых сессий', 'success');
     });
 
@@ -301,10 +298,7 @@ describe('SessionManager', () => {
 
       await sessionManager.importSessions(file);
 
-      expect(mockApp.ui.showToast).toHaveBeenCalledWith(
-        'Ошибка импорта: неверный формат',
-        'error'
-      );
+      expect(mockApp.ui.showToast).toHaveBeenCalledWith('Ошибка импорта: неверный формат', 'error');
     });
 
     test('должен обрабатывать невалидный JSON (не массив)', async () => {
@@ -313,10 +307,7 @@ describe('SessionManager', () => {
 
       await sessionManager.importSessions(file);
 
-      expect(mockApp.ui.showToast).toHaveBeenCalledWith(
-        'Неверный формат файла',
-        'error'
-      );
+      expect(mockApp.ui.showToast).toHaveBeenCalledWith('Неверный формат файла', 'error');
     });
   });
 

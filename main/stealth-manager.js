@@ -71,7 +71,7 @@ async function checkScreenSharing() {
             stdout.includes('Discord.exe');
 
           desktopCapturer
-            .getSources({ types: ['screen'] })
+            .getSources({ types: ['screen'], thumbnailSize: { width: 0, height: 0 } })
             .then((sources) => {
               const activeCapture = sources.some((s) => s.name.includes('Sharing'));
               resolve(hasScreenShareApp || activeCapture);
@@ -91,7 +91,7 @@ function startScreenSharingMonitor() {
   const tick = () => {
     checkScreenSharing()
       .then((isSharing) => {
-        if (isSharing && !StealthMode) {
+        if (isSharing && !stealthMode) {
           console.log('[Stealth] Обнаружен screen sharing - активация stealth');
           stealthMode = true;
           activateStealth();
@@ -106,7 +106,7 @@ function startScreenSharingMonitor() {
       });
   };
 
-  stealthCheckInterval = setInterval(tick, 2000);
+  stealthCheckInterval = setInterval(tick, 5000);
 
   console.log('[Stealth] Мониторинг screen sharing запущен');
 }

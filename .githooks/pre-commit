@@ -8,7 +8,7 @@ echo "Запуск pre-commit проверок..."
 
 # Проверка Python тестов
 echo "Проверка Python тестов..."
-python -m pytest tests/unit/ -q --tb=line 2>/dev/null
+python -m pytest tests/unit/ -q --tb=short
 if [ $? -ne 0 ]; then
     echo "❌ Python тесты не пройдены"
     exit 1
@@ -18,7 +18,7 @@ echo "✓ Python тесты пройдены"
 
 # Проверка JavaScript тестов
 echo "Проверка JavaScript тестов..."
-npx jest --silent --passWithNoTests 2>/dev/null
+npx jest --silent --passWithNoTests
 if [ $? -ne 0 ]; then
     echo "❌ JavaScript тесты не пройдены"
     exit 1

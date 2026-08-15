@@ -58,15 +58,16 @@ export class UIHints {
           <span class="hint-number-separator">/</span>
           <span class="hint-number-total">${this.hints.length}</span>
         </div>
-        ${hint.questionType
-        ? `
+        ${
+          hint.questionType
+            ? `
           <div class="hint-type-badge type-${hint.questionType}">
             <span>${typeIcon}</span>
             <span>${typeLabel}</span>
           </div>
         `
-        : ''
-      }
+            : ''
+        }
         <div class="hint-meta-badges">
           ${hint.cached ? '<span class="hint-badge hint-badge-cache">Кэш</span>' : ''}
           ${hint.latencyMs && !hint.cached ? `<span class="hint-badge hint-badge-latency">${this.utils.formatLatency(hint.latencyMs)}</span>` : ''}
@@ -255,8 +256,8 @@ export class UIHints {
     const items = this.elements.hintsFeed?.querySelectorAll('.feed-item-text, .hint-content');
     return items
       ? Array.from(items)
-        .map((el) => el.textContent)
-        .join('\n')
+          .map((el) => el.textContent)
+          .join('\n')
       : '';
   }
 }
