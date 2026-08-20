@@ -1,6 +1,6 @@
 {
   "name": "live-hints",
-  "version": "1.0.0",
+  "version": "1.0.2",
   "description": "Локальный Windows-overlay для транскрипции русской речи и подсказок через Ollama",
   "author": "Rodion Shevtsov",
   "homepage": "https://github.com/R0D10Nq/live-hints#readme",
@@ -118,6 +118,7 @@
       ]
     },
     "nsis": {
+      "artifactName": "Live.Hints.Setup.${version}.exe",
       "oneClick": true,
       "perMachine": false,
       "allowToChangeInstallationDirectory": false,

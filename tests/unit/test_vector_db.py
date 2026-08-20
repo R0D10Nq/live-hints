@@ -10,6 +10,14 @@ from vector_db import VectorDB, INSTANT_THRESHOLD, CONTEXT_THRESHOLD
 class TestVectorDB:
     """Тесты векторной БД"""
 
+    def test_init_uses_safe_disabled_backend(self):
+        """Инициализация не активирует уязвимое постоянное хранилище."""
+        db = VectorDB()
+
+        assert db._initialized is False
+        assert db.client is None
+        assert db.collection is None
+
     def test_search_not_initialized(self):
         """Поиск при неинициализированной БД возвращает пустой список"""
         with patch.object(VectorDB, "_init_db"):
