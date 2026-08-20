@@ -4,7 +4,7 @@ fastapi==0.125.0
 uvicorn==0.38.0
 numpy==2.3.5
 sounddevice==0.5.3
-pyaudiowpatch==0.2.12.7
+pyaudiowpatch==0.2.12.8
 requests==2.34.2
 pydantic==2.12.5
 nvidia-cudnn-cu12==9.17.0.29
