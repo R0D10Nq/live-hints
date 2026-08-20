@@ -37,7 +37,7 @@ test_questions = [
 
 for question, expected in test_questions:
     result = classify_question(question)
-    status = "✓" if result == expected else "✗"
+    status = "ОК" if result == expected else "ОШИБКА"
     print(f"  {status} '{question}' -> {result} (ожидалось: {expected})")
 
 print("\n=== ВСЕ ПРОВЕРКИ ЗАВЕРШЕНЫ ===")

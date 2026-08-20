@@ -68,7 +68,7 @@ async def test_stt_server():
                 return True
             else:
                 print(f"[TEST] Server exited with code {process.returncode}")
-                return True # В некоторых случаях код может быть не 0, но главное что вышел
+                return False
 
         except subprocess.TimeoutExpired:
             print("[TEST] FAILED: Server did not stop in time")

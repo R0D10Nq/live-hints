@@ -23,27 +23,47 @@ export class HintComponent {
     card.innerHTML = `
       <div class="hint-header">
         <div class="hint-meta">
-          <span class="hint-number">${index + 1} / ${total}</span>
-          <span class="hint-timestamp">${this.formatTime(hint.timestamp)}</span>
+          <span class="hint-number"></span>
+          <span class="hint-timestamp"></span>
         </div>
-        <div class="hint-badges">
-          ${hint.type ? `<span class="badge badge-secondary">${hint.type}</span>` : ''}
-          ${hint.confidence ? `<span class="badge badge-${this.getConfidenceClass(hint.confidence)}">${hint.confidence}</span>` : ''}
-        </div>
+        <div class="hint-badges"></div>
       </div>
-      <div class="hint-content">
-        ${this.formatContent(hint.text)}
-      </div>
-      <div class="hint-context" style="display: ${hint.context ? 'block' : 'none'}">
+      <div class="hint-content"></div>
+      <div class="hint-context" hidden>
         <div class="hint-context-label">Контекст</div>
-        <div class="hint-context-text">${hint.context || ''}</div>
+        <div class="hint-context-text"></div>
       </div>
     `;
+
+    card.querySelector('.hint-number').textContent = `${index + 1} / ${total}`;
+    card.querySelector('.hint-timestamp').textContent = this.formatTime(hint.timestamp);
+    card.querySelector('.hint-content').innerHTML = this.formatContent(hint.text);
+
+    const badges = card.querySelector('.hint-badges');
+    if (hint.type) badges.appendChild(this.createBadge(hint.type, 'secondary'));
+    if (hint.confidence) {
+      badges.appendChild(
+        this.createBadge(hint.confidence, this.getConfidenceClass(hint.confidence))
+      );
+    }
+
+    if (hint.context) {
+      const context = card.querySelector('.hint-context');
+      context.hidden = false;
+      context.querySelector('.hint-context-text').textContent = hint.context;
+    }
 
     // Add hover effect
     animations.addHoverEffect(card, { scale: 1.01, lift: -2 });
 
     return card;
+  }
+
+  createBadge(text, variant) {
+    const badge = document.createElement('span');
+    badge.className = `badge badge-${variant}`;
+    badge.textContent = String(text);
+    return badge;
   }
 
   /**
@@ -96,7 +116,7 @@ export class HintComponent {
       medium: 'warning',
       low: 'error',
     };
-    return map[confidence.toLowerCase()] || 'secondary';
+    return map[String(confidence).toLowerCase()] || 'secondary';
   }
 
   /**
@@ -122,7 +142,7 @@ export class HintComponent {
           <path d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/>
         </svg>
         <div class="empty-state-title">Подсказки появятся здесь</div>
-        <div class="empty-state-text">Запустите сессию и начните говорить. AI проанализирует разговор и предложит ответы.</div>
+        <div class="empty-state-text">Запустите сессию и начните говорить. ИИ проанализирует разговор и предложит ответы.</div>
       </div>
     `;
   }
@@ -184,10 +204,15 @@ export class TranscriptComponent {
       second: '2-digit',
     });
 
-    entry.innerHTML = `
-      <div class="transcript-time">${time}</div>
-      <div class="transcript-text">${this.escapeHtml(text)}</div>
-    `;
+    const timeElement = document.createElement('div');
+    timeElement.className = 'transcript-time';
+    timeElement.textContent = time;
+
+    const textElement = document.createElement('div');
+    textElement.className = 'transcript-text';
+    textElement.textContent = String(text);
+
+    entry.append(timeElement, textElement);
 
     this.container.appendChild(entry);
     this.items.push(entry);
@@ -249,16 +274,21 @@ export class ToastComponent {
     toast.className = `toast toast-${type}`;
 
     const icons = {
-      success: '✓',
-      error: '✕',
-      warning: '⚠',
-      info: 'ℹ',
+      success: '<path d="M20 6 9 17l-5-5"/>',
+      error: '<path d="m18 6-12 12M6 6l12 12"/>',
+      warning:
+        '<path d="M10.3 2.9 1.8 17a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 2.9a2 2 0 0 0-3.4 0ZM12 9v4M12 17h.01"/>',
+      info: '<circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/>',
     };
 
-    toast.innerHTML = `
-      <span class="toast-icon">${icons[type]}</span>
-      <span class="toast-message">${message}</span>
-    `;
+    const icon = document.createElement('span');
+    icon.className = 'toast-icon';
+    icon.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">${icons[type] || icons.info}</svg>`;
+
+    const text = document.createElement('span');
+    text.className = 'toast-message';
+    text.textContent = String(message);
+    toast.append(icon, text);
 
     this.container.appendChild(toast);
     this.toasts.push(toast);

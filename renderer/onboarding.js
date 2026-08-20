@@ -246,7 +246,7 @@ class OnboardingController {
       <div class="badge">Шаг 1 из ${this.totalSteps}</div>
       <h2>Выберите сценарий</h2>
       <p class="subtitle">
-        AI подстроит стиль подсказок под вашу ситуацию
+        ИИ подстроит стиль подсказок под вашу ситуацию
       </p>
       <div class="mode-grid">${modes}</div>
     `;
@@ -277,7 +277,7 @@ class OnboardingController {
       <div class="badge">Шаг ${stepNum} из ${this.totalSteps}</div>
       <h2>Загрузите резюме</h2>
       <p class="subtitle">
-        AI будет опираться на ваш опыт при формулировке ответов.
+        ИИ будет опираться на ваш опыт при формулировке ответов.
       </p>
 
       <div class="upload-zone" id="resumeDrop">
@@ -368,7 +368,7 @@ class OnboardingController {
       <h2>Описание вакансии</h2>
       <p class="subtitle">
         Загрузите текст или PDF с описанием позиции.
-        AI подстроит акценты под требования работодателя.
+        ИИ подстроит акценты под требования работодателя.
       </p>
 
       <div class="upload-zone" id="vacancyDrop">
@@ -674,7 +674,7 @@ class OnboardingController {
   showUploadResult(elementId, message, isError = false) {
     const el = document.getElementById(elementId);
     if (!el) return;
-    el.textContent = (isError ? '✗ ' : '✓ ') + message;
+    el.textContent = (isError ? 'Ошибка: ' : 'Готово: ') + message;
     el.style.background = isError ? 'var(--error)' : 'var(--success)';
     el.classList.remove('hidden');
   }
@@ -746,7 +746,7 @@ class OnboardingController {
       const msg = err?.message || 'Неизвестная ошибка';
       alert('Ошибка запуска: ' + msg);
       this.els.btnFinish.disabled = false;
-      this.els.btnFinish.textContent = 'Запустить ✓';
+      this.els.btnFinish.textContent = 'Запустить';
     }
   }
 

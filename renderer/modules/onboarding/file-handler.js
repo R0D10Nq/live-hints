@@ -58,6 +58,12 @@ export class FileHandler {
   }
 
   async handleFileSelect(file, type) {
+    const maxFileSize = 10 * 1024 * 1024;
+    if (file.size > maxFileSize) {
+      this.app.showError('Размер файла не должен превышать 10 МБ');
+      return;
+    }
+
     const validExtensions = type === 'resume' ? ['.pdf', '.txt', '.docx'] : ['.pdf', '.txt'];
     const extension = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
 
@@ -72,15 +78,21 @@ export class FileHandler {
       if (extension === '.txt') {
         content = await this.readTextFile(file);
       } else if (extension === '.pdf') {
-        if (window.electronAPI?.parseFile) {
-          content = await window.electronAPI.parseFile(file.path, 'pdf');
+        if (window.electron?.parseFileBuffer) {
+          content = await window.electron.parseFileBuffer(
+            new Uint8Array(await file.arrayBuffer()),
+            'pdf'
+          );
         } else {
           this.app.showError('Парсинг PDF недоступен');
           return;
         }
       } else if (extension === '.docx') {
-        if (window.electronAPI?.parseFile) {
-          content = await window.electronAPI.parseFile(file.path, 'docx');
+        if (window.electron?.parseFileBuffer) {
+          content = await window.electron.parseFileBuffer(
+            new Uint8Array(await file.arrayBuffer()),
+            'docx'
+          );
         } else {
           this.app.showError('Парсинг DOCX недоступен');
           return;

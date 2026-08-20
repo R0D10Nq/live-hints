@@ -4,6 +4,11 @@ Live Hints Dashboard Server
 """
 
 import json
+import base64
+import hashlib
+import re
+import csv
+import io
 from datetime import datetime, timedelta
 import os
 from pathlib import Path
@@ -22,13 +27,36 @@ async def verify_token(request: Request, call_next):
         token = request.query_params.get('token') or request.headers.get('x-dashboard-token')
         if token != DASHBOARD_TOKEN:
             if request.url.path.startswith('/api/'):
-                return JSONResponse(status_code=401, content={'detail': 'Unauthorized'})
-            return HTMLResponse('<h1>Unauthorized</h1>', status_code=401)
+                return JSONResponse(status_code=401, content={'detail': 'Доступ запрещён'})
+            return HTMLResponse('<h1>Доступ запрещён</h1>', status_code=401)
     return await call_next(request)
 
+
+@app.middleware('http')
+async def add_security_headers(request: Request, call_next):
+    response = await call_next(request)
+    template = TEMPLATE_FILE.read_text(encoding='utf-8') if TEMPLATE_FILE.exists() else ''
+    inline_scripts = re.findall(r'<script>(.*?)</script>', template, flags=re.DOTALL)
+    script_hashes = []
+    for script in inline_scripts:
+        digest = hashlib.sha256(script.encode('utf-8')).digest()
+        script_hashes.append(f"'sha256-{base64.b64encode(digest).decode('ascii')}'")
+
+    response.headers['Content-Security-Policy'] = (
+        "default-src 'self'; "
+        f"script-src 'self' https://cdn.jsdelivr.net {' '.join(script_hashes)}; "
+        "style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; "
+        "object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'"
+    )
+    response.headers['X-Content-Type-Options'] = 'nosniff'
+    response.headers['X-Frame-Options'] = 'DENY'
+    response.headers['Referrer-Policy'] = 'no-referrer'
+    return response
+
 # Пути к данным
-DATA_DIR = Path(__file__).parent.parent / "data"
-METRICS_FILE = DATA_DIR / "metrics.jsonl"
+RUNTIME_ROOT = Path(os.getenv('LIVE_HINTS_DATA_DIR', Path(__file__).parent.parent))
+DATA_DIR = RUNTIME_ROOT / "data"
+METRICS_FILE = RUNTIME_ROOT / "logs" / "metrics.jsonl"
 SESSIONS_FILE = DATA_DIR / "sessions.json"
 TEMPLATE_FILE = Path(__file__).parent / "templates" / "dashboard.html"
 
@@ -81,23 +109,24 @@ def calculate_stats(metrics: list) -> dict:
     errors = []
     
     for m in metrics:
-        event = m.get('event', '')
+        event = m.get('event_type', m.get('event', ''))
+        data = m.get('data', m)
         
-        if event == 'stt_transcription':
-            lat = m.get('latency_ms', 0)
+        if event in {'transcription', 'stt_transcription'}:
+            lat = data.get('latency_ms', 0)
             if lat > 0:
                 stt_latencies.append(lat)
         
-        elif event == 'llm_response':
-            lat = m.get('latency_ms', 0)
+        elif event in {'hint_response', 'llm_response'}:
+            lat = data.get('total_ms', data.get('latency_ms', 0))
             if lat > 0:
                 llm_latencies.append(lat)
             
-            q_type = m.get('question_type', 'general')
+            q_type = data.get('question_type', 'general')
             if q_type in question_types:
                 question_types[q_type] += 1
             
-            if m.get('cached'):
+            if data.get('cached'):
                 cache_hits += 1
             else:
                 cache_misses += 1
@@ -106,7 +135,7 @@ def calculate_stats(metrics: list) -> dict:
             errors.append({
                 'timestamp': m.get('timestamp'),
                 'component': m.get('component'),
-                'message': m.get('message')
+                'message': data.get('message')
             })
     
     return {
@@ -151,7 +180,7 @@ async def dashboard():
 @app.get("/api/stats")
 async def get_stats(hours: int = 24):
     """Получить статистику за последние N часов"""
-    metrics = load_metrics(hours)
+    metrics = load_metrics(max(1, min(hours, 24 * 30)))
     stats = calculate_stats(metrics)
     return stats
 
@@ -181,12 +210,24 @@ async def export_metrics():
     if not metrics:
         return {"error": "Нет данных"}
     
-    # Простой CSV формат
-    lines = ["timestamp,event,latency_ms,question_type,cached"]
+    output = io.StringIO(newline='')
+    writer = csv.writer(output, lineterminator='\n')
+    writer.writerow(['timestamp', 'event_type', 'component', 'latency_ms', 'question_type', 'cached'])
     for m in metrics:
-        lines.append(f"{m.get('timestamp','')},{m.get('event','')},{m.get('latency_ms',0)},{m.get('question_type','')},{m.get('cached','')}")
-    
-    return {"csv": "\n".join(lines)}
+        data = m.get('data', {})
+        latency_ms = data.get('latency_ms', data.get('total_ms', 0))
+        writer.writerow(
+            [
+                m.get('timestamp', ''),
+                m.get('event_type', m.get('event', '')),
+                m.get('component', ''),
+                latency_ms,
+                data.get('question_type', ''),
+                data.get('cached', ''),
+            ]
+        )
+
+    return {'csv': output.getvalue()}
 
 
 # ========== MAIN ==========

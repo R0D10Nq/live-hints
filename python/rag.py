@@ -24,7 +24,8 @@ class SimpleRAG:
     
     def _load_user_context(self):
         """Загрузка контекста пользователя"""
-        context_path = Path(__file__).parent / 'user_context.txt'
+        runtime_root = Path(os.getenv('LIVE_HINTS_DATA_DIR', Path(__file__).parent))
+        context_path = runtime_root / 'user_context.txt'
         try:
             if context_path.exists():
                 self.user_context = context_path.read_text(encoding='utf-8')

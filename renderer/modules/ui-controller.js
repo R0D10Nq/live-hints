@@ -124,14 +124,20 @@ export class UIController {
     if (isRunning) {
       btn.classList.remove('btn-start');
       btn.classList.add('btn-stop');
-      if (icon) icon.textContent = '■';
+      if (icon) {
+        icon.innerHTML =
+          '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="6" y="6" width="12" height="12" /></svg>';
+      }
       if (label) label.textContent = 'Стоп';
       if (btnPause) btnPause.disabled = false;
       if (btnAsk) btnAsk.disabled = false;
     } else {
       btn.classList.remove('btn-stop');
       btn.classList.add('btn-start');
-      if (icon) icon.textContent = '▶';
+      if (icon) {
+        icon.innerHTML =
+          '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="m7 4 13 8-13 8V4Z" /></svg>';
+      }
       if (label) label.textContent = 'Старт';
       if (btnPause) btnPause.disabled = true;
       if (btnAsk) btnAsk.disabled = true;
@@ -147,11 +153,17 @@ export class UIController {
 
     if (isPaused) {
       btnPause.classList.add('paused');
-      if (icon) icon.textContent = '▶';
+      if (icon) {
+        icon.innerHTML =
+          '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="m7 4 13 8-13 8V4Z" /></svg>';
+      }
       if (label) label.textContent = 'Продолжить';
     } else {
       btnPause.classList.remove('paused');
-      if (icon) icon.textContent = '⏸';
+      if (icon) {
+        icon.innerHTML =
+          '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="6" y="4" width="4" height="16" /><rect x="14" y="4" width="4" height="16" /></svg>';
+      }
       if (label) label.textContent = 'Пауза';
     }
   }

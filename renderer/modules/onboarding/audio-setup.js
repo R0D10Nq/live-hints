@@ -21,7 +21,7 @@ export class AudioSetup {
 
       this.updateMicStatus('granted', 'Доступ предоставлен');
       this.app.elements.btnRequestMic.disabled = true;
-      this.app.elements.btnRequestMic.innerHTML = '<span class="btn-icon">✓</span> Доступ получен';
+      this.app.elements.btnRequestMic.textContent = 'Доступ получен';
 
       this.app.elements.micDeviceSelection.classList.remove('hidden');
       await this.populateMicrophoneList();
@@ -37,7 +37,8 @@ export class AudioSetup {
     const statusText = this.app.elements.micStatus.querySelector('.status-text');
 
     statusIcon.className = 'status-icon ' + status;
-    statusIcon.textContent = status === 'granted' ? '✓' : status === 'denied' ? '✕' : '○';
+    statusIcon.textContent =
+      status === 'granted' ? 'Доступен' : status === 'denied' ? 'Запрещён' : 'Ожидание';
     statusText.textContent = text;
   }
 

@@ -145,7 +145,7 @@
   <body>
     <div class="container">
       <h1>Live Hints - Аналитика</h1>
-      <button class="refresh-btn" onclick="loadStats()">Обновить данные</button>
+      <button class="refresh-btn" id="refresh-data" type="button">Обновить данные</button>
 
       <div class="grid">
         <!-- STT Stats -->
@@ -274,14 +274,19 @@
 
           // Errors
           const errorsList = document.getElementById('errors-list');
+          errorsList.replaceChildren();
           if (data.errors.length === 0) {
-            errorsList.innerHTML = '<p style="color:#94a3b8">Нет ошибок</p>';
+            const empty = document.createElement('p');
+            empty.style.color = '#94a3b8';
+            empty.textContent = 'Нет ошибок';
+            errorsList.appendChild(empty);
           } else {
-            errorsList.innerHTML = data.errors
-              .map(
-                (e) => `<div class="error-item">${e.timestamp}: [${e.component}] ${e.message}</div>`
-              )
-              .join('');
+            for (const error of data.errors) {
+              const item = document.createElement('div');
+              item.className = 'error-item';
+              item.textContent = `${error.timestamp}: [${error.component}] ${error.message}`;
+              errorsList.appendChild(item);
+            }
           }
         } catch (e) {
           console.error('Ошибка загрузки статистики:', e);
@@ -296,24 +301,32 @@
           const data = await resp.json();
 
           const list = document.getElementById('sessions-list');
+          list.replaceChildren();
           if (data.sessions.length === 0) {
-            list.innerHTML = '<p style="color:#94a3b8">Нет сессий</p>';
+            const empty = document.createElement('p');
+            empty.style.color = '#94a3b8';
+            empty.textContent = 'Нет сессий';
+            list.appendChild(empty);
             return;
           }
 
-          list.innerHTML = data.sessions
-            .map(
-              (s) => `
-                    <div class="session-item">
-                        <div class="session-date">${new Date(s.date).toLocaleString('ru-RU')}</div>
-                        <div class="session-stats">
-                            Транскрипт: ${(s.transcript || '').split('\\n').length} строк, 
-                            Подсказки: ${(s.hints || '').split('\\n').length} строк
-                        </div>
-                    </div>
-                `
-            )
-            .join('');
+          for (const session of data.sessions) {
+            const item = document.createElement('div');
+            item.className = 'session-item';
+
+            const date = document.createElement('div');
+            date.className = 'session-date';
+            date.textContent = new Date(session.date).toLocaleString('ru-RU');
+
+            const stats = document.createElement('div');
+            stats.className = 'session-stats';
+            const transcriptCount = (session.transcript || '').split('\n').length;
+            const hintsCount = (session.hints || '').split('\n').length;
+            stats.textContent = `Транскрипт: ${transcriptCount} строк, подсказки: ${hintsCount} строк`;
+
+            item.append(date, stats);
+            list.appendChild(item);
+          }
         } catch (e) {
           console.error('Ошибка загрузки сессий:', e);
         }
@@ -364,7 +377,7 @@
         qtChart = new Chart(ctx, {
           type: 'doughnut',
           data: {
-            labels: ['Technical', 'Experience', 'General'],
+            labels: ['Технические', 'Опыт', 'Общие'],
             datasets: [
               {
                 data: [data.technical, data.experience, data.general],
@@ -380,6 +393,7 @@
         });
       }
 
+      document.getElementById('refresh-data').addEventListener('click', loadStats);
       loadStats();
       setInterval(loadStats, 30000);
     </script>

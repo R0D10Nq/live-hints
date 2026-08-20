@@ -176,6 +176,39 @@ class TestCalculateStats:
         assert result['cache']['hits'] == 1
         assert result['cache']['misses'] == 1
         assert result['cache']['hit_rate'] == 50.0
+
+    def test_actual_metrics_schema(self):
+        """Обрабатывает фактическую схему, которую пишет metrics.py"""
+        from dashboard_server import calculate_stats
+
+        metrics = [
+            {
+                'event_type': 'transcription',
+                'component': 'stt',
+                'data': {'latency_ms': 180},
+            },
+            {
+                'event_type': 'hint_response',
+                'component': 'llm',
+                'data': {
+                    'total_ms': 850,
+                    'question_type': 'technical',
+                    'cached': True,
+                },
+            },
+            {
+                'event_type': 'error',
+                'component': 'llm',
+                'data': {'message': '<script>alert(1)</script>'},
+            },
+        ]
+
+        result = calculate_stats(metrics)
+
+        assert result['stt']['latencies'] == [180]
+        assert result['llm']['latencies'] == [850]
+        assert result['cache']['hits'] == 1
+        assert result['errors'][0]['message'] == '<script>alert(1)</script>'
     
     def test_error_metrics(self):
         """Статистика ошибок"""

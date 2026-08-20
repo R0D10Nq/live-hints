@@ -179,6 +179,42 @@ class TestHintEndpoint:
         
         assert response.status_code == 400
 
+    @pytest.mark.parametrize(
+        'payload',
+        [
+            {'text': 'достаточно длинный текст', 'max_tokens': 2001},
+            {'text': 'достаточно длинный текст', 'temperature': 2.1},
+            {'text': 'достаточно длинный текст', 'context': ['контекст'] * 51},
+            {'text': 'достаточно длинный текст', 'unexpected': True},
+        ],
+    )
+    def test_hint_rejects_oversized_or_unknown_fields(self, payload):
+        """Отклоняет параметры за разрешёнными границами"""
+        from llm_server import app
+        client = TestClient(app)
+
+        response = client.post('/hint', json=payload)
+
+        assert response.status_code == 400
+        assert response.json()['detail'] == 'Ошибка проверки входных данных'
+
+
+class TestVisionEndpointValidation:
+    """Проверки ограничений запросов анализа изображения"""
+
+    def test_vision_rejects_oversized_prompt(self):
+        """Отклоняет слишком длинный промпт до вызова модели"""
+        from llm_server import app
+        client = TestClient(app)
+
+        response = client.post('/vision/analyze', json={
+            'image_base64': 'aGVsbG8=',
+            'prompt': 'а' * 4001,
+        })
+
+        assert response.status_code == 400
+        assert response.json()['detail'] == 'Ошибка проверки входных данных'
+
 
 class TestCacheClearEndpoint:
     """Тесты для /cache/clear endpoint"""

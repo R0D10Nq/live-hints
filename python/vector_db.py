@@ -12,8 +12,9 @@ from pathlib import Path
 logger = logging.getLogger('VectorDB')
 
 # Путь к базе данных
-DB_PATH = Path(__file__).parent / 'data' / 'chroma_db'
-QUESTIONS_PATH = Path(__file__).parent / 'data' / 'questions_db.json'
+RUNTIME_ROOT = Path(os.getenv('LIVE_HINTS_DATA_DIR', Path(__file__).parent))
+DB_PATH = RUNTIME_ROOT / 'data' / 'chroma_db'
+QUESTIONS_PATH = RUNTIME_ROOT / 'data' / 'questions_db.json'
 
 # Порог схожести для instant response (понижен для лучшего покрытия)
 INSTANT_THRESHOLD = 0.88
