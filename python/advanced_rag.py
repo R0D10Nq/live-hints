@@ -15,9 +15,10 @@ import json
 logger = logging.getLogger('AdvancedRAG')
 
 # Конфигурация
-CHROMA_PERSIST_DIR = Path(__file__).parent.parent / 'data' / 'chroma'
-USER_CONTEXT_PATH = Path(__file__).parent / 'user_context.txt'
-SESSION_MEMORY_PATH = Path(__file__).parent.parent / 'data' / 'session_memory.json'
+RUNTIME_ROOT = Path(os.getenv('LIVE_HINTS_DATA_DIR', Path(__file__).parent.parent))
+CHROMA_PERSIST_DIR = RUNTIME_ROOT / 'data' / 'chroma'
+USER_CONTEXT_PATH = RUNTIME_ROOT / 'user_context.txt'
+SESSION_MEMORY_PATH = RUNTIME_ROOT / 'data' / 'session_memory.json'
 
 # Adaptive context window настройки
 CONTEXT_SIMPLE = 3      # Для простых вопросов
@@ -380,7 +381,7 @@ class AdvancedRAG:
         enhanced_prompt += '''
 
 ═══════════════════════════════════════════════════════════════
-⚠️ КРИТИЧЕСКИ ВАЖНО:
+КРИТИЧЕСКИ ВАЖНО:
 1. Отвечай ТОЛЬКО на ПОСЛЕДНИЙ вопрос в диалоге
 2. Предыдущие вопросы даны ТОЛЬКО для контекста - НЕ отвечай на них
 3. Если вопрос связан с предыдущим обсуждением, учитывай контекст

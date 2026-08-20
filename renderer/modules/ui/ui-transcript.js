@@ -12,6 +12,16 @@ export class UITranscript {
     this.lastTranscriptText = '';
   }
 
+  setCollapseIcon(button, direction) {
+    if (!button) return;
+    const paths = {
+      left: 'M15 18 9 12l6-6',
+      right: 'm9 18 6-6-6-6',
+      compact: 'M6 12h12',
+    };
+    button.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="${paths[direction] || paths.left}" /></svg>`;
+  }
+
   toggle() {
     const sidebar = this.elements.transcriptSidebar;
     const btnCollapse = this.elements.btnToggleSidebar;
@@ -48,13 +58,13 @@ export class UITranscript {
     }
 
     if (btnCollapse) {
-      const icons = { expanded: '◀', compact: '◁', collapsed: '▶' };
+      const icons = { expanded: 'left', compact: 'compact', collapsed: 'right' };
       const titles = {
         expanded: 'Компактный режим',
         compact: 'Свернуть транскрипт',
         collapsed: 'Развернуть транскрипт',
       };
-      btnCollapse.textContent = icons[newState];
+      this.setCollapseIcon(btnCollapse, icons[newState]);
       btnCollapse.title = titles[newState];
     }
 
@@ -81,7 +91,7 @@ export class UITranscript {
         sidebar.classList.remove('expanded', 'compact', 'collapsed');
         sidebar.classList.add(state);
 
-        const icons = { expanded: '◀', compact: '◁', collapsed: '▶' };
+        const icons = { expanded: 'left', compact: 'compact', collapsed: 'right' };
         const titles = {
           expanded: 'Компактный режим',
           compact: 'Свернуть транскрипт',
@@ -89,7 +99,7 @@ export class UITranscript {
         };
 
         if (btnCollapse) {
-          btnCollapse.textContent = icons[state];
+          this.setCollapseIcon(btnCollapse, icons[state]);
           btnCollapse.title = titles[state];
         }
         if (btnExpand) {

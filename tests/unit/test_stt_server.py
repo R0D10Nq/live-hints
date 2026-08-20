@@ -46,6 +46,44 @@ class TestSTTServer:
         server.init_model()
         
         mock_transcriber.assert_called_once()
+
+    @patch('stt_server.get_audio_mode', return_value='loopback')
+    def test_custom_port_is_stored(self, mock_audio_mode):
+        """Переданный порт сохраняется в экземпляре сервера"""
+        from stt_server import DynamicSTTServer
+
+        server = DynamicSTTServer(mode='auto', port=8764)
+
+        assert server.port == 8764
+        assert server.mode == 'loopback'
+
+    @pytest.mark.asyncio
+    @patch('stt_server.StreamingTranscriber')
+    @patch('stt_server.websockets.serve')
+    async def test_start_server_passes_custom_port(self, mock_serve, mock_transcriber):
+        """start_server передаёт пользовательский порт в WebSocket сервер"""
+        from stt_server import DynamicSTTServer
+
+        context_manager = AsyncMock()
+        context_manager.__aenter__.return_value = None
+        context_manager.__aexit__.return_value = None
+        mock_serve.return_value = context_manager
+
+        server = DynamicSTTServer(mode='microphone', port=8764)
+        server.init_model = MagicMock()
+        server.start_audio_capture = MagicMock()
+        server.stop_audio_capture = MagicMock()
+
+        async def stop_after_start():
+            await asyncio.sleep(0)
+            server._shutdown_event.set()
+
+        task = asyncio.create_task(stop_after_start())
+        await server.start_server()
+        await task
+
+        mock_serve.assert_called_once()
+        assert mock_serve.call_args.args[2] == 8764
     
 
 

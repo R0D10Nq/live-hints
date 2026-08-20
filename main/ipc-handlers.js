@@ -4,6 +4,33 @@
 
 const { ipcMain, screen } = require('electron');
 
+const MAX_IMPORTED_FILE_BYTES = 10 * 1024 * 1024;
+const MAX_CONTEXT_CHARS = 1_000_000;
+const ALLOWED_FILE_TYPES = new Set(['pdf', 'docx', 'txt', 'md']);
+const ALLOWED_SETTINGS = new Map([
+  ['provider', 'string'],
+  ['profile', 'string'],
+  ['autoHints', 'boolean'],
+  ['dualAudio', 'boolean'],
+  ['alwaysOnTop', 'boolean'],
+  ['compactMode', 'boolean'],
+  ['theme', 'string'],
+  ['opacity', 'number'],
+]);
+
+function validateSetting(key, value) {
+  const expectedType = ALLOWED_SETTINGS.get(key);
+  if (!expectedType) {
+    throw new Error(`Настройка ${key} не разрешена`);
+  }
+  if (typeof value !== expectedType) {
+    throw new TypeError(`Настройка ${key} должна иметь тип ${expectedType}`);
+  }
+  if (key === 'opacity' && (value < 50 || value > 100)) {
+    throw new RangeError('Прозрачность должна быть в диапазоне от 50 до 100');
+  }
+}
+
 function setupIPC(handlers) {
   const { windowManager, stealthManager, processManager, store, onStealthToggle } = handlers;
 
@@ -96,9 +123,40 @@ function setupIPC(handlers) {
   });
 
   // STT
-  ipcMain.handle('stt:start', async () => {
+  ipcMain.handle('runtime:start', async (event, options = {}) => {
     try {
-      processManager.startSTTProcess('auto');
+      await processManager.startLLMProcess();
+      await processManager.startSTTProcess('auto', 8765);
+      if (options.dualAudio === true) {
+        await processManager.startSTTProcess('microphone', 8764);
+      }
+      return { success: true };
+    } catch (error) {
+      processManager.stopAllProcesses();
+      return { success: false, error: error.message };
+    }
+  });
+
+  ipcMain.handle('runtime:stop', async () => {
+    processManager.stopAllProcesses();
+    return { success: true };
+  });
+
+  ipcMain.handle('llm:start', async () => {
+    try {
+      await processManager.startLLMProcess();
+      return { success: true };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  });
+
+  ipcMain.handle('stt:start', async (event, options = {}) => {
+    try {
+      await processManager.startSTTProcess('auto', 8765);
+      if (options.dualAudio === true) {
+        await processManager.startSTTProcess('microphone', 8764);
+      }
       return { success: true };
     } catch (error) {
       return { success: false, error: error.message };
@@ -106,14 +164,14 @@ function setupIPC(handlers) {
   });
 
   ipcMain.handle('stt:stop', async () => {
-    processManager.stopAllProcesses();
+    processManager.stopSTTProcess();
     return { success: true };
   });
 
   ipcMain.handle('stt:switch-mode', async (event, mode) => {
     try {
-      processManager.stopAllProcesses();
-      processManager.startSTTProcess(mode);
+      processManager.stopSTTProcess();
+      await processManager.startSTTProcess(mode);
       return { success: true, mode };
     } catch (error) {
       return { success: false, error: error.message };
@@ -123,10 +181,10 @@ function setupIPC(handlers) {
   // Audio capture
   ipcMain.handle('audio:start-capture', async (event, options = {}) => {
     try {
-      processManager.startAudioCaptureProcess(options);
+      const { audioCaptureProcess, micCaptureProcess } =
+        processManager.startAudioCaptureProcess(options);
       const win = windowManager.getMainWindow();
       if (win) {
-        const { audioCaptureProcess, micCaptureProcess } = processManager;
         audioCaptureProcess?.stdout?.on('data', (data) => {
           win.webContents.send('audio:pcm-data', data, 'loopback');
         });
@@ -141,7 +199,7 @@ function setupIPC(handlers) {
   });
 
   ipcMain.handle('audio:stop-capture', async () => {
-    processManager.stopAllProcesses();
+    processManager.stopAudioCaptureProcesses();
     return { success: true };
   });
 
@@ -236,7 +294,13 @@ function setupIPC(handlers) {
   // Парсинг загруженных пользователем файлов из буфера
   ipcMain.handle('file:parse-buffer', async (event, bufferData, type) => {
     try {
+      if (!ALLOWED_FILE_TYPES.has(type)) {
+        throw new Error(`Тип файла ${type} не поддерживается`);
+      }
       const buffer = Buffer.from(bufferData);
+      if (buffer.length > MAX_IMPORTED_FILE_BYTES) {
+        throw new Error('Размер файла превышает 10 МБ');
+      }
       if (type === 'pdf') {
         const pdfParse = require('pdf-parse');
         const data = await pdfParse(buffer);
@@ -255,7 +319,11 @@ function setupIPC(handlers) {
 
   // Settings
   ipcMain.handle('settings:get', (event, key) => store.get(key));
-  ipcMain.handle('settings:set', (event, key, value) => store.set(key, value));
+  ipcMain.handle('settings:set', (event, key, value) => {
+    validateSetting(key, value);
+    store.set(key, value);
+    return true;
+  });
   ipcMain.handle('settings:getAll', () => store.store);
   ipcMain.handle('settings:reset', () => {
     store.clear();
@@ -264,59 +332,30 @@ function setupIPC(handlers) {
     return true;
   });
 
-  // File operations
-  ipcMain.handle('file:parse', async (event, filePath, type) => {
-    const fs = require('fs');
-    const pathModule = require('path');
-    // Защита от Path Traversal: проверяем что путь внутри проекта
-    const projectRoot = pathModule.resolve(__dirname, '..');
-    const resolved = pathModule.resolve(projectRoot, filePath);
-    if (!resolved.startsWith(projectRoot + pathModule.sep)) {
-      return Promise.reject(new Error('Доступ запрещён: путь за пределами проекта'));
-    }
-    try {
-      if (type === 'pdf') {
-        try {
-          const pdfParse = require('pdf-parse');
-          const dataBuffer = fs.readFileSync(resolved);
-          const data = await pdfParse(dataBuffer);
-          return data.text;
-        } catch {
-          return fs.readFileSync(resolved, 'utf-8');
-        }
-      } else if (type === 'docx') {
-        try {
-          const mammoth = require('mammoth');
-          const result = await mammoth.extractRawText({ path: resolved });
-          return result.value;
-        } catch {
-          return '';
-        }
-      } else {
-        return fs.readFileSync(resolved, 'utf-8');
-      }
-    } catch (err) {
-      console.error('[File] Parse error:', err);
-      throw err;
-    }
-  });
-
   ipcMain.handle('file:save-context', async (event, type, content) => {
     const fs = require('fs');
     const path = require('path');
     try {
-      const pythonDir = path.resolve(__dirname, '..', 'python');
+      if (typeof content !== 'string') {
+        throw new TypeError('Контекст должен быть строкой');
+      }
+      if (content.length > MAX_CONTEXT_CHARS) {
+        throw new Error('Размер контекста превышает 1 000 000 символов');
+      }
+      const contextDir = require('electron').app.getPath('userData');
+      fs.mkdirSync(contextDir, { recursive: true });
       const fileMap = {
         resume: 'user_context.txt',
         vacancy: 'vacancy.txt',
         user_context: 'mode_context.txt',
       };
       const filename = fileMap[type];
-      if (filename) {
-        const filePath = path.join(pythonDir, filename);
-        fs.writeFileSync(filePath, content, 'utf-8');
-        console.log(`[File] ${type} сохранено: ${filePath} (${content.length} символов)`);
+      if (!filename) {
+        throw new Error(`Тип контекста ${type} не поддерживается`);
       }
+      const filePath = path.join(contextDir, filename);
+      fs.writeFileSync(filePath, content, 'utf-8');
+      console.log(`[File] ${type} сохранено: ${filePath} (${content.length} символов)`);
       return { success: true };
     } catch (err) {
       console.error('[File] Save error:', err);

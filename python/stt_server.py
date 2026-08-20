@@ -37,7 +37,7 @@ SAMPLE_RATE = 16000
 class DynamicSTTServer:
     """STT сервер с динамическим захватом аудио"""
     
-    def __init__(self, mode='auto'):
+    def __init__(self, mode='auto', host=WEBSOCKET_HOST, port=WEBSOCKET_PORT):
         """
         Args:
             mode: 'loopback', 'microphone', или 'auto' для автоматического определения
@@ -48,6 +48,11 @@ class DynamicSTTServer:
         else:
             self.mode = mode
             
+        if not 1 <= port <= 65535:
+            raise ValueError('Порт должен быть в диапазоне от 1 до 65535')
+
+        self.host = host
+        self.port = port
         self.transcriber: Optional[StreamingTranscriber] = None
         self.clients = set()
         self.audio_capture: Optional[DynamicAudioCapture] = None
@@ -145,30 +150,34 @@ class DynamicSTTServer:
         except websockets.exceptions.ConnectionClosed:
             pass
         finally:
-            self.clients.remove(websocket)
+            self.clients.discard(websocket)
             logger.info(f'[WS] Client disconnected ({len(self.clients)})')
     
     async def start_server(self):
         """Запустить сервер"""
-        self.init_model()
-        self.start_audio_capture()
         self.running = True
         self._shutdown_event = asyncio.Event()
-        
-        # Сохраняем loop для использования из других потоков
+
+        # Сохраняем loop до запуска рабочего потока.
         self.loop = asyncio.get_running_loop()
-        
-        logger.info(f'Starting STT server on {WEBSOCKET_HOST}:{WEBSOCKET_PORT}')
-        
-        async with websockets.serve(
-            self.handle_client,
-            WEBSOCKET_HOST,
-            WEBSOCKET_PORT,
-            ping_interval=20,
-            ping_timeout=10
-        ):
-            logger.info(f'STT server ready (mode={self.mode})')
-            await self._shutdown_event.wait()  # Ожидаем завершения
+        self.init_model()
+        self.start_audio_capture()
+
+        logger.info(f'Starting STT server on {self.host}:{self.port}')
+
+        try:
+            async with websockets.serve(
+                self.handle_client,
+                self.host,
+                self.port,
+                ping_interval=20,
+                ping_timeout=10
+            ):
+                logger.info(f'STT server ready (mode={self.mode})')
+                await self._shutdown_event.wait()
+        finally:
+            self.running = False
+            self.stop_audio_capture()
     
     async def stop_server(self):
         """Остановить сервер"""
@@ -182,6 +191,8 @@ class DynamicSTTServer:
             except Exception:
                 pass  # Клиент уже отключён
         self.stop_audio_capture()
+        if hasattr(self, 'audio_thread') and self.audio_thread.is_alive():
+            self.audio_thread.join(timeout=2)
         logger.info('STT server stopped')
 
 
@@ -198,7 +209,7 @@ async def main():
     args = parser.parse_args()
     
     # Создаём сервер
-    server = DynamicSTTServer(mode=args.mode)
+    server = DynamicSTTServer(mode=args.mode, port=args.port)
     
     try:
         await server.start_server()

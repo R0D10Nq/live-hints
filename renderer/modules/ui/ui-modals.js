@@ -42,9 +42,9 @@ export class UIModals {
         const tags = session.tags || [];
 
         return `
-          <div class="session-card" data-session-id="${session.id}">
+          <div class="session-card">
             <div class="session-card-header">
-              <span class="session-card-title">${session.name || 'Сессия'}</span>
+              <span class="session-card-title">${this.utils.escapeHtml(session.name || 'Сессия')}</span>
               <span class="session-card-date">${this.app.sessions.formatDateFull(session.date)}</span>
             </div>
             <div class="session-card-stats">
@@ -80,6 +80,10 @@ export class UIModals {
         `;
       })
       .join('');
+
+    this.elements.sessionsList.querySelectorAll('.session-card').forEach((card, index) => {
+      card.dataset.sessionId = String(sessions[index].id);
+    });
 
     this.elements.sessionsList.querySelectorAll('.session-card').forEach((card) => {
       const sessionId = card.dataset.sessionId;

@@ -525,7 +525,6 @@
 }
 
 @keyframes wave {
-
   0%,
   100% {
     transform: scaleY(0.5);
@@ -567,7 +566,7 @@
 }
 
 .checkbox-modern input:checked::after {
-  content: '✓';
+  content: '';
   position: absolute;
   top: 50%;
   left: 50%;
@@ -575,6 +574,18 @@
   color: var(--bg-void);
   font-size: 12px;
   font-weight: bold;
+}
+
+.checkbox-modern input:checked::before {
+  content: '';
+  position: absolute;
+  width: 6px;
+  height: 3px;
+  border-left: 2px solid var(--bg-void);
+  border-bottom: 2px solid var(--bg-void);
+  transform: translate(-50%, -65%) rotate(-45deg);
+  top: 50%;
+  left: 50%;
 }
 
 .check-label {

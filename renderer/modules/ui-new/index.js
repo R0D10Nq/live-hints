@@ -9,7 +9,8 @@ import { HintComponent, TranscriptComponent, ToastComponent } from './components
 import { ModalManager, SettingsPanel, SidebarManager } from './modal-manager.js';
 
 export class NewUIController {
-  constructor() {
+  constructor(app = null) {
+    this.app = app;
     this.animations = animations;
     this.state = state;
     this.modals = new ModalManager();
@@ -56,11 +57,11 @@ export class NewUIController {
 
     // Window controls
     document.getElementById('btn-minimize')?.addEventListener('click', () => {
-      window.electron?.invoke('window:minimize');
+      void window.electron?.minimizeWindow?.();
     });
 
     document.getElementById('btn-close')?.addEventListener('click', () => {
-      window.electron?.invoke('window:close');
+      void window.electron?.closeWindow?.();
     });
 
     // Control bar
@@ -148,8 +149,7 @@ export class NewUIController {
 
     document.getElementById('btn-onboarding-reset')?.addEventListener('click', async () => {
       if (confirm('Вы уверены, что хотите сбросить онбординг? Приложение будет перезапущено.')) {
-        await window.electron?.invoke('settings:reset');
-        window.electron?.invoke('window:close'); // This will trigger quit in main if mainWin is closed and it was the only one? No, electron-store reset then restart is better.
+        await window.electron?.settingsReset?.();
       }
     });
 
@@ -165,9 +165,13 @@ export class NewUIController {
       state.updateSetting('dualAudio', e.target.checked);
     });
 
+    document.getElementById('auto-hints')?.addEventListener('change', (e) => {
+      state.updateSetting('autoHints', e.target.checked);
+    });
+
     document.getElementById('always-on-top')?.addEventListener('change', (e) => {
       state.updateSetting('alwaysOnTop', e.target.checked);
-      window.electron?.send('window:set-always-on-top', e.target.checked);
+      void window.electron?.setAlwaysOnTop?.(e.target.checked);
     });
 
     document.getElementById('compact-mode')?.addEventListener('change', (e) => {
@@ -181,7 +185,7 @@ export class NewUIController {
     });
 
     document.getElementById('opacity-slider')?.addEventListener('input', (e) => {
-      const value = e.target.value;
+      const value = Number(e.target.value);
       state.updateSetting('opacity', value);
       document.getElementById('opacity-value').textContent = `${value}%`;
       document.body.style.opacity = value / 100;
@@ -247,29 +251,25 @@ export class NewUIController {
   }
 
   // Session actions
-  toggleSession() {
+  async toggleSession() {
     const isActive = state.get('session.isActive');
 
     if (isActive) {
-      state.stopSession();
-      this.updateToggleButton(false);
+      await this.app?.stopSession?.();
     } else {
-      state.startSession();
-      this.updateToggleButton(true);
-      void window.electron?.startSTT();
+      await this.app?.startSession?.();
     }
   }
 
-  togglePause() {
+  async togglePause() {
     const isPaused = state.get('session.isPaused');
 
     if (isPaused) {
-      state.resumeSession();
+      await this.app?.resumeSession?.();
     } else {
-      state.pauseSession();
+      await this.app?.pauseSession?.();
     }
 
-    this.updatePauseButton(!isPaused);
   }
 
   updateToggleButton(isActive) {
@@ -281,18 +281,22 @@ export class NewUIController {
       btn.classList.remove('btn-primary');
       btn.classList.add('btn-danger');
       text.textContent = 'Стоп';
+      document.getElementById('btn-pause')?.removeAttribute('disabled');
       icon.innerHTML = '<rect x="6" y="6" width="12" height="12"/>';
     } else {
       btn.classList.remove('btn-danger');
       btn.classList.add('btn-primary');
       text.textContent = 'Старт';
+      document.getElementById('btn-pause')?.setAttribute('disabled', 'disabled');
       icon.innerHTML = '<polygon points="5 3 19 12 5 21 5 3"/>';
     }
   }
 
   updatePauseButton(isPaused) {
     const btn = document.getElementById('btn-pause');
-    btn.textContent = isPaused ? 'Продолжить' : 'Пауза';
+    const text = document.getElementById('text-pause');
+    if (text) text.textContent = isPaused ? 'Продолжить' : 'Пауза';
+    btn?.classList.toggle('paused', isPaused);
   }
 
   // Status updates
@@ -317,10 +321,7 @@ export class NewUIController {
 
   // Hint actions
   askHint() {
-    state.set('ui.status', 'processing');
-    this.hints.showLoadingState();
-
-    window.electron?.send('generate-hint');
+    void this.app?.requestHint?.();
   }
 
   addHint(hintData) {
@@ -332,7 +333,14 @@ export class NewUIController {
       context: hintData.context,
     });
 
-    state.set('ui.status', 'recording');
+    state.set(
+      'ui.status',
+      state.get('session.isPaused')
+        ? 'paused'
+        : state.get('session.isActive')
+          ? 'recording'
+          : 'idle'
+    );
   }
 
   copyCurrentHint() {
@@ -353,19 +361,20 @@ export class NewUIController {
 
   // Screenshot
   takeScreenshot() {
-    window.electron?.send('take-screenshot');
-    this.showToast('Скриншот сделан', 'success');
+    void this.app?.captureAndAnalyze?.();
   }
 
   // Direct message
-  sendDirectMessage() {
+  async sendDirectMessage() {
     const input = document.getElementById('direct-message-input');
     const text = input?.value.trim();
 
     if (text) {
-      window.electron?.send('direct-message', { text });
-      input.value = '';
-      this.showToast('Сообщение отправлено', 'success');
+      const success = await this.app?.sendDirectMessage?.(text);
+      if (success) {
+        input.value = '';
+        this.showToast('Ответ получен', 'success');
+      }
     }
   }
 

@@ -11,13 +11,13 @@ import os
 import sys
 import time
 import threading
-from typing import Optional
+from typing import Annotated, Optional
 
 import requests
 from functools import wraps
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict, Field, StringConstraints
 import uvicorn
 
 from llm import OllamaClient
@@ -83,7 +83,7 @@ def load_user_profile() -> str:
 def load_user_context() -> str:
     """Загружает контекст пользователя"""
     from pathlib import Path
-    context_path = Path(__file__).parent / 'user_context.txt'
+    context_path = Path(os.getenv('LIVE_HINTS_DATA_DIR', Path(__file__).parent)) / 'user_context.txt'
     if context_path.exists():
         with open(context_path, 'r', encoding='utf-8') as f:
             return f.read().strip()
@@ -92,7 +92,8 @@ def load_user_context() -> str:
 
 def load_vacancy_context() -> str:
     """Загружает вакансию из файла"""
-    vacancy_path = os.path.join(os.path.dirname(__file__), 'vacancy.txt')
+    data_dir = os.getenv('LIVE_HINTS_DATA_DIR', os.path.dirname(__file__))
+    vacancy_path = os.path.join(data_dir, 'vacancy.txt')
     try:
         if os.path.exists(vacancy_path):
             with open(vacancy_path, 'r', encoding='utf-8') as f:
@@ -120,21 +121,28 @@ def preload_model(model: str = DEFAULT_MODEL):
 
 
 # ========== PYDANTIC MODELS ==========
+ContextEntry = Annotated[str, StringConstraints(max_length=10_000)]
+
+
 class HintRequest(BaseModel):
-    text: str
-    context: list = []
-    profile: str = 'interview'
-    model: Optional[str] = None
-    max_tokens: int = 500
-    temperature: float = 0.8
-    system_prompt: Optional[str] = None
-    user_context: Optional[str] = None
+    model_config = ConfigDict(extra='forbid')
+
+    text: str = Field(min_length=5, max_length=100_000)
+    context: list[ContextEntry] = Field(default_factory=list, max_length=50)
+    profile: str = Field(default='interview', min_length=1, max_length=64)
+    model: Optional[str] = Field(default=None, min_length=1, max_length=128)
+    max_tokens: int = Field(default=500, ge=1, le=2_000)
+    temperature: float = Field(default=0.8, ge=0.0, le=2.0)
+    system_prompt: Optional[str] = Field(default=None, max_length=20_000)
+    user_context: Optional[str] = Field(default=None, max_length=100_000)
 
 
 class VisionRequest(BaseModel):
-    image_base64: str
-    prompt: str = "Опиши что видишь на изображении"
-    model: Optional[str] = None
+    model_config = ConfigDict(extra='forbid')
+
+    image_base64: str = Field(min_length=1, max_length=15_000_000)
+    prompt: str = Field(default='Опиши что видишь на изображении', min_length=1, max_length=4_000)
+    model: Optional[str] = Field(default=None, min_length=1, max_length=128)
 
 
 # ========== ИНИЦИАЛИЗАЦИЯ ==========
@@ -154,10 +162,7 @@ ollama = OllamaClient(OLLAMA_URL, DEFAULT_MODEL, hint_cache, FULL_CONTEXT, USER_
 app = FastAPI(title='Live Hints LLM Server')
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        'http://localhost:*',
-        'http://127.0.0.1:*',
-    ],
+    allow_origin_regex=r'^(https?://(localhost|127\.0\.0\.1)(:\d+)?|null)$',
     allow_credentials=False,
     allow_methods=['GET', 'POST'],
     allow_headers=['Content-Type']
@@ -171,7 +176,7 @@ from fastapi.responses import JSONResponse
 async def validation_exception_handler(request, exc):
     return JSONResponse(
         status_code=400,
-        content={'detail': 'Validation error', 'errors': exc.errors()}
+        content={'detail': 'Ошибка проверки входных данных', 'errors': exc.errors()}
     )
 from llm.routes import LLMRouter
 router = LLMRouter(app, ollama, hint_cache)

@@ -13,7 +13,8 @@ from dataclasses import dataclass, asdict
 from threading import Lock
 
 # Путь к файлу логов
-METRICS_DIR = Path(__file__).parent.parent / 'logs'
+RUNTIME_ROOT = Path(os.getenv('LIVE_HINTS_DATA_DIR', Path(__file__).parent.parent))
+METRICS_DIR = RUNTIME_ROOT / 'logs'
 METRICS_FILE = METRICS_DIR / 'metrics.jsonl'
 
 # Блокировка для thread-safe записи

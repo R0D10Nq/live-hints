@@ -5,9 +5,13 @@ contextBridge.exposeInMainWorld('electron', {
   minimizeWindow: () => ipcRenderer.invoke('window:minimize'),
   closeWindow: () => ipcRenderer.invoke('window:close'),
   setIgnoreMouse: (ignore) => ipcRenderer.invoke('window:set-ignore-mouse', ignore),
+  setAlwaysOnTop: (alwaysOnTop) => ipcRenderer.invoke('window:set-always-on-top', alwaysOnTop),
 
   // STT управление
-  startSTT: () => ipcRenderer.invoke('stt:start'),
+  startRuntime: (options) => ipcRenderer.invoke('runtime:start', options),
+  stopRuntime: () => ipcRenderer.invoke('runtime:stop'),
+  startLLM: () => ipcRenderer.invoke('llm:start'),
+  startSTT: (options) => ipcRenderer.invoke('stt:start', options),
   stopSTT: () => ipcRenderer.invoke('stt:stop'),
   switchSTTMode: (mode) => ipcRenderer.invoke('stt:switch-mode', mode),
 
@@ -127,7 +131,6 @@ contextBridge.exposeInMainWorld('electron', {
   settingsReset: () => ipcRenderer.invoke('settings:reset'),
 
   // ===== ONBOARDING / FILES =====
-  parseFile: (filePath, type) => ipcRenderer.invoke('file:parse', filePath, type),
   saveContextFile: (type, content) => ipcRenderer.invoke('file:save-context', type, content),
   finishOnboarding: (settings) => ipcRenderer.invoke('onboarding:finish', settings),
 

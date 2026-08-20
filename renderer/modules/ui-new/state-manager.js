@@ -220,10 +220,19 @@ export class StateManager {
    */
   updateSetting(key, value) {
     this.set(`settings.${key}`, value);
-    // Persist to electron store через безопасный invoke API
+    // Сохраняем настройку через безопасный IPC API.
     if (window.electron?.settingsSet) {
-      void window.electron.settingsSet(key, value);
+      Promise.resolve(window.electron.settingsSet(key, value)).catch((error) => {
+        console.error(`[STATE] Не удалось сохранить настройку ${key}:`, error);
+      });
     }
+  }
+
+  /**
+   * Применить настройку, загруженную из хранилища, без повторной записи.
+   */
+  applySetting(key, value) {
+    this.set(`settings.${key}`, value);
   }
 
   /**

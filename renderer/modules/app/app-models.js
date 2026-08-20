@@ -58,22 +58,24 @@ export class AppModels {
       const data = await resp.json();
 
       if (data.models && data.models.length > 0) {
-        modelSelect.innerHTML = data.models
-          .map((m) => {
-            const name = typeof m === 'string' ? m : m.name;
-            const size = typeof m === 'object' ? ` (${m.size})` : '';
-            const selected = name === data.current ? 'selected' : '';
-            return `<option value="${name}" ${selected}>${name}${size}</option>`;
-          })
-          .join('');
+        modelSelect.replaceChildren();
+        data.models.forEach((model) => {
+          const name = typeof model === 'string' ? model : model?.name;
+          if (!name) return;
+          const option = document.createElement('option');
+          option.value = String(name);
+          option.textContent = `${name}${typeof model === 'object' && model.size ? ` (${model.size})` : ''}`;
+          option.selected = name === data.current;
+          modelSelect.appendChild(option);
+        });
         if (data.current) {
           this.app.hints.currentModel = data.current;
         }
       } else {
-        modelSelect.innerHTML = '<option value="">Нет моделей</option>';
+        modelSelect.replaceChildren(new Option('Нет моделей', ''));
       }
     } catch (e) {
-      modelSelect.innerHTML = '<option value="">Ошибка загрузки</option>';
+      modelSelect.replaceChildren(new Option('Ошибка загрузки', ''));
       logger.error('AppModels', 'Ошибка загрузки моделей:', e);
     }
   }

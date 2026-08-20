@@ -25,7 +25,7 @@
     "setup": "powershell -ExecutionPolicy Bypass -File scripts/dev.ps1",
     "build": "electron-builder --win nsis",
     "build:portable": "electron-builder --win portable",
-    "build:installer": "powershell -ExecutionPolicy Bypass -Command .\\scripts\\nsis-wrapper.ps1"
+    "build:installer": "electron-builder --win nsis"
   },
   "keywords": [
     "electron",
@@ -42,8 +42,8 @@
     "@playwright/test": "^1.58.1",
     "babel-jest": "^30.2.0",
     "cross-env": "^7.0.3",
-    "electron": "^28.3.3",
-    "electron-builder": "^26.0.12",
+    "electron": "^43.4.1",
+    "electron-builder": "^26.15.3",
     "eslint": "^9.39.2",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-prettier": "^5.5.4",
@@ -55,9 +55,7 @@
   "dependencies": {
     "electron-store": "^8.1.0",
     "mammoth": "^1.11.0",
-    "pdf-parse": "^2.4.5",
-    "uuid": "^9.0.0",
-    "ws": "^8.14.0"
+    "pdf-parse": "^2.4.5"
   },
   "build": {
     "appId": "com.livehints.app",
@@ -68,12 +66,26 @@
     },
     "files": [
       "main.js",
+      "main/**/*",
       "preload.js",
       "renderer/**/*",
-      "src/**/*",
       "python/**/*",
-      "!**/*.pyc",
-      "!**/__pycache__"
+      "package.json",
+      "!**/.history{,/**/*}",
+      "!**/.git{,/**/*}",
+      "!**/.pytest_cache{,/**/*}",
+      "!**/__pycache__{,/**/*}",
+      "!tests{,/**/*}",
+      "!scripts{,/**/*}",
+      "!logs{,/**/*}",
+      "!data{,/**/*}",
+      "!python/data{,/**/*}",
+      "!python/user_context.txt",
+      "!python/vacancy.txt",
+      "!python/mode_context.txt"
+    ],
+    "asarUnpack": [
+      "python/**/*"
     ],
     "win": {
       "target": [
@@ -89,8 +101,7 @@
             "x64"
           ]
         }
-      ],
-      "icon": "renderer/icon.ico"
+      ]
     },
     "nsis": {
       "oneClick": true,
@@ -99,8 +110,6 @@
       "createDesktopShortcut": true,
       "createStartMenuShortcut": false,
       "shortcutName": "Live Hints",
-      "installerIcon": "renderer/icon.ico",
-      "uninstallerIcon": "renderer/icon.ico",
       "runAfterFinish": true
     },
     "portable": {

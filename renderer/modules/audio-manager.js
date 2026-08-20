@@ -50,10 +50,10 @@ export class AudioManager {
       dualAudio.addEventListener('change', (e) => {
         this.dualAudioEnabled = e.target.checked;
         this.app.saveSettings({ dualAudioEnabled: e.target.checked });
-        this.app.ui.showToast(
-          e.target.checked ? 'Dual Audio включён' : 'Dual Audio выключен',
-          'success'
-        );
+        const message = e.target.checked
+          ? 'Два аудиоканала включены'
+          : 'Два аудиоканала выключены';
+        this.app.ui.showToast(message, 'success');
       });
     }
 
@@ -100,16 +100,23 @@ export class AudioManager {
       const loopbackSelect = document.getElementById('loopback-device');
 
       if (inputSelect && data.input) {
-        inputSelect.innerHTML =
-          '<option value="">По умолчанию</option>' +
-          data.input.map((d) => `<option value="${d.index}">${d.name}</option>`).join('');
+        const defaultInputOption = new Option('По умолчанию', '');
+        inputSelect.replaceChildren(defaultInputOption);
+        for (const device of Array.from(data.input)) {
+          const option = new Option(String(device.name || 'Без названия'), String(device.index));
+          inputSelect.appendChild(option);
+        }
       }
 
       if (loopbackSelect && data.output) {
         const loopbacks = data.output.filter((d) => d.isLoopback);
-        loopbackSelect.innerHTML =
-          '<option value="">Авто (Loopback)</option>' +
-          loopbacks.map((d) => `<option value="${d.index}">${d.name}</option>`).join('');
+        const defaultLoopbackOption = new Option('Авто (системный звук)', '');
+        loopbackSelect.replaceChildren(defaultLoopbackOption);
+        for (const loopback of Array.from(loopbacks)) {
+          const name = String(loopback.name || 'Без названия');
+          const value = String(loopback.index);
+          loopbackSelect.appendChild(new Option(name, value));
+        }
       }
     } catch (e) {
       logger.error('AudioManager', 'Ошибка загрузки аудио устройств:', e);
