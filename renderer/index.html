@@ -387,19 +387,22 @@
           </button>
         </div>
         <div class="sidebar-content">
-          <!-- Provider -->
+          <!-- Провайдер -->
           <div class="settings-section">
             <div class="settings-group">
-              <label class="settings-label">Провайдер LLM</label>
-              <select id="llm-provider" class="select" data-testid="llm-provider-select">
-                <option value="ollama" selected>Ollama (Local)</option>
-                <option value="openai">OpenAI</option>
-                <option value="gemini">Gemini</option>
-                <option value="claude">Claude</option>
-                <option value="openrouter">OpenRouter</option>
-                <option value="gigachat_free">GigaChat Free</option>
-                <option value="gigachat_max">GigaChat Max</option>
+              <label class="settings-label" for="llm-provider">Провайдер LLM</label>
+              <select
+                id="llm-provider"
+                name="provider"
+                class="select"
+                data-testid="llm-provider-select"
+                aria-describedby="llm-provider-help"
+              >
+                <option value="ollama" selected>Ollama (локально)</option>
               </select>
+              <small id="llm-provider-help" class="text-muted">
+                Сейчас поддерживается только локальный Ollama.
+              </small>
             </div>
           </div>
 

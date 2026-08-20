@@ -1,0 +1,51 @@
+name: Сообщить об ошибке
+description: Описать воспроизводимую проблему в приложении или документации
+title: '[Ошибка]: '
+labels:
+  - ошибка
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Перед отправкой проверьте последнюю версию и убедитесь, что в описании нет персональных данных или секретов.
+  - type: input
+    id: version
+    attributes:
+      label: Версия
+      description: Номер выпуска или короткий идентификатор коммита.
+      placeholder: Например, v1.0.0
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Окружение
+      description: Версия Windows, модель GPU и версия Ollama.
+      placeholder: Windows 11, RTX ..., Ollama ...
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Шаги воспроизведения
+      description: Опишите последовательность действий.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Ожидаемое поведение
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Фактическое поведение
+      description: Приложите обезличенный лог или текст ошибки.
+    validations:
+      required: true
+  - type: textarea
+    id: checks
+    attributes:
+      label: Проверки
+      description: Какие команды или варианты запуска уже проверены?

@@ -1,7 +1,16 @@
 {
   "name": "live-hints",
   "version": "1.0.0",
-  "description": "Windows desktop overlay для транскрипции системного звука и генерации подсказок",
+  "description": "Локальный Windows-overlay для транскрипции русской речи и подсказок через Ollama",
+  "author": "Rodion Shevtsov",
+  "homepage": "https://github.com/R0D10Nq/live-hints#readme",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/R0D10Nq/live-hints.git"
+  },
+  "bugs": {
+    "url": "https://github.com/R0D10Nq/live-hints/issues"
+  },
   "main": "main.js",
   "scripts": {
     "start": "electron .",
@@ -29,12 +38,16 @@
   },
   "keywords": [
     "electron",
-    "overlay",
+    "windows",
+    "desktop-overlay",
+    "speech-to-text",
     "transcription",
-    "whisper",
-    "llm"
+    "faster-whisper",
+    "ollama",
+    "local-llm",
+    "wasapi",
+    "interview-assistant"
   ],
-  "author": "",
   "license": "MIT",
   "devDependencies": {
     "@babel/core": "^7.29.0",
@@ -88,6 +101,7 @@
       "python/**/*"
     ],
     "win": {
+      "icon": "assets/icon.png",
       "target": [
         {
           "target": "nsis",

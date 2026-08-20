@@ -1,0 +1,34 @@
+name: Предложить улучшение
+description: Предложить новую возможность или улучшение существующего сценария
+title: '[Идея]: '
+labels:
+  - улучшение
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Проблема
+      description: Какой сценарий сейчас неудобен или невозможен?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Предложение
+      description: Опишите желаемое поведение и границы изменения.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Рассмотренные варианты
+      description: Какие обходные пути уже пробовали?
+  - type: checkboxes
+    id: constraints
+    attributes:
+      label: Ограничения
+      options:
+        - label: Предложение не требует отправки аудио или контекста в облако без явного согласия.
+          required: true
+        - label: Я проверил, что похожей задачи ещё нет.
+          required: true
