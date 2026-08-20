@@ -76,7 +76,7 @@ test.describe('Live Hints E2E', () => {
     await expect(statusText).toHaveText('Готов');
   });
 
-  test('должен отображать выбор LLM провайдера', async () => {
+  test('должен отображать только поддерживаемый LLM-провайдер', async () => {
     // Открываем настройки чтобы увидеть селект
     const btnSettings = window.locator('[data-testid="btn-settings"]');
     await btnSettings.click();
@@ -85,9 +85,13 @@ test.describe('Live Hints E2E', () => {
     const providerSelect = window.locator('[data-testid="llm-provider-select"]');
     await expect(providerSelect).toBeVisible();
 
-    // Проверяем опции (7 провайдеров)
+    // Доступен только реально подключённый локальный провайдер.
     const options = providerSelect.locator('option');
-    await expect(options).toHaveCount(7);
+    await expect(options).toHaveCount(1);
+    const ollamaOption = options.first();
+    await expect(ollamaOption).toHaveAttribute('value', 'ollama');
+    await expect(ollamaOption).toHaveText('Ollama (локально)');
+    await expect(providerSelect).toHaveValue('ollama');
 
     // Закрываем настройки
     await btnSettings.click();
@@ -225,18 +229,26 @@ test.describe('Live Hints E2E', () => {
     await expect(btnClose).toBeEnabled();
   });
 
-  test('провайдер должен сохраняться при выборе', async () => {
+  test('нельзя выбрать неподдерживаемого провайдера', async () => {
+    const btnSettings = window.locator('[data-testid="btn-settings"]');
+    await btnSettings.click();
+    await window.waitForTimeout(300);
+
     const providerSelect = window.locator('[data-testid="llm-provider-select"]');
 
-    // Выбираем OpenAI
-    await providerSelect.selectOption('openai');
-
-    // Проверяем что выбран
-    await expect(providerSelect).toHaveValue('openai');
-
-    // Возвращаем на Ollama
-    await providerSelect.selectOption('ollama');
+    await expect(providerSelect.locator('option[value="openai"]')).toHaveCount(0);
+    const unsupportedValue = await providerSelect.evaluate((select) => {
+      select.value = 'openai';
+      return select.value;
+    });
+    expect(unsupportedValue).toBe('');
+    await providerSelect.evaluate((select) => {
+      select.value = 'ollama';
+    });
     await expect(providerSelect).toHaveValue('ollama');
+
+    // Закрываем настройки
+    await btnSettings.click();
   });
 
   test('история сессий должна быть пустой изначально', async () => {
