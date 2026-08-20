@@ -4,7 +4,7 @@
 
 Репозиторий: https://github.com/R0D10Nq/live-hints
 
-Готовый выпуск: https://github.com/R0D10Nq/live-hints/releases/tag/v1.0.0
+Готовый выпуск: https://github.com/R0D10Nq/live-hints/releases/tag/v1.0.2
 
 ![Основной поток Live Hints](https://raw.githubusercontent.com/R0D10Nq/live-hints/main/docs/assets/live-hints-overview.png)
 
@@ -117,14 +117,14 @@ Electron запускает локальные процессы, отслежи�
 Для текущего выпуска нужны:
 
 - Windows 10 или Windows 11;
-- Python 3.10 или новее;
+- Python 3.11 или новее;
 - совместимая NVIDIA GPU с рабочим CUDA-путём;
 - Ollama и загруженная текстовая модель;
 - для анализа скриншотов — отдельная Vision-модель, например `llava:7b`.
 
-Установщик, portable-файл и контрольные суммы опубликованы в выпуске v1.0.0:
+Установщик, portable-файл и контрольные суммы опубликованы в выпуске v1.0.2:
 
-https://github.com/R0D10Nq/live-hints/releases/tag/v1.0.0
+https://github.com/R0D10Nq/live-hints/releases/tag/v1.0.2
 
 Перед запуском стоит прочитать раздел требований в README. Текущий транскрайбер работает через `cuda` и `float16`; автоматического CPU-режима пока нет.
 

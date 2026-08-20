@@ -13,15 +13,15 @@
 - ответы через Ollama без отправки аудио в облачный LLM;
 - история сессий, компактный режим и анализ скриншота через LLaVA;
 - установщик, portable-сборка и SHA-256;
-- 615 локальных проверок, CI и CodeQL.
+- 621 локальная проверка, CI и CodeQL.
 
 Ограничения тоже важны: нужны Windows 10/11, Python, совместимая NVIDIA GPU и Ollama. Portable-файл пока не включает Python, CUDA, Ollama и модели. Первый токен локальной модели в текущих замерах появляется примерно за 2–3 секунды, а не за обещанные «мгновенные» 500 мс.
 
 Репозиторий и скриншоты:
 https://github.com/R0D10Nq/live-hints
 
-Готовый выпуск v1.0.0:
-https://github.com/R0D10Nq/live-hints/releases/tag/v1.0.0
+Готовый выпуск v1.0.2:
+https://github.com/R0D10Nq/live-hints/releases/tag/v1.0.2
 
 Нужны проверки на других видеокартах и версиях Windows. Обратную связь можно оставить здесь:
 https://github.com/R0D10Nq/live-hints/discussions/26
@@ -36,6 +36,6 @@ https://github.com/R0D10Nq/live-hints/discussions/26
 
 Репозиторий: https://github.com/R0D10Nq/live-hints
 
-Выпуск: https://github.com/R0D10Nq/live-hints/releases/tag/v1.0.0
+Выпуск: https://github.com/R0D10Nq/live-hints/releases/tag/v1.0.2
 
 Буду благодарен за проверку на другой конфигурации и звезду, если проект действительно пригодился.
