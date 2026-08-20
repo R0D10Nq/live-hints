@@ -8,7 +8,26 @@
 [![Платформа](https://img.shields.io/badge/платформа-Windows%2010%2F11-2f6feb)](#требования)
 [![Звёзды](https://img.shields.io/github/stars/R0D10Nq/live-hints?style=social)](https://github.com/R0D10Nq/live-hints)
 
-![Главное окно Live Hints](docs/assets/live-hints-overview.png)
+## Как выглядит
+
+Основной поток: слева идёт локальная транскрипция, справа появляются подсказки с учётом контекста разговора.
+
+![Основной поток Live Hints](docs/assets/live-hints-overview.png)
+
+<table>
+  <tr>
+    <td width="50%">
+      <img src="docs/assets/live-hints-settings.png" alt="Базовые настройки Live Hints">
+    </td>
+    <td width="50%">
+      <img src="docs/assets/live-hints-compact-overlay.png" alt="Компактный режим Live Hints">
+    </td>
+  </tr>
+  <tr>
+    <td align="center">Настройки Ollama, профиля и поведения окна</td>
+    <td align="center">Компактный режим поверх рабочего приложения</td>
+  </tr>
+</table>
 
 Если такой сценарий вам полезен, поставьте звезду репозиторию. Это помогает оценить реальный интерес и выбрать следующие доработки.
 
@@ -16,7 +35,7 @@
 
 Готовые файлы находятся на странице [последнего выпуска](https://github.com/R0D10Nq/live-hints/releases/latest):
 
-- установщик `Live Hints Setup ...exe`;
+- установщик `Live.Hints.Setup...exe`;
 - portable-файл `LiveHints-Portable-...exe`;
 - файл SHA-256 для проверки загрузки.
 
