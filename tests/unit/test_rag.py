@@ -250,3 +250,21 @@ class TestGetRag:
             instance2 = rag.get_rag()
         
         assert instance1 is instance2
+
+
+class TestAdvancedRagSecurity:
+    """Проверки безопасного векторного хранилища AdvancedRAG"""
+
+    def test_vector_storage_uses_local_fallback(self):
+        """Постоянное хранилище не активируется даже при старом окружении."""
+        from advanced_rag import AdvancedRAG
+
+        rag = AdvancedRAG.__new__(AdvancedRAG)
+        rag.chroma_client = MagicMock()
+        rag.collection = MagicMock()
+
+        rag._init_vector_storage()
+
+        assert rag.chroma_client is None
+        assert rag.collection is None
+        assert rag.fallback_documents == []

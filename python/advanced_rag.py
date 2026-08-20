@@ -1,6 +1,7 @@
 """
-Advanced RAG - Production-quality Retrieval-Augmented Generation
-Использует ChromaDB для semantic search, reranking и adaptive context window
+Advanced RAG - локальный поиск, повторное ранжирование и адаптивное контекстное окно.
+
+Постоянное хранилище временно отключено до выхода исправленной версии ChromaDB.
 """
 
 import os
@@ -16,7 +17,6 @@ logger = logging.getLogger('AdvancedRAG')
 
 # Конфигурация
 RUNTIME_ROOT = Path(os.getenv('LIVE_HINTS_DATA_DIR', Path(__file__).parent.parent))
-CHROMA_PERSIST_DIR = RUNTIME_ROOT / 'data' / 'chroma'
 USER_CONTEXT_PATH = RUNTIME_ROOT / 'user_context.txt'
 SESSION_MEMORY_PATH = RUNTIME_ROOT / 'data' / 'session_memory.json'
 
@@ -47,11 +47,11 @@ class SessionMemory:
 
 class AdvancedRAG:
     """
-    Production-quality RAG система с:
-    - ChromaDB для semantic search
-    - Reranking для повышения точности
-    - Adaptive context window
-    - Memory consolidation
+    RAG-система с:
+    - локальным поиском по векторным представлениям
+    - повторным ранжированием для повышения точности
+    - адаптивным контекстным окном
+    - объединением памяти сессии
     """
     
     def __init__(self):
@@ -62,7 +62,7 @@ class AdvancedRAG:
         self._model_loaded = False
         
         self._init_embedding_model()
-        self._init_chromadb()
+        self._init_vector_storage()
         self._load_user_context()
         self._load_session_memory()
     
@@ -79,38 +79,20 @@ class AdvancedRAG:
         except Exception as e:
             logger.error(f'[RAG] Ошибка загрузки модели: {e}')
     
-    def _init_chromadb(self):
-        """Инициализация ChromaDB"""
-        try:
-            import chromadb
-            
-            # Создаём директорию для персистентного хранения
-            CHROMA_PERSIST_DIR.mkdir(parents=True, exist_ok=True)
-            
-            # Новый API ChromaDB (>=0.4.0)
-            self.chroma_client = chromadb.PersistentClient(
-                path=str(CHROMA_PERSIST_DIR)
-            )
-            
-            # Создаём или получаем коллекцию
-            self.collection = self.chroma_client.get_or_create_collection(
-                name="live_hints_knowledge",
-                metadata={"hnsw:space": "cosine"}
-            )
-            
-            logger.info(f'[RAG] ChromaDB инициализирован, документов: {self.collection.count()}')
-            
-        except ImportError:
-            logger.warning('[RAG] ChromaDB не установлен, используем fallback')
-            self._init_fallback_storage()
-        except Exception as e:
-            logger.error(f'[RAG] Ошибка ChromaDB: {e}')
-            self._init_fallback_storage()
+    def _init_vector_storage(self):
+        """Использовать безопасное резервное хранилище без ChromaDB."""
+        self.chroma_client = None
+        self.collection = None
+        self._init_fallback_storage()
+        logger.warning(
+            '[RAG] Постоянное хранилище отключено до выхода '
+            'исправленной версии ChromaDB'
+        )
     
     def _init_fallback_storage(self):
-        """Fallback хранилище если ChromaDB недоступен"""
+        """Подготовить резервное хранилище без ChromaDB."""
         self.fallback_documents: List[Tuple[str, str, List[float]]] = []
-        logger.info('[RAG] Используется fallback хранилище')
+        logger.info('[RAG] Используется резервное локальное хранилище')
     
     def _load_user_context(self):
         """Загрузка и индексация контекста пользователя"""
@@ -138,7 +120,7 @@ class AdvancedRAG:
                     
                     logger.info(f'[RAG] Загружено {len(chunks)} чанков из резюме')
                 else:
-                    # Fallback
+                    # Резервное хранилище
                     for chunk in chunks:
                         emb = self._get_embedding(chunk)
                         if emb:
@@ -258,7 +240,7 @@ class AdvancedRAG:
     
     def retrieve(self, query: str, top_k: int = 5) -> List[RetrievedChunk]:
         """
-        Semantic search с reranking.
+        Семантический поиск с повторным ранжированием.
         
         Args:
             query: Текст запроса
@@ -271,7 +253,7 @@ class AdvancedRAG:
         
         if self.collection:
             try:
-                # ChromaDB semantic search
+                # Семантический поиск ChromaDB
                 search_results = self.collection.query(
                     query_texts=[query],
                     n_results=min(top_k * 2, 10),  # Берём больше для reranking
@@ -295,7 +277,7 @@ class AdvancedRAG:
                 logger.error(f'[RAG] Ошибка поиска ChromaDB: {e}')
         
         elif hasattr(self, 'fallback_documents') and self.fallback_documents:
-            # Fallback поиск
+            # Резервный поиск
             query_emb = self._get_embedding(query)
             if query_emb:
                 import numpy as np
