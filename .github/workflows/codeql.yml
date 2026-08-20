@@ -13,12 +13,12 @@ permissions:
   contents: read
 
 concurrency:
-  group: codeql-\${{ github.ref }}
+  group: codeql-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
   analyze:
-    name: CodeQL (\${{ matrix.language }})
+    name: CodeQL (${{ matrix.language }})
     runs-on: ubuntu-latest
     timeout-minutes: 20
     permissions:
@@ -35,8 +35,8 @@ jobs:
       - name: Инициализация CodeQL
         uses: github/codeql-action/init@v3
         with:
-          languages: \${{ matrix.language }}
+          languages: ${{ matrix.language }}
       - name: Анализ CodeQL
         uses: github/codeql-action/analyze@v3
         with:
-          category: /язык:\${{ matrix.language }}
+          category: /язык:${{ matrix.language }}
