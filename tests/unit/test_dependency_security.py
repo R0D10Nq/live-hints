@@ -56,3 +56,15 @@ def test_requests_contains_temp_file_fix():
     pinned_version = next(iter(requests_requirement.specifier)).version
 
     assert Version(pinned_version) >= Version('2.33.0')
+
+
+def test_aiohttp_contains_current_security_fixes():
+    """Потоковый клиент должен использовать исправленную версию aiohttp."""
+    aiohttp_requirement = next(
+        requirement
+        for requirement in _load_requirements()
+        if requirement.name.lower() == 'aiohttp'
+    )
+    pinned_version = next(iter(aiohttp_requirement.specifier)).version
+
+    assert Version(pinned_version) >= Version('3.14.3')
