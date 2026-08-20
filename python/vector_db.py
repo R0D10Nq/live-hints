@@ -1,6 +1,7 @@
 """
-Vector DB - Персистентное хранилище Q&A с семантическим поиском
-Использует ChromaDB для хранения и поиска похожих вопросов
+Vector DB - интерфейс мгновенных ответов с безопасно отключённым хранилищем.
+
+Постоянное хранилище временно отключено до выхода исправленной версии ChromaDB.
 """
 
 import os
@@ -11,9 +12,8 @@ from pathlib import Path
 
 logger = logging.getLogger('VectorDB')
 
-# Путь к базе данных
+# Пути к данным
 RUNTIME_ROOT = Path(os.getenv('LIVE_HINTS_DATA_DIR', Path(__file__).parent))
-DB_PATH = RUNTIME_ROOT / 'data' / 'chroma_db'
 QUESTIONS_PATH = RUNTIME_ROOT / 'data' / 'questions_db.json'
 
 # Порог схожести для instant response (понижен для лучшего покрытия)
@@ -36,35 +36,14 @@ class VectorDB:
         self._init_db()
     
     def _init_db(self):
-        """Инициализация ChromaDB"""
-        try:
-            import chromadb
-            from chromadb.config import Settings
-            
-            # Создаём директорию если нет
-            DB_PATH.mkdir(parents=True, exist_ok=True)
-            
-            # Инициализируем клиент с персистентным хранилищем
-            self.client = chromadb.PersistentClient(
-                path=str(DB_PATH),
-                settings=Settings(anonymized_telemetry=False)
-            )
-            
-            # Создаём/получаем коллекцию
-            self.collection = self.client.get_or_create_collection(
-                name="interview_qa",
-                metadata={"description": "Q&A для технических собеседований"}
-            )
-            
-            self._initialized = True
-            logger.info(f'[VectorDB] Инициализирован: {self.collection.count()} записей')
-            
-        except ImportError:
-            logger.warning('[VectorDB] chromadb не установлен: pip install chromadb')
-            self._initialized = False
-        except Exception as e:
-            logger.error(f'[VectorDB] Ошибка инициализации: {e}')
-            self._initialized = False
+        """Отключить хранилище, пока для ChromaDB нет исправленного выпуска."""
+        self.client = None
+        self.collection = None
+        self._initialized = False
+        logger.warning(
+            '[VectorDB] Постоянное хранилище отключено до выхода '
+            'исправленной версии ChromaDB'
+        )
     
     def search(self, question: str, n_results: int = 3) -> List[Dict[str, Any]]:
         """
@@ -112,7 +91,7 @@ class VectorDB:
         """
         results = self.search(question, n_results=1)
         if results and results[0]['similarity'] >= INSTANT_THRESHOLD:
-            logger.info(f'[VectorDB] INSTANT HIT: similarity={results[0]["similarity"]:.3f}')
+            logger.info(f'[VectorDB] МГНОВЕННОЕ СОВПАДЕНИЕ: similarity={results[0]["similarity"]:.3f}')
             return results[0]['answer']
         return None
     
@@ -232,13 +211,13 @@ if __name__ == '__main__':
     import sys
     
     db = get_vector_db()
-    print(f'VectorDB initialized: {db._initialized}')
-    print(f'Total records: {db.count}')
+    print(f'Векторная база инициализирована: {db._initialized}')
+    print(f'Всего записей: {db.count}')
     
     if len(sys.argv) > 1:
         query = ' '.join(sys.argv[1:])
-        print(f'\nSearching: {query}')
+        print(f'\nПоиск: {query}')
         results = db.search(query)
         for r in results:
             print(f'\n[{r["similarity"]:.3f}] {r["question"][:80]}...')
-            print(f'  Answer: {r["answer"][:100]}...')
+            print(f'  Ответ: {r["answer"][:100]}...')
