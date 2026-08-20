@@ -1,5 +1,5 @@
 faster-whisper==1.2.1
-websockets==15.0.1
+websockets==17.0.1
 fastapi==0.125.0
 uvicorn==0.38.0
 numpy==2.3.5
