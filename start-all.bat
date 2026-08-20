@@ -43,7 +43,7 @@ curl -s http://localhost:11434/api/tags >nul 2>&1 || (
 
 :: Запуск приложения Electron
 echo [ЗАПУСК] Запуск интерфейса Live Hints...
-start "" "%~dp0dist\LiveHints-Portable-1.0.1.exe"
+start "" "%~dp0dist\LiveHints-Portable-1.0.2.exe"
 
 :: Состояние запущенных служб
 echo.
