@@ -165,6 +165,7 @@ live-hints/
 
 - faster-whisper (STT)
 - fastapi, uvicorn (LLM сервер)
+- aiohttp (потоковый клиент Ollama)
 - ollama (LLM клиент)
 - sentence-transformers (семантический кэш)
 - websockets (STT сервер)
