@@ -4,7 +4,7 @@
 
 Репозиторий: https://github.com/R0D10Nq/live-hints
 
-Готовый выпуск: https://github.com/R0D10Nq/live-hints/releases/tag/v1.0.2
+Готовый выпуск: https://github.com/R0D10Nq/live-hints/releases/tag/v1.0.3
 
 ![Основной поток Live Hints](https://raw.githubusercontent.com/R0D10Nq/live-hints/main/docs/assets/live-hints-overview.png)
 
@@ -122,9 +122,9 @@ Electron запускает локальные процессы, отслежи�
 - Ollama и загруженная текстовая модель;
 - для анализа скриншотов — отдельная Vision-модель, например `llava:7b`.
 
-Установщик, portable-файл и контрольные суммы опубликованы в выпуске v1.0.2:
+Установщик, portable-файл и контрольные суммы опубликованы в выпуске v1.0.3:
 
-https://github.com/R0D10Nq/live-hints/releases/tag/v1.0.2
+https://github.com/R0D10Nq/live-hints/releases/tag/v1.0.3
 
 Перед запуском стоит прочитать раздел требований в README. Текущий транскрайбер работает через `cuda` и `float16`; автоматического CPU-режима пока нет.
 
