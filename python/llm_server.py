@@ -155,8 +155,54 @@ FULL_CONTEXT = USER_CONTEXT
 if VACANCY_CONTEXT:
     FULL_CONTEXT += f'\n\n## Вакансия:\n{VACANCY_CONTEXT}'
 
+
+def load_llm_settings() -> dict:
+    """Загружает настройки LLM провайдера из settings.json и env"""
+    settings = {
+        "mode": os.getenv("LLM_PROVIDER", "hybrid"),
+        "api_key": os.getenv("CLOUD_LLM_API_KEY", ""),
+        "base_url": os.getenv("CLOUD_LLM_BASE_URL", "https://api.groq.com/openai/v1"),
+        "model": os.getenv("CLOUD_LLM_MODEL", "llama-3.3-70b-versatile"),
+    }
+    try:
+        settings_path = os.path.join(os.path.dirname(__file__), '..', 'renderer', 'settings.json')
+        if os.path.exists(settings_path):
+            with open(settings_path, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+                if "llmProvider" in data:
+                    settings["mode"] = data["llmProvider"]
+                if "cloudApiKey" in data and not settings["api_key"]:
+                    settings["api_key"] = data["cloudApiKey"]
+                if "cloudBaseUrl" in data and not os.getenv("CLOUD_LLM_BASE_URL"):
+                    settings["base_url"] = data["cloudBaseUrl"]
+                if "cloudModel" in data and not os.getenv("CLOUD_LLM_MODEL"):
+                    settings["model"] = data["cloudModel"]
+    except Exception as e:
+        logger.warning(f"[SETTINGS] Не удалось прочитать настройки: {e}")
+    return settings
+
+
+from llm.provider import create_hybrid_provider
+
+llm_settings = load_llm_settings()
+hybrid_provider = create_hybrid_provider(
+    ollama_url=OLLAMA_URL,
+    ollama_model=DEFAULT_MODEL,
+    mode=llm_settings["mode"],
+    api_key=llm_settings["api_key"],
+    cloud_base_url=llm_settings["base_url"],
+    cloud_model=llm_settings["model"],
+)
+
 hint_cache = HintCache(maxsize=100)
-ollama = OllamaClient(OLLAMA_URL, DEFAULT_MODEL, hint_cache, FULL_CONTEXT, USER_PROFILE)
+ollama = OllamaClient(
+    OLLAMA_URL,
+    DEFAULT_MODEL,
+    hint_cache,
+    FULL_CONTEXT,
+    USER_PROFILE,
+    provider=hybrid_provider,
+)
 
 # FastAPI app
 app = FastAPI(title='Live Hints LLM Server')
@@ -195,15 +241,20 @@ from llm import get_available_vision_model, analyze_image, get_gpu_info
 async def health():
     """Проверка здоровья сервера"""
     available = ollama._check_available()
+    provider_status = getattr(hybrid_provider, "get_status", lambda: {})()
     return {
         'status': 'ok' if available else 'ollama_unavailable',
         'model': ollama.model,
         'ollama_url': ollama.base_url,
+        'provider': provider_status.get("mode", "local"),
+        'cloud_available': provider_status.get("cloud_available", False),
+        'last_source': provider_status.get("last_source", "none"),
         'last_error': None
     }
 
 
 _ollama_lock = threading.Lock()
+
 
 @app.post('/hint')
 async def generate_hint(hint_request: HintRequest):

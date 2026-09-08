@@ -89,6 +89,7 @@ class OllamaClient:
         hint_cache: HintCache,
         user_context: str = "",
         profile: str = "job_interview_ru",
+        provider: Optional[object] = None,
     ):
         self.base_url = base_url
         self.model = model
@@ -96,10 +97,13 @@ class OllamaClient:
         self.hint_cache = hint_cache
         self.user_context = user_context
         self.profile = profile  # Сохраняем профиль
+        self.provider = provider
         self._last_question_type = "general"
         self._last_similarity = 0.0
 
     def _check_available(self) -> bool:
+        if self.provider is not None and hasattr(self.provider, "check_available"):
+            return self.provider.check_available()
         try:
             resp = requests.get(f"{self.base_url}/api/tags", timeout=2)
             return resp.status_code == 200
@@ -165,6 +169,22 @@ class OllamaClient:
         messages = build_messages(system_prompt, context or [], text, few_shot)
 
         logger.info(f"[LLM] Type: {question_type}, messages: {len(messages)}")
+
+        if self.provider is not None and hasattr(self.provider, "generate"):
+            try:
+                hint = self.provider.generate(messages, max_tokens, temperature)
+                self.metrics.first_token()
+                self.metrics.done()
+                stats = self.metrics.get_stats()
+                logger.info(
+                    f"[LLM] Подсказка от провайдера за {stats['total_ms']}ms, len={len(hint)}"
+                )
+                if hint.strip():
+                    self.hint_cache.set(text, context or [], hint)
+                return hint
+            except Exception as e:
+                logger.error(f"[LLM] Ошибка провайдера: {e}")
+                return f"Ошибка: {e}"
 
         try:
             resp = requests.post(
@@ -325,6 +345,35 @@ class OllamaClient:
         logger.info(f"[LLM Stream] Type: {question_type}, messages: {len(messages)}")
 
         accumulated_hint = ""
+
+        if self.provider is not None and hasattr(self.provider, "generate_stream"):
+            try:
+                stream_gen = self.provider.generate_stream(messages, max_tokens, temperature)
+                for content in stream_gen:
+                    if content:
+                        self.metrics.first_token()
+                        accumulated_hint += content
+                        yield content
+                        await asyncio.sleep(0)
+                self.metrics.done()
+                if accumulated_hint.strip():
+                    self.hint_cache.set(text, context or [], accumulated_hint)
+                    semantic_cache.set(text, context or [], accumulated_hint)
+                    rag.consolidate_memory(text, accumulated_hint, question_type)
+                stats = self.metrics.get_stats()
+                log_llm_response(
+                    stats["ttft_ms"],
+                    stats["total_ms"],
+                    len(accumulated_hint),
+                    cached=False,
+                    question_type=question_type,
+                )
+                return
+            except Exception as e:
+                error_msg = f"Ошибка: {e}"
+                log_error("llm", "provider_error", str(e))
+                yield error_msg
+                return
 
         try:
             timeout = aiohttp.ClientTimeout(total=120)

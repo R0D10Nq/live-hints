@@ -68,3 +68,15 @@ def test_aiohttp_contains_current_security_fixes():
     pinned_version = next(iter(aiohttp_requirement.specifier)).version
 
     assert Version(pinned_version) >= Version('3.14.3')
+
+
+def test_pyaudiowpatch_uses_current_windows_wasapi_release():
+    """Захват WASAPI должен использовать актуальный выпуск pyaudiowpatch."""
+    requirement = next(
+        requirement
+        for requirement in _load_requirements()
+        if requirement.name.lower() == 'pyaudiowpatch'
+    )
+    pinned_version = next(iter(requirement.specifier)).version
+
+    assert Version(pinned_version) >= Version('0.2.12.8')
