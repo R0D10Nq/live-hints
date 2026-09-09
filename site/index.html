@@ -1,0 +1,843 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="color-scheme" content="dark">
+  <title>Live Hints — Бесплатный ИИ-ассистент для собеседований (Open Source)</title>
+  <meta name="description" content="Бесплатный Windows-оверлей для собеседований, невидимый при демонстрации экрана. Слушает звук и моментально формирует опорный каркас ответов за 1 секунду на базе Ollama и гибридного облака.">
+  
+  <!-- Open Graph / Meta -->
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://r0d10nq.github.io/live-hints/">
+  <meta property="og:title" content="Live Hints — Бесплатный ИИ-ассистент для собеседований">
+  <meta property="og:description" content="Невидимый для демонстрации экрана ИИ-ассистент для прохождения собеседований. 100% бесплатно и с открытым исходным кодом.">
+  <meta property="og:image" content="./assets/icon.png">
+  
+  <!-- Twitter -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Live Hints — ИИ-шпаргалка для собеседований">
+  <meta name="twitter:description" content="Невидим для Zoom и Google Meet. Сверхбыстрые опорные подсказки за 1 секунду. 0 рублей, Open Source (MIT).">
+  <meta name="twitter:image" content="./assets/icon.png">
+
+  <link rel="icon" type="image/png" href="./assets/icon.png">
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+
+  <!-- Фоновые визуальные эффекты свечения -->
+  <div class="bg-glow-orb bg-glow-1" aria-hidden="true"></div>
+  <div class="bg-glow-orb bg-glow-2" aria-hidden="true"></div>
+  <div class="bg-glow-orb bg-glow-3" aria-hidden="true"></div>
+
+  <!-- Шапка сайта -->
+  <header class="site-header">
+    <div class="container nav-wrap">
+      <a href="./" class="brand-link" aria-label="Live Hints Главная">
+        <img src="./assets/icon.png" alt="Логотип Live Hints" class="brand-logo" width="32" height="32">
+        <span>Live Hints</span>
+        <span class="brand-tag">Open Source</span>
+      </a>
+
+      <nav aria-label="Основная навигация">
+        <ul class="nav-links">
+          <li><a href="#features" class="nav-link">Возможности</a></li>
+          <li><a href="#modes" class="nav-link">Режимы</a></li>
+          <li><a href="#comparison" class="nav-link">Сравнение</a></li>
+          <li><a href="#pricing" class="nav-link">Тарифы (0 ₽)</a></li>
+          <li><a href="#faq" class="nav-link">FAQ</a></li>
+          <li><a href="https://github.com/R0D10Nq/live-hints#readme" class="nav-link" target="_blank" rel="noopener noreferrer">Документация</a></li>
+        </ul>
+      </nav>
+
+      <div class="header-actions">
+        <a href="https://github.com/R0D10Nq/live-hints" class="btn btn-secondary btn-sm" target="_blank" rel="noopener noreferrer" aria-label="Репозиторий проекта на GitHub">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"></path>
+          </svg>
+          <span>GitHub</span>
+        </a>
+        <a href="https://github.com/R0D10Nq/live-hints/releases/latest" class="btn btn-primary btn-sm btn-download" target="_blank" rel="noopener noreferrer">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+            <polyline points="7 10 12 15 17 10"></polyline>
+            <line x1="12" y1="15" x2="12" y2="3"></line>
+          </svg>
+          <span>Скачать</span>
+        </a>
+        <button class="mobile-menu-btn" aria-label="Открыть мобильное меню" aria-expanded="false">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <line x1="3" y1="12" x2="21" y2="12"></line>
+            <line x1="3" y1="6" x2="21" y2="6"></line>
+            <line x1="3" y1="18" x2="21" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <!-- Главный экран (Hero) -->
+    <section class="hero-section">
+      <div class="container">
+        <div class="hero-content">
+          <div class="pill-badge pill-badge-emerald">
+            <span class="pill-dot" aria-hidden="true"></span>
+            <span>100% Free &amp; Open Source • Лицензия MIT • 0 ₽ навсегда</span>
+          </div>
+
+          <h1 class="hero-title">
+            ИИ-ассистент для собеседований, <span class="hero-title-highlight">невидимый при показе экрана</span>
+          </h1>
+
+          <p class="hero-subtitle">
+            Бесплатная альтернатива Ghost GPT. Приложение слушает вопросы интервьюера через системный звук и микрофон, моментально формируя краткий опорный каркас ответа за 1 секунду. Полностью локально на вашем компьютере или через сверхбыстрое гибридное облако.
+          </p>
+
+          <div class="hero-cta-group">
+            <a href="https://github.com/R0D10Nq/live-hints/releases/latest" class="btn btn-primary btn-lg" target="_blank" rel="noopener noreferrer">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="7 10 12 15 17 10"></polyline>
+                <line x1="12" y1="15" x2="12" y2="3"></line>
+              </svg>
+              <span>Скачать для Windows (.exe)</span>
+            </a>
+
+            <a href="https://github.com/R0D10Nq/live-hints" class="btn btn-secondary btn-lg" target="_blank" rel="noopener noreferrer">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"></path>
+              </svg>
+              <span>Исходный код на GitHub</span>
+            </a>
+          </div>
+
+          <div class="hero-badges-strip">
+            <div class="hero-badge-item">
+              <svg class="hero-badge-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M20 6 9 17l-5-5"></path>
+              </svg>
+              <span>Скрыт в Zoom, Teams, Google Meet</span>
+            </div>
+            <div class="hero-badge-item">
+              <svg class="hero-badge-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M20 6 9 17l-5-5"></path>
+              </svg>
+              <span>Без абонентской платы</span>
+            </div>
+            <div class="hero-badge-item">
+              <svg class="hero-badge-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M20 6 9 17l-5-5"></path>
+              </svg>
+              <span>Локально или гибридное облако</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Интерактивный симулятор оверлея Live Hints -->
+        <div class="demo-window-container">
+          <div class="demo-tabs-bar" role="tablist" aria-label="Сценарии собеседования">
+            <button class="demo-tab-btn active" data-case="architecture" role="tab" aria-selected="true">
+              Архитектура БД
+            </button>
+            <button class="demo-tab-btn" data-case="star" role="tab" aria-selected="false">
+              Опыт кандидата (STAR)
+            </button>
+            <button class="demo-tab-btn" data-case="algorithms" role="tab" aria-selected="false">
+              Python Core &amp; Concurrency
+            </button>
+          </div>
+
+          <div class="demo-window" aria-live="polite">
+            <div class="demo-window-header">
+              <div class="demo-window-controls" aria-hidden="true">
+                <span class="ctrl-dot red"></span>
+                <span class="ctrl-dot yellow"></span>
+                <span class="ctrl-dot green"></span>
+              </div>
+              <div class="demo-window-title">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+                  <line x1="8" y1="21" x2="16" y2="21"></line>
+                  <line x1="12" y1="17" x2="12" y2="21"></line>
+                </svg>
+                <span>Live Hints • Полупрозрачный DWM-оверлей</span>
+              </div>
+              <div class="stealth-status-pill">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"></path>
+                  <path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"></path>
+                  <path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"></path>
+                  <line x1="2" y1="2" x2="22" y2="22"></line>
+                </svg>
+                <span>Скрыт от записи</span>
+              </div>
+            </div>
+
+            <div class="demo-window-body">
+              <div class="demo-interviewer-box">
+                <div class="demo-box-label">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+                    <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+                  </svg>
+                  <span id="demo-category">Вопрос интервьюера (WASAPI Loopback)</span>
+                </div>
+                <div class="demo-interviewer-text" id="demo-question">
+                  Как масштабировать PostgreSQL при высокой нагрузке на чтение (от 50 000 RPS)?
+                </div>
+              </div>
+
+              <div class="demo-hint-box">
+                <div class="demo-box-label">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"></path>
+                  </svg>
+                  <span>Опорный каркас ответа (шпаргалка за 1 секунду)</span>
+                </div>
+                <ul class="demo-hint-bullets" id="demo-bullets">
+                  <li class="demo-hint-item">
+                    <span class="demo-bullet-marker" aria-hidden="true"></span>
+                    <div>
+                      <span class="demo-bullet-strong">Паттерн:</span>
+                      <span>Read Replicas + пул соединений PgBouncer (Streaming Replication)</span>
+                    </div>
+                  </li>
+                  <li class="demo-hint-item">
+                    <span class="demo-bullet-marker" aria-hidden="true"></span>
+                    <div>
+                      <span class="demo-bullet-strong">Кэширование:</span>
+                      <span>Redis Cache-Aside для горячих ключей (TTL 60–300 секунд)</span>
+                    </div>
+                  </li>
+                  <li class="demo-hint-item">
+                    <span class="demo-bullet-marker" aria-hidden="true"></span>
+                    <div>
+                      <span class="demo-bullet-strong">Оптимизация:</span>
+                      <span>Составные индексы, EXPLAIN ANALYZE, партиционирование таблиц по датам</span>
+                    </div>
+                  </li>
+                  <li class="demo-hint-item">
+                    <span class="demo-bullet-marker" aria-hidden="true"></span>
+                    <div>
+                      <span class="demo-bullet-strong">Подводный камень:</span>
+                      <span>Replication Lag при критичных транзакциях (паттерн read-your-writes)</span>
+                    </div>
+                  </li>
+                </ul>
+              </div>
+            </div>
+
+            <div class="demo-window-footer">
+              <div class="demo-metrics-strip">
+                <div class="demo-metric">
+                  <span>Задержка:</span>
+                  <strong id="demo-latency">138 мс</strong>
+                </div>
+                <div class="demo-metric">
+                  <span>Инференс:</span>
+                  <strong id="demo-provider">Groq LPU (Llama 3.3 70B)</strong>
+                </div>
+              </div>
+              <div>
+                <span>Без зачитывания текста • Говорите своими словами</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Метрики доверия (Trust Bar) -->
+    <section class="trust-bar-section">
+      <div class="container">
+        <div class="metrics-grid">
+          <div class="metric-card">
+            <div class="metric-number highlight-emerald">0 ₽</div>
+            <div class="metric-label">Навсегда бесплатно</div>
+            <div class="metric-sub">Лицензия MIT, чистый Open Source без подписок</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-number">&lt; 500 мс</div>
+            <div class="metric-label">Мгновенный отклик</div>
+            <div class="metric-sub">Опорные тезисы генерируются прямо во время вопроса</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-number">100%</div>
+            <div class="metric-label">Приватность данных</div>
+            <div class="metric-sub">Локальный инференс без передачи звука в сеть (152-ФЗ)</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-number">304+</div>
+            <div class="metric-label">Автоматических тестов</div>
+            <div class="metric-sub">Стабильная архитектура с непрерывным CI/CD</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Возможности (Features) -->
+    <section id="features" class="section-padding">
+      <div class="container">
+        <h2>Инженерная шпаргалка нового поколения</h2>
+        <p class="section-desc">
+          Создано разработчиками для разработчиков. Без чужих облаков, без риска утечки ваших разговоров и без суфлерских монологов, которые легко вычисляются собеседующими.
+        </p>
+
+        <div class="features-grid">
+          <div class="feature-card">
+            <div class="feature-icon-wrap">
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"></path>
+                <path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"></path>
+                <path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"></path>
+                <line x1="2" y1="2" x2="22" y2="22"></line>
+              </svg>
+            </div>
+            <h3 class="feature-title">Невидимость на показе экрана</h3>
+            <p class="feature-desc">
+              Использует нативный механизм Windows DWM Affinity (WDA_EXCLUDEFROMCAPTURE). Вы спокойно расшариваете весь экран или отдельное окно в Zoom, Google Meet или Teams — собеседники видят только ваш код.
+            </p>
+          </div>
+
+          <div class="feature-card">
+            <div class="feature-icon-wrap feature-icon-emerald">
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+                <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+              </svg>
+            </div>
+            <h3 class="feature-title">Двусторонний захват WASAPI</h3>
+            <p class="feature-desc">
+              Прямой перехват входящего звука из наушников через WASAPI loopback параллельно с микрофоном. Никаких платных и глючных Virtual Audio Cable — всё работает сразу из коробки.
+            </p>
+          </div>
+
+          <div class="feature-card">
+            <div class="feature-icon-wrap feature-icon-purple">
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"></path>
+              </svg>
+            </div>
+            <h3 class="feature-title">Опорный каркас (Anchor Bullets)</h3>
+            <p class="feature-desc">
+              Никаких абзацев для чтения роботом. Ровно 3–5 емких пунктов по 5–8 слов. Вы схватываете ключевые термины за 1 секунду и формулируете ответ уверенно своими словами.
+            </p>
+          </div>
+
+          <div class="feature-card">
+            <div class="feature-icon-wrap feature-icon-emerald">
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <rect x="4" y="4" width="16" height="16" rx="2" ry="2"></rect>
+                <rect x="9" y="9" width="6" height="6"></rect>
+                <line x1="9" y1="1" x2="9" y2="4"></line>
+                <line x1="15" y1="1" x2="15" y2="4"></line>
+                <line x1="9" y1="20" x2="9" y2="23"></line>
+                <line x1="15" y1="20" x2="15" y2="23"></line>
+                <line x1="20" y1="9" x2="23" y2="9"></line>
+                <line x1="20" y1="14" x2="23" y2="14"></line>
+                <line x1="1" y1="9" x2="4" y2="9"></line>
+                <line x1="1" y1="14" x2="4" y2="14"></line>
+              </svg>
+            </div>
+            <h3 class="feature-title">Гибридный LLM-движок</h3>
+            <p class="feature-desc">
+              Сверхбыстрый облачный API (Groq LPU / Cerebras / Gemini Flash) для любого ноутбука с мгновенным и прозрачным автопереключением на локальную Ollama при сбоях сети или лимитах.
+            </p>
+          </div>
+
+          <div class="feature-card">
+            <div class="feature-icon-wrap">
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                <polyline points="14 2 14 8 20 8"></polyline>
+                <line x1="16" y1="13" x2="8" y2="13"></line>
+                <line x1="16" y1="17" x2="8" y2="17"></line>
+                <polyline points="10 9 9 9 8 9"></polyline>
+              </svg>
+            </div>
+            <h3 class="feature-title">Учет вашего резюме и вакансии</h3>
+            <p class="feature-desc">
+              Загрузите резюме на этапе онбординга. Ответы по вопросам опыта строятся строго по вашим реальным проектам и достижениям по формуле STAR, исключая галлюцинации нейросети.
+            </p>
+          </div>
+
+          <div class="feature-card">
+            <div class="feature-icon-wrap feature-icon-purple">
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+              </svg>
+            </div>
+            <h3 class="feature-title">Приватность и соответствие 152-ФЗ</h3>
+            <p class="feature-desc">
+              В автономном режиме аудиопоток и резюме обрабатываются исключительно локально на вашем ПК. Никаких чужих облаков, скрытого логгирования разговоров и риска утечек персональных данных.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Режимы работы (Dual Modes) -->
+    <section id="modes" class="section-padding" style="background: rgba(15, 23, 42, 0.3);">
+      <div class="container">
+        <h2>Два гибких режима под любое железо</h2>
+        <p class="section-desc">
+          Работает и на офисном ультрабуке со встроенной графикой, и на мощной рабочей станции с NVIDIA RTX.
+        </p>
+
+        <div class="dual-modes-grid">
+          <!-- Режим 1 -->
+          <div class="mode-card mode-recommended">
+            <div class="mode-card-tag cyan">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"></path>
+              </svg>
+              <span>Рекомендуется для любого ПК</span>
+            </div>
+            <h3 class="mode-card-title">Гибридный облачный режим</h3>
+            <p class="mode-card-desc">
+              Идеален для ноутбуков и ПК без дискретной видеокарты. Использует ваш собственный бесплатный ключ (Groq, Cerebras или Gemini Flash). Нулевая нагрузка на процессор.
+            </p>
+
+            <ul class="mode-specs-list">
+              <li class="mode-spec-item">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                <span><strong>Задержка первого токена (TTFT):</strong> менее 150 мс (LPU инференс)</span>
+              </li>
+              <li class="mode-spec-item">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                <span><strong>Стоимость:</strong> 0 ₽ (бесплатные лимиты провайдеров без наценок)</span>
+              </li>
+              <li class="mode-spec-item">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                <span><strong>Автоматический fallback:</strong> прозрачно переключается на Ollama при сбое</span>
+              </li>
+              <li class="mode-spec-item">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                <span><strong>Системные требования:</strong> любой ПК на Windows 10/11 с 4+ ГБ RAM</span>
+              </li>
+            </ul>
+
+            <a href="https://github.com/R0D10Nq/live-hints#hybrid-setup" class="btn btn-secondary btn-sm" target="_blank" rel="noopener noreferrer">
+              Настройка бесплатного ключа за 2 минуты
+            </a>
+          </div>
+
+          <!-- Режим 2 -->
+          <div class="mode-card mode-local">
+            <div class="mode-card-tag emerald">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+              </svg>
+              <span>100% Автономность</span>
+            </div>
+            <h3 class="mode-card-title">Полностью локальный режим (Fully Local)</h3>
+            <p class="mode-card-desc">
+              Для специалистов с видеокартами NVIDIA RTX. Распознавание речи Whisper и инференс языковой модели Ollama выполняются на вашем железе без доступа к интернету.
+            </p>
+
+            <ul class="mode-specs-list">
+              <li class="mode-spec-item">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                <span><strong>Безопасность:</strong> 0 байт покидает ваше устройство</span>
+              </li>
+              <li class="mode-spec-item">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                <span><strong>Стек:</strong> локальный Whisper + Ollama (Qwen 2.5/3, Llama 3)</span>
+              </li>
+              <li class="mode-spec-item">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                <span><strong>Оффлайн:</strong> работает даже без подключения к сети</span>
+              </li>
+              <li class="mode-spec-item">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                <span><strong>Системные требования:</strong> NVIDIA RTX 3060/4060/5060+ (8–16 ГБ VRAM)</span>
+              </li>
+            </ul>
+
+            <a href="https://github.com/R0D10Nq/live-hints#local-setup" class="btn btn-secondary btn-sm" target="_blank" rel="noopener noreferrer">
+              Инструкция по установке Ollama
+            </a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Сравнение с Ghost GPT и платными аналогами -->
+    <section id="comparison" class="section-padding">
+      <div class="container">
+        <h2>Live Hints против коммерческих сервисов</h2>
+        <p class="section-desc">
+          Почему открытый исходный код и локальная обработка надежнее, безопаснее и выгоднее подписок за тысячи рублей в месяц.
+        </p>
+
+        <div class="comparison-container">
+          <table class="comparison-table">
+            <thead>
+              <tr>
+                <th style="width: 32%;">Критерий</th>
+                <th class="col-highlight" style="width: 36%;">Live Hints (Open Source)</th>
+                <th style="width: 32%;">Ghost GPT и платные аналоги</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>
+                  <span class="table-feature-title">Стоимость использования</span>
+                  <span class="table-feature-sub">Финансовая прозрачность</span>
+                </td>
+                <td class="col-highlight">
+                  <div class="table-badge-good">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                    <span>0 ₽ (Навсегда бесплатно, лицензия MIT)</span>
+                  </div>
+                </td>
+                <td>
+                  <div class="table-badge-bad">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                    <span>От 1 990 до 3 990 ₽ каждый месяц</span>
+                  </div>
+                </td>
+              </tr>
+              <tr>
+                <td>
+                  <span class="table-feature-title">Приватность аудиопотока</span>
+                  <span class="table-feature-sub">Защита конфиденциальных разговоров</span>
+                </td>
+                <td class="col-highlight">
+                  <div class="table-badge-good">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                    <span>Звук обрабатывается локально на вашем ПК</span>
+                  </div>
+                </td>
+                <td>
+                  <div class="table-badge-bad">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                    <span>Голос передается на сторонние сервера</span>
+                  </div>
+                </td>
+              </tr>
+              <tr>
+                <td>
+                  <span class="table-feature-title">Исходный код</span>
+                  <span class="table-feature-sub">Проверка на скрытые уязвимости</span>
+                </td>
+                <td class="col-highlight">
+                  <div class="table-badge-good">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                    <span>100% открыт на GitHub, проверяем</span>
+                  </div>
+                </td>
+                <td>
+                  <div class="table-badge-bad">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                    <span>Закрытый бинарник («черный ящик»)</span>
+                  </div>
+                </td>
+              </tr>
+              <tr>
+                <td>
+                  <span class="table-feature-title">Формат подсказок</span>
+                  <span class="table-feature-sub">Риск обнаружения интервьюером</span>
+                </td>
+                <td class="col-highlight">
+                  <div class="table-badge-good">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                    <span>Опорный каркас (3–5 пунктов, живая речь)</span>
+                  </div>
+                </td>
+                <td>
+                  <div class="table-badge-bad">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                    <span>Длинный текст (эффект зачитывания роботом)</span>
+                  </div>
+                </td>
+              </tr>
+              <tr>
+                <td>
+                  <span class="table-feature-title">Скрытность от демонстрации экрана</span>
+                  <span class="table-feature-sub">Поддержка Zoom, Teams, Google Meet</span>
+                </td>
+                <td class="col-highlight">
+                  <div class="table-badge-good">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                    <span>Нативный Windows DWM Affinity</span>
+                  </div>
+                </td>
+                <td>
+                  <div class="table-badge-good">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                    <span>Проприетарные хуки окна</span>
+                  </div>
+                </td>
+              </tr>
+              <tr>
+                <td>
+                  <span class="table-feature-title">Лимиты на запросы и токены</span>
+                  <span class="table-feature-sub">Ограничения по длительности звонка</span>
+                </td>
+                <td class="col-highlight">
+                  <div class="table-badge-good">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                    <span>Безлимитно (локально или свой бесплатный ключ)</span>
+                  </div>
+                </td>
+                <td>
+                  <div class="table-badge-bad">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                    <span>Ограничение минут или покупка доп. токенов</span>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- Как это работает (How It Works) -->
+    <section class="section-padding" style="background: rgba(15, 23, 42, 0.3);">
+      <div class="container">
+        <h2>Как начать работу за 3 простых шага</h2>
+        <p class="section-desc">
+          Никаких сложных регистраций, привязок банковских карт и ожидания одобрения аккаунта.
+        </p>
+
+        <div class="steps-grid">
+          <div class="step-card">
+            <div class="step-num">01</div>
+            <h3 class="step-title">Скачайте и запустите</h3>
+            <p class="step-desc">
+              Загрузите готовый архив или установщик для Windows со страницы релизов GitHub и запустите приложение.
+            </p>
+          </div>
+
+          <div class="step-card">
+            <div class="step-num">02</div>
+            <h3 class="step-title">Загрузите резюме</h3>
+            <p class="step-desc">
+              В простом окне онбординга прикрепите свое резюме и выберите профиль (IT-собеседование, встреча или презентация).
+            </p>
+          </div>
+
+          <div class="step-card">
+            <div class="step-num">03</div>
+            <h3 class="step-title">Проходите интервью</h3>
+            <p class="step-desc">
+              Подключайтесь к созвону в Zoom или Google Meet. Подсказки в полупрозрачном окне появляются сами при вопросе интервьюера.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Честные тарифы (Pricing) -->
+    <section id="pricing" class="section-padding">
+      <div class="container">
+        <h2>Честный тариф</h2>
+        <p class="section-desc">
+          Никаких платных планов, пробных периодов, автопродлений и списаний с карты.
+        </p>
+
+        <div class="pricing-card-wrap">
+          <div class="pricing-card">
+            <div class="pricing-badge">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+              </svg>
+              <span>Свобода и открытый код</span>
+            </div>
+            <h3 class="pricing-title">Open Source Edition</h3>
+            <div class="pricing-price">0 ₽</div>
+            <div class="pricing-sub">Навсегда бесплатно под лицензией MIT</div>
+
+            <ul class="pricing-features-list">
+              <li class="pricing-feature-item">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                <span>Невидимость при демонстрации экрана</span>
+              </li>
+              <li class="pricing-feature-item">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                <span>Двусторонний перехват звука WASAPI</span>
+              </li>
+              <li class="pricing-feature-item">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                <span>Опорные тезисы (Anchor Bullets)</span>
+              </li>
+              <li class="pricing-feature-item">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                <span>Гибридный режим + локальная Ollama</span>
+              </li>
+              <li class="pricing-feature-item">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                <span>Персонализация по резюме кандидата</span>
+              </li>
+              <li class="pricing-feature-item">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                <span>Полный доступ к коду на GitHub</span>
+              </li>
+            </ul>
+
+            <a href="https://github.com/R0D10Nq/live-hints/releases/latest" class="btn btn-emerald btn-lg" target="_blank" rel="noopener noreferrer">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="7 10 12 15 17 10"></polyline>
+                <line x1="12" y1="15" x2="12" y2="3"></line>
+              </svg>
+              <span>Скачать бесплатно для Windows</span>
+            </a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- FAQ (Вопросы и ответы) -->
+    <section id="faq" class="section-padding" style="background: rgba(15, 23, 42, 0.3);">
+      <div class="container">
+        <h2>Часто задаваемые вопросы</h2>
+        <p class="section-desc">
+          Всё, что нужно знать о безопасности, скрытности и работе ассистента.
+        </p>
+
+        <div class="faq-wrap">
+          <details class="faq-item">
+            <summary class="faq-summary">
+              <span>Правда ли Live Hints абсолютно бесплатен и в чем подвох?</span>
+              <svg class="faq-chevron" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <polyline points="6 9 12 15 18 9"></polyline>
+              </svg>
+            </summary>
+            <div class="faq-content">
+              Подвоха нет. Проект разрабатывается инженером как открытая альтернатива коммерческим сервисам, которые берут неоправданно высокую подписку за обычную обертку над API. Код Live Hints полностью открыт под лицензией MIT: вы можете проверить каждую строчку, скомпилировать приложение самостоятельно или внести свои доработки.
+            </div>
+          </details>
+
+          <details class="faq-item">
+            <summary class="faq-summary">
+              <span>Действительно ли окно не видно собеседникам при показе экрана?</span>
+              <svg class="faq-chevron" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <polyline points="6 9 12 15 18 9"></polyline>
+              </svg>
+            </summary>
+            <div class="faq-content">
+              Да. Приложение применяет официальный системный флаг Windows DWM <code>SetWindowDisplayAffinity</code> со значением <code>WDA_EXCLUDEFROMCAPTURE</code>. Программы захвата экрана (Zoom, Microsoft Teams, Google Meet, OBS, Яндекс Телемост) автоматически исключают это окно из видеопотока.
+            </div>
+          </details>
+
+          <details class="faq-item">
+            <summary class="faq-summary">
+              <span>Нужна ли мощная видеокарта для запуска?</span>
+              <svg class="faq-chevron" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <polyline points="6 9 12 15 18 9"></polyline>
+              </svg>
+            </summary>
+            <div class="faq-content">
+              Не обязательно! В гибридном режиме приложение использует бесплатный облачный API-ключ (например, бесплатный тариф Groq с моделью Llama 3.3 70B или Gemini Flash). В этом случае Live Hints работает даже на обычном офисном ультрабуке со встроенной графикой. Если же у вас есть видеокарта NVIDIA RTX (8+ ГБ), вы можете включить 100% локальный режим через Ollama без выхода в сеть.
+            </div>
+          </details>
+
+          <details class="faq-item">
+            <summary class="faq-summary">
+              <span>Нужно ли устанавливать Virtual Audio Cable для захвата звука?</span>
+              <svg class="faq-chevron" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <polyline points="6 9 12 15 18 9"></polyline>
+              </svg>
+            </summary>
+            <div class="faq-content">
+              Нет! Live Hints использует нативный Windows WASAPI loopback, перехватывающий системный аудиопоток динамиков и микрофона напрямую. Никаких сторонних виртуальных кабелей или драйверов ставить не требуется.
+            </div>
+          </details>
+
+          <details class="faq-item">
+            <summary class="faq-summary">
+              <span>Почему опорный каркас лучше длинного сгенерированного текста?</span>
+              <svg class="faq-chevron" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <polyline points="6 9 12 15 18 9"></polyline>
+              </svg>
+            </summary>
+            <div class="faq-content">
+              Опытные интервьюеры сразу замечают, когда кандидат монотонно читает сгенерированный текст: бегающие глаза, неестественные интонации и потеря зрительного контакта приводят к отказу. Опорный каркас Live Hints дает ровно 3–5 емких пунктов (ключевой термин, архитектурный механизм, метрику и подводный камень). Вы схватываете суть за долю секунды и говорите уверенно своими словами.
+            </div>
+          </details>
+
+          <details class="faq-item">
+            <summary class="faq-summary">
+              <span>Куда обращаться с вопросами или баг-репортами?</span>
+              <svg class="faq-chevron" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <polyline points="6 9 12 15 18 9"></polyline>
+              </svg>
+            </summary>
+            <div class="faq-content">
+              Вы можете открыть Issue в <a href="https://github.com/R0D10Nq/live-hints/issues" target="_blank" rel="noopener noreferrer" style="color: var(--accent-cyan);">GitHub репозитории</a> или написать автору в Telegram. Мы всегда рады предложениям по улучшению.
+            </div>
+          </details>
+        </div>
+      </div>
+    </section>
+
+    <!-- Финальный CTA баннер -->
+    <section class="cta-banner-section">
+      <div class="container">
+        <div class="cta-banner">
+          <h2>Готовы пройти техническое собеседование уверенно?</h2>
+          <p>
+            Скачайте последнюю версию Live Hints для Windows прямо сейчас или соберите проект из открытого исходного кода.
+          </p>
+          <div class="hero-cta-group" style="margin-bottom: 0;">
+            <a href="https://github.com/R0D10Nq/live-hints/releases/latest" class="btn btn-primary btn-lg" target="_blank" rel="noopener noreferrer">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="7 10 12 15 17 10"></polyline>
+                <line x1="12" y1="15" x2="12" y2="3"></line>
+              </svg>
+              <span>Скачать для Windows</span>
+            </a>
+            <a href="https://github.com/R0D10Nq/live-hints" class="btn btn-secondary btn-lg" target="_blank" rel="noopener noreferrer">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+              </svg>
+              <span>Поставить звезду на GitHub</span>
+            </a>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Подвал сайта -->
+  <footer class="site-footer">
+    <div class="container">
+      <div class="footer-top">
+        <div class="brand-link">
+          <img src="./assets/icon.png" alt="Live Hints" class="brand-logo" width="28" height="28">
+          <span>Live Hints</span>
+          <span class="brand-tag">0 ₽ • MIT</span>
+        </div>
+
+        <div class="footer-links">
+          <a href="#features" class="footer-link">Возможности</a>
+          <a href="#modes" class="footer-link">Режимы</a>
+          <a href="#comparison" class="footer-link">Сравнение</a>
+          <a href="#pricing" class="footer-link">Тарифы</a>
+          <a href="#faq" class="footer-link">FAQ</a>
+          <a href="https://github.com/R0D10Nq/live-hints" class="footer-link" target="_blank" rel="noopener noreferrer">GitHub</a>
+          <a href="https://t.me/live_hints" class="footer-link" target="_blank" rel="noopener noreferrer">Telegram</a>
+        </div>
+      </div>
+
+      <div class="footer-bottom">
+        <div>
+          <span>© 2026 Live Hints. Автор проекта: Родион Шевцов. Открытый исходный код под лицензией MIT.</span>
+        </div>
+        <div>
+          <span>Размещено на GitHub Pages</span>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <script src="./app.js"></script>
+</body>
+</html>
