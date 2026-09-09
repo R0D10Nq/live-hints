@@ -3,7 +3,7 @@ Launcher — запускает STT + LLM сервера и открывает E
 Запускается напрямую через Python или в составе скомпилированного exe.
 """
 
-import sys, os, subprocess, time, signal, urllib.request
+import sys, os, subprocess, time, signal
 
 base_dir = getattr(sys, "_MEIPASS", os.path.dirname(os.path.abspath(__file__)))
 
@@ -55,11 +55,12 @@ def start_server(script_name, *args) -> subprocess.Popen | None:
 
 
 def wait_for_port(port: int, timeout: int = 30) -> bool:
+    import socket
     for _ in range(int(timeout * 10)):
         try:
-            urllib.request.urlopen(f"http://localhost:{port}", timeout=0.2)
-            return True
-        except Exception:
+            with socket.create_connection(("localhost", port), timeout=0.2):
+                return True
+        except OSError:
             time.sleep(0.1)
     return False
 

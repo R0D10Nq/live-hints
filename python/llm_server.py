@@ -253,7 +253,7 @@ async def health():
     }
 
 
-_ollama_lock = threading.Lock()
+_ollama_lock = asyncio.Lock()
 
 
 @app.post('/hint')
@@ -263,15 +263,15 @@ async def generate_hint(hint_request: HintRequest):
     if not request.text or len(request.text.strip()) < 5:
         raise HTTPException(400, 'Текст слишком короткий')
 
-    def _generate_sync():
-        with _ollama_lock:
-            original_model = ollama.model
-            original_profile = ollama.profile
-            if request.model:
-                ollama.model = request.model
-            if request.profile and request.profile != ollama.profile:
-                ollama.profile = request.profile
-            try:
+    async with _ollama_lock:
+        original_model = ollama.model
+        original_profile = ollama.profile
+        if request.model:
+            ollama.model = request.model
+        if request.profile and request.profile != ollama.profile:
+            ollama.profile = request.profile
+        try:
+            def _generate_sync():
                 hint = ollama.generate(
                     text=request.text,
                     context=request.context,
@@ -280,11 +280,11 @@ async def generate_hint(hint_request: HintRequest):
                 )
                 stats = ollama.metrics.get_stats()
                 return {'hint': hint, 'latency_ms': stats['total_ms'], 'ttft_ms': stats['ttft_ms']}
-            finally:
-                ollama.model = original_model
-                ollama.profile = original_profile
 
-    return await asyncio.to_thread(_generate_sync)
+            return await asyncio.to_thread(_generate_sync)
+        finally:
+            ollama.model = original_model
+            ollama.profile = original_profile
 
 
 @app.post('/hint/stream')
@@ -300,7 +300,7 @@ async def generate_hint_stream(hint_request: HintRequest):
     question_type = classify_question(request.text)
     
     async def stream():
-        with _ollama_lock:
+        async with _ollama_lock:
             original_model = ollama.model
             original_profile = ollama.profile
             if request.model:

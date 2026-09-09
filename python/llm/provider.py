@@ -317,7 +317,10 @@ class HybridProvider(BaseLLMProvider):
             self.last_source = "cloud"
             cloud_gen = self.primary_provider.generate_stream(messages, max_tokens, temperature)
             # Получаем первый токен для проверки отсутствия ошибок инициализации стрима
-            first_chunk = next(cloud_gen)
+            first_chunk = next(cloud_gen, None)
+            if first_chunk is None:
+                # Пустой ответ от облачного провайдера — не считаем ошибкой
+                return
             yield first_chunk
             yield from cloud_gen
         except Exception as err:
