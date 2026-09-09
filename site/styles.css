@@ -45,7 +45,7 @@
 
   /* Контейнер */
   --container-width: 1200px;
-  --section-spacing: clamp(4rem, 8vw, 7.5rem);
+  --section-spacing: clamp(2.75rem, 5vw, 4rem);
 }
 
 /* Базовые настройки */
@@ -380,12 +380,223 @@ body {
   margin-bottom: 0.5rem;
 }
 
+.hero-compat-note {
+  font-size: 0.825rem;
+  color: var(--text-muted);
+  letter-spacing: 0.02em;
+  margin-bottom: 2rem;
+}
+
+/* Интерактивный HUD-мокап поверх видеозвонка в Hero */
+.hero-preview-wrapper {
+  margin-top: 1rem;
+  max-width: 860px;
+  margin-inline: auto;
+  position: relative;
+  z-index: 2;
+  text-align: left;
+}
+
+.call-mockup-frame {
+  background: rgba(10, 14, 20, 0.95);
+  border: 1px solid var(--border-card);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.9), 0 0 35px rgba(190, 242, 100, 0.12);
+  overflow: hidden;
+  backdrop-filter: blur(16px);
+}
+
+.call-top-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.65rem 1.25rem;
+  background: rgba(15, 22, 32, 0.85);
+  border-bottom: 1px solid var(--border-light);
+  font-size: 0.775rem;
+  color: var(--text-muted);
+}
+
+.call-title-left {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 500;
+}
+
+.rec-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #ef4444;
+  box-shadow: 0 0 8px #ef4444;
+  animation: recPulse 2s infinite ease-in-out;
+}
+
+@keyframes recPulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(0.85); }
+}
+
+.call-stage-area {
+  display: grid;
+  grid-template-columns: 1fr 1.2fr;
+  gap: 1rem;
+  padding: 1.25rem;
+  background: radial-gradient(circle at 80% 20%, rgba(190, 242, 100, 0.04) 0%, rgba(5, 7, 10, 0.95) 75%);
+  position: relative;
+  min-height: 220px;
+}
+
+@media (max-width: 768px) {
+  .call-stage-area {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Собеседник в звонке */
+.interviewer-tile {
+  background: rgba(20, 28, 40, 0.6);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.interviewer-header {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.interviewer-avatar {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: rgba(190, 242, 100, 0.15);
+  color: var(--accent-lime);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 0.8rem;
+  border: 1px solid rgba(190, 242, 100, 0.3);
+}
+
+.interviewer-name {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.interviewer-role {
+  font-size: 0.725rem;
+  color: var(--text-muted);
+}
+
+.interviewer-speech {
+  margin-top: 0.85rem;
+  font-size: 0.85rem;
+  color: #e2e8f0;
+  line-height: 1.45;
+  background: rgba(0, 0, 0, 0.35);
+  padding: 0.65rem 0.85rem;
+  border-radius: var(--radius-sm);
+  border-left: 2px solid var(--accent-lime);
+}
+
+/* Парящий оверлей Live Hints */
+.floating-hud-tile {
+  background: rgba(12, 18, 26, 0.95);
+  border: 1px solid rgba(190, 242, 100, 0.4);
+  border-radius: var(--radius-md);
+  padding: 0.9rem 1rem;
+  box-shadow: 0 12px 35px rgba(0, 0, 0, 0.7), 0 0 25px rgba(190, 242, 100, 0.15);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  backdrop-filter: blur(16px);
+}
+
+.hud-tile-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.6rem;
+  padding-bottom: 0.4rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.hud-brand-tag {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--accent-lime);
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.hud-badge-stealth {
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 0.15rem 0.5rem;
+  border-radius: var(--radius-pill);
+  background: rgba(16, 185, 129, 0.15);
+  color: var(--accent-emerald);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.hud-bullets-preview {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin-bottom: 0.75rem;
+}
+
+.hud-bullet-row {
+  font-size: 0.775rem;
+  line-height: 1.35;
+  color: var(--text-primary);
+  display: flex;
+  align-items: flex-start;
+  gap: 0.45rem;
+}
+
+.hud-bullet-num {
+  color: var(--accent-lime);
+  font-weight: 700;
+  font-size: 0.75rem;
+  flex-shrink: 0;
+}
+
+.hud-footer-hint {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  padding-top: 0.4rem;
+}
+
+.hud-latency-chip {
+  color: var(--accent-lime);
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+}
+
 /* ==========================================================================
    Trust Bar (Логотипы и показатели доверия)
    ========================================================================== */
 .trust-bar-section {
   position: relative;
-  padding-bottom: var(--section-spacing);
+  padding-top: 1.5rem;
+  padding-bottom: 2rem;
   z-index: 2;
   text-align: center;
 }
@@ -638,24 +849,24 @@ body {
   font-family: var(--font-mono);
 }
 
-/* UI-виджет внутри карточки 2: Каркас STAR */
+/* UI-виджет внутри карточки 2: Каркас STAR (Все 4 фазы) */
 .widget-star-card {
   background: var(--bg-secondary);
   border: 1px solid var(--border-light);
   border-radius: var(--radius-md);
-  padding: 1rem;
+  padding: 0.85rem 1rem;
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 0.45rem;
 }
 
 .star-item {
   display: flex;
   align-items: flex-start;
   gap: 0.6rem;
-  font-size: 0.8rem;
+  font-size: 0.775rem;
   color: var(--text-secondary);
-  line-height: 1.4;
+  line-height: 1.35;
 }
 
 .star-tag {
@@ -667,51 +878,82 @@ body {
   color: var(--text-primary);
   flex-shrink: 0;
   font-family: var(--font-mono);
+  min-width: 20px;
+  text-align: center;
 }
 
-.star-item.active .star-tag {
-  background: var(--accent-lime);
-  color: var(--accent-lime-dark);
-}
+.star-tag.tag-s { background: rgba(59, 130, 246, 0.15); color: #60a5fa; }
+.star-tag.tag-t { background: rgba(245, 158, 11, 0.15); color: #fbbf24; }
+.star-tag.tag-a { background: rgba(190, 242, 100, 0.2); color: var(--accent-lime); }
+.star-tag.tag-r { background: rgba(16, 185, 129, 0.2); color: var(--accent-emerald); }
 
 .star-item.active {
   color: var(--text-primary);
   font-weight: 500;
 }
 
-/* UI-виджет внутри карточки 3: WDA Exclude Zoom/Meet */
+/* UI-виджет внутри карточки 3: Сравнение экранов WDA (Вы vs Звонок) */
 .widget-stealth-card {
   background: var(--bg-secondary);
   border: 1px solid var(--border-light);
   border-radius: var(--radius-md);
-  padding: 1rem;
+  padding: 0.85rem 1rem;
 }
 
-.stealth-window-mock {
-  border: 1px dashed rgba(16, 185, 129, 0.4);
+.stealth-compare-mini {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+  margin-bottom: 0.65rem;
+}
+
+.stealth-screen-box {
   border-radius: var(--radius-sm);
-  padding: 0.75rem;
-  background: rgba(16, 185, 129, 0.03);
+  padding: 0.55rem 0.65rem;
   text-align: center;
-  margin-bottom: 0.6rem;
+  border: 1px solid var(--border-light);
+  background: rgba(0, 0, 0, 0.4);
 }
 
-.stealth-status-text {
-  font-size: 0.75rem;
+.stealth-screen-box.user-view {
+  border-color: rgba(190, 242, 100, 0.35);
+  background: rgba(190, 242, 100, 0.04);
+}
+
+.stealth-screen-box.call-view {
+  border-color: rgba(16, 185, 129, 0.35);
+  background: rgba(16, 185, 129, 0.04);
+}
+
+.stealth-screen-title {
+  font-size: 0.7rem;
+  font-weight: 700;
+  margin-bottom: 0.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.3rem;
+}
+
+.user-view .stealth-screen-title { color: var(--accent-lime); }
+.call-view .stealth-screen-title { color: var(--accent-emerald); }
+
+.stealth-screen-content {
+  font-size: 0.68rem;
+  color: var(--text-secondary);
+  line-height: 1.35;
+}
+
+.stealth-status-bar {
+  font-size: 0.7rem;
   color: var(--accent-emerald);
   font-weight: 600;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 0.4rem;
-}
-
-.stealth-app-list {
-  display: flex;
-  justify-content: space-around;
-  font-size: 0.7rem;
-  color: var(--text-muted);
-  padding-top: 0.4rem;
+  gap: 0.35rem;
+  padding-top: 0.35rem;
+  border-top: 1px solid var(--border-light);
 }
 
 /* ==========================================================================
@@ -826,6 +1068,109 @@ body {
   font-size: 0.75rem;
 }
 
+/* Мокап шага 3: Момент появления подсказки */
+.mock-streaming-hint {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.mock-bubble-question {
+  background: rgba(255, 255, 255, 0.04);
+  border-left: 2px solid var(--accent-lime);
+  padding: 0.55rem 0.75rem;
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  font-size: 0.75rem;
+  color: var(--text-primary);
+  line-height: 1.35;
+}
+
+.mock-bubble-q-tag {
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: var(--accent-lime);
+  text-transform: uppercase;
+  margin-bottom: 0.2rem;
+  letter-spacing: 0.04em;
+}
+
+.mock-hints-overlay-box {
+  background: rgba(10, 15, 22, 0.95);
+  border: 1px solid rgba(190, 242, 100, 0.35);
+  border-radius: var(--radius-sm);
+  padding: 0.65rem 0.85rem;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.6);
+}
+
+.mock-hints-overlay-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  margin-bottom: 0.45rem;
+  padding-bottom: 0.3rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.mock-hints-list-mini {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.mock-hint-item-mini {
+  font-size: 0.725rem;
+  color: var(--text-primary);
+  display: flex;
+  align-items: flex-start;
+  gap: 0.45rem;
+  line-height: 1.3;
+}
+
+.mock-hint-bullet {
+  color: var(--accent-lime);
+  font-weight: 700;
+  font-size: 0.725rem;
+  flex-shrink: 0;
+}
+
+/* Мокап шага 4: Горячие клавиши */
+.mock-hotkeys-box {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.mock-hotkey-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border-light);
+  padding: 0.55rem 0.8rem;
+  border-radius: var(--radius-sm);
+}
+
+.mock-hotkey-action {
+  font-size: 0.775rem;
+  color: var(--text-secondary);
+}
+
+.mock-kbd-badge {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 600;
+  background: rgba(190, 242, 100, 0.12);
+  color: var(--accent-lime);
+  border: 1px solid rgba(190, 242, 100, 0.25);
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+}
+
 /* ==========================================================================
    Интерактивный симулятор оверлея
    ========================================================================== */
@@ -847,29 +1192,99 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: rgba(0, 0, 0, 0.35);
-  padding: 0.75rem 1.25rem;
+  background: rgba(0, 0, 0, 0.45);
+  padding: 0.65rem 1.25rem;
   border-bottom: 1px solid var(--border-light);
   flex-wrap: wrap;
   gap: 0.75rem;
 }
 
-.demo-window-controls {
+/* Windows HUD хэдер симулятора */
+.demo-hud-header {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 0.75rem;
 }
 
-.window-dot {
-  width: 11px;
-  height: 11px;
+.demo-hud-title {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--accent-lime);
+  font-family: var(--font-mono);
+  letter-spacing: 0.04em;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.hud-status-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: rgba(16, 185, 129, 0.12);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  color: var(--accent-emerald);
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 0.15rem 0.5rem;
+  border-radius: var(--radius-pill);
+}
+
+.hud-status-dot {
+  width: 6px;
+  height: 6px;
   border-radius: 50%;
-  background-color: var(--border-card);
+  background-color: var(--accent-emerald);
+  box-shadow: 0 0 6px var(--accent-emerald);
+  animation: liveBlink 1.5s infinite ease-in-out;
 }
 
-.window-dot-red { background-color: #ef4444; }
-.window-dot-yellow { background-color: #f59e0b; }
-.window-dot-green { background-color: #10b981; }
+.demo-win-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.win-btn-mini {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border-light);
+  color: var(--text-muted);
+  width: 26px;
+  height: 26px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 0.8rem;
+  font-family: var(--font-mono);
+  transition: all 0.2s ease;
+}
+
+.win-btn-mini:hover {
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.12);
+  border-color: var(--accent-lime);
+}
+
+.demo-minimized-notice {
+  text-align: center;
+  padding: 2.5rem 1.5rem;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  border: 1px dashed var(--border-light);
+  border-radius: var(--radius-sm);
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.demo-minimized-notice kbd {
+  color: var(--accent-lime);
+  background: rgba(190, 242, 100, 0.12);
+  border: 1px solid rgba(190, 242, 100, 0.25);
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+  font-family: var(--font-mono);
+}
 
 .demo-tabs-group {
   display: flex;
@@ -1064,23 +1479,50 @@ body {
 }
 
 /* ==========================================================================
-   Тарифы (Pricing / 0 ₽ Freedom)
+   Тарифы (Pricing / 0 ₽ Freedom — 2 параллельных трека)
    ========================================================================== */
 .pricing-section {
   padding-block: var(--section-spacing);
   text-align: center;
 }
 
-.pricing-card-spine {
-  max-width: 600px;
+.pricing-grid-dual {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1.75rem;
+  max-width: 980px;
   margin-inline: auto;
+}
+
+.pricing-card-dual {
   background: var(--bg-card-elevated);
-  border: 1px solid rgba(190, 242, 100, 0.35);
+  border: 1px solid var(--border-card);
   border-radius: var(--radius-xl);
-  padding: clamp(2rem, 5vw, 3rem);
-  box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.8), 0 0 50px rgba(190, 242, 100, 0.15);
+  padding: clamp(1.75rem, 4vw, 2.5rem);
+  box-shadow: var(--shadow-card);
   position: relative;
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  text-align: left;
+  backdrop-filter: blur(14px);
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.pricing-card-dual:hover {
+  transform: translateY(-3px);
+  border-color: rgba(190, 242, 100, 0.35);
+  box-shadow: 0 20px 45px -10px rgba(0, 0, 0, 0.8), var(--shadow-glow);
+}
+
+.pricing-card-dual.highlighted {
+  border-color: rgba(190, 242, 100, 0.45);
+  background: radial-gradient(circle at 90% 10%, rgba(190, 242, 100, 0.07) 0%, var(--bg-card-elevated) 70%);
+}
+
+.pricing-card-top {
+  margin-bottom: 1.25rem;
 }
 
 .pricing-badge {
@@ -1093,23 +1535,48 @@ body {
   letter-spacing: 0.08em;
   padding: 0.25rem 0.85rem;
   border-radius: var(--radius-pill);
+  margin-bottom: 1rem;
+}
+
+.pricing-badge.badge-outline {
+  background: rgba(190, 242, 100, 0.12);
+  color: var(--accent-lime);
+  border: 1px solid rgba(190, 242, 100, 0.3);
+}
+
+.pricing-title {
+  font-size: 1.45rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  margin-bottom: 0.35rem;
+  letter-spacing: -0.015em;
+}
+
+.pricing-for {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  line-height: 1.4;
   margin-bottom: 1.25rem;
 }
 
+.pricing-price-wrap {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
 .pricing-price {
-  font-size: clamp(3rem, 7vw, 4.5rem);
+  font-size: 2.75rem;
   font-weight: 800;
   color: var(--text-primary);
   line-height: 1;
-  margin-bottom: 0.5rem;
-  letter-spacing: -0.03em;
+  letter-spacing: -0.02em;
 }
 
 .pricing-period {
-  font-size: 1.15rem;
-  color: var(--text-secondary);
-  font-weight: 500;
-  margin-bottom: 2rem;
+  font-size: 0.875rem;
+  color: var(--text-muted);
 }
 
 .pricing-features-list {
@@ -1117,16 +1584,18 @@ body {
   text-align: left;
   display: flex;
   flex-direction: column;
-  gap: 0.85rem;
-  margin-bottom: 2.25rem;
+  gap: 0.75rem;
+  margin-bottom: 2rem;
+  flex-grow: 1;
 }
 
 .pricing-item {
   display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  font-size: 0.95rem;
+  align-items: flex-start;
+  gap: 0.65rem;
+  font-size: 0.9rem;
   color: var(--text-secondary);
+  line-height: 1.4;
 }
 
 .check-svg {
@@ -1134,6 +1603,7 @@ body {
   height: 18px;
   color: var(--accent-lime);
   flex-shrink: 0;
+  margin-top: 2px;
 }
 
 /* ==========================================================================
@@ -1353,5 +1823,45 @@ body {
 
   .cta-floating-ring {
     display: none;
+  }
+}
+
+/* Бейдж безопасности в секции CTA */
+.cta-trust-badge {
+  margin-top: 1.75rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  font-size: 0.825rem;
+  color: var(--text-muted);
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border-light);
+  padding: 0.5rem 1.1rem;
+  border-radius: var(--radius-pill);
+  flex-wrap: wrap;
+}
+
+.cta-trust-badge svg {
+  color: var(--accent-emerald);
+  flex-shrink: 0;
+}
+
+@media (max-width: 900px) {
+  .pricing-grid-dual {
+    grid-template-columns: 1fr;
+    max-width: 520px;
+  }
+}
+
+/* Бережное отключение анимаций для пользователей с prefers-reduced-motion */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }

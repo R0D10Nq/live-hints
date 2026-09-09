@@ -93,6 +93,31 @@ def test_site_semantic_sections():
     assert "0 ₽" in content
     assert "Open Source" in content
 
+    # Мокап видеозвонка и оверлея в Hero
+    assert "hero-preview-wrapper" in content
+    assert "call-mockup-frame" in content
+
+    # Сетка двух тарифов
+    assert "pricing-grid-dual" in content
+
+    # Отсутствие кнопок macOS и наличие Windows HUD
+    assert "window-dot-red" not in content
+    assert "window-dot-yellow" not in content
+    assert "window-dot-green" not in content
+    assert "demo-hud-title" in content
+    assert "demoMinBtn" in content
+
+
+def test_site_styles_and_a11y():
+    """Стили должны содержать медиа-запрос prefers-reduced-motion и не содержать точек macOS."""
+    styles_path = os.path.join(SITE_DIR, "styles.css")
+    with open(styles_path, "r", encoding="utf-8") as f:
+        styles = f.read()
+
+    assert "prefers-reduced-motion" in styles
+    assert "pricing-grid-dual" in styles
+    assert ".window-dot-red" not in styles
+
 
 def test_pages_workflow_exists():
     """GitHub Actions workflow для деплоя на GitHub Pages должен быть сконфигурирован."""
@@ -103,3 +128,4 @@ def test_pages_workflow_exists():
     assert "upload-pages-artifact" in content
     assert "deploy-pages" in content
     assert "site" in content
+
