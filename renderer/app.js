@@ -7,6 +7,7 @@
 import { NewUIController } from './modules/ui-new/index.js';
 import { state } from './modules/ui-new/state-manager.js';
 import { SERVERS } from './modules/constants.js';
+import { AudioManager } from './modules/audio-manager.js';
 
 function normalizeStoredBoolean(value) {
   return value === true || value === 1 || value === 'true';
@@ -16,6 +17,7 @@ function normalizeStoredBoolean(value) {
 class LiveHintsApp {
   constructor() {
     this.ui = null;
+    this.audioManager = null;
     this.ws = null;
     this.wsMicrophone = null;
     this.reconnectAttempts = 0;
@@ -31,6 +33,10 @@ class LiveHintsApp {
 
     // Initialize new UI controller
     this.ui = new NewUIController(this);
+
+    // Initialize audio manager
+    this.audioManager = new AudioManager(this);
+    this.audioManager.setup();
 
     // Setup IPC listeners
     this.setupIPCListeners();
@@ -78,6 +84,14 @@ class LiveHintsApp {
       if (!isActive && status !== 'idle') return;
       if (isPaused && status === 'recording') return;
       state.set('ui.status', status);
+    });
+
+    window.electron.onShortcutToggleMute?.(() => {
+      this.audioManager?.toggleMicMute();
+    });
+
+    window.electron.onShortcutToggleTranscript?.(() => {
+      this.ui?.sidebar?.toggle();
     });
   }
 
@@ -147,7 +161,8 @@ class LiveHintsApp {
             data.type === 'transcript' &&
             data.text &&
             state.get('session.isActive') &&
-            !state.get('session.isPaused')
+            !state.get('session.isPaused') &&
+            !this.audioManager?.micMuted
           ) {
             state.addTranscript(data.text);
             if (state.get('settings.autoHints')) void this.requestHint(data.text);
@@ -243,6 +258,24 @@ class LiveHintsApp {
       if ((e.ctrlKey || e.metaKey) && e.code === 'KeyH') {
         e.preventDefault();
         void window.electron?.stealthToggle?.();
+      }
+
+      // Ctrl/Cmd + M - Toggle mute
+      if ((e.ctrlKey || e.metaKey) && e.code === 'KeyM') {
+        e.preventDefault();
+        this.audioManager?.toggleMicMute();
+      }
+
+      // Ctrl/Cmd + T - Toggle transcript
+      if ((e.ctrlKey || e.metaKey) && e.code === 'KeyT') {
+        e.preventDefault();
+        this.ui?.sidebar?.toggle();
+      }
+
+      // Ctrl/Cmd + Shift + C - Toggle click-through
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.code === 'KeyC') {
+        e.preventDefault();
+        document.getElementById('btn-click-through')?.click();
       }
 
       // Ctrl/Cmd + Enter - Ask hint
@@ -359,10 +392,12 @@ class LiveHintsApp {
       });
       if (!result?.success) throw new Error(result?.error || 'Сервисы не запустились');
       this.connectWebSocket();
+      void this.audioManager?.startVUMeter();
       return true;
     } catch (error) {
       await window.electron?.stopRuntime?.();
       state.stopSession();
+      this.audioManager?.stopVUMeter();
       this.ui.updateToggleButton(false);
       this.ui.updatePauseButton(true);
       state.set('ui.status', 'error');
@@ -374,6 +409,7 @@ class LiveHintsApp {
   async stopSession() {
     this.sessionEpoch++;
     state.stopSession();
+    this.audioManager?.stopVUMeter();
     try {
       await window.electron?.stopRuntime?.();
     } finally {
@@ -389,6 +425,7 @@ class LiveHintsApp {
   async pauseSession() {
     this.sessionEpoch++;
     state.pauseSession();
+    this.audioManager?.stopVUMeter();
     try {
       await window.electron?.stopSTT?.();
     } finally {
@@ -407,11 +444,12 @@ class LiveHintsApp {
       const result = await window.electron?.startSTT?.({
         dualAudio: state.get('settings.dualAudio') === true,
       });
-      if (!result?.success) throw new Error(result?.error || 'STT не запустился');
+      if (!result?.success) throw new Error(result?.error || 'Не удалось перезапустить STT');
       state.resumeSession();
+      this.connectWebSocket();
+      void this.audioManager?.startVUMeter();
       this.ui.updateToggleButton(true);
       this.ui.updatePauseButton(false);
-      this.connectWebSocket();
       return true;
     } catch (error) {
       state.set('ui.status', 'error');

@@ -229,6 +229,159 @@ export class NewUIController {
       document.body.style.opacity = value / 100;
     });
 
+    // Click-through mode
+    let clickThroughActive = false;
+    const btnClickThrough = document.getElementById('btn-click-through');
+    const updateClickThrough = (active) => {
+      clickThroughActive = Boolean(active);
+      if (btnClickThrough) {
+        btnClickThrough.classList.toggle('click-through-active', clickThroughActive);
+        btnClickThrough.title = clickThroughActive
+          ? 'Сквозной клик активен (наведите на шапку для управления)'
+          : 'Сквозной клик (мышь проходит сквозь окно)';
+      }
+      void window.electron?.setIgnoreMouse?.(clickThroughActive);
+    };
+
+    btnClickThrough?.addEventListener('click', () => {
+      updateClickThrough(!clickThroughActive);
+      this.showToast(
+        clickThroughActive ? 'Сквозной клик включен' : 'Сквозной клик выключен',
+        'info'
+      );
+    });
+
+    const appHeader = document.querySelector('.app-header');
+    appHeader?.addEventListener('mouseenter', () => {
+      if (clickThroughActive) {
+        void window.electron?.setIgnoreMouse?.(false);
+      }
+    });
+    appHeader?.addEventListener('mouseleave', () => {
+      if (clickThroughActive) {
+        void window.electron?.setIgnoreMouse?.(true);
+      }
+    });
+
+    // Move to secondary monitor
+    document.getElementById('btn-move-display')?.addEventListener('click', async () => {
+      const hasSecond = await window.electron?.stealthHasSecondMonitor?.();
+      if (!hasSecond) {
+        this.showToast('Второй монитор не обнаружен', 'info');
+        return;
+      }
+      await window.electron?.moveToSecondary?.();
+      this.showToast('Окно перемещено на второй монитор', 'success');
+    });
+
+    // Quick compact mode HUD
+    document.getElementById('btn-quick-compact')?.addEventListener('click', () => {
+      const compactCheckbox = document.getElementById('compact-mode');
+      const nextVal = !document.body.classList.contains('compact-mode');
+      document.body.classList.toggle('compact-mode', nextVal);
+      if (compactCheckbox) compactCheckbox.checked = nextVal;
+      state.updateSetting('compactMode', nextVal);
+      this.showToast(nextVal ? 'Компактный режим включен' : 'Обычный режим', 'info');
+    });
+
+    // Toggle transcript sidebar button in control bar
+    document.getElementById('btn-toggle-transcript')?.addEventListener('click', () => {
+      this.sidebar.toggle();
+    });
+
+    // Font scaling controls
+    const hintsFeed = document.getElementById('hints-feed');
+    const fontSizeSelect = document.getElementById('hint-font-size-select');
+    const fontSizes = ['font-normal', 'font-large', 'font-xlarge'];
+    let currentFontIndex = 0;
+
+    const setFontSizeByIndex = (index) => {
+      currentFontIndex = Math.max(0, Math.min(fontSizes.length - 1, index));
+      fontSizes.forEach((cls) => hintsFeed?.classList.remove(cls));
+      hintsFeed?.classList.add(fontSizes[currentFontIndex]);
+      const sizeVal =
+        currentFontIndex === 0 ? 'normal' : currentFontIndex === 1 ? 'large' : 'xlarge';
+      if (fontSizeSelect) fontSizeSelect.value = sizeVal;
+      try {
+        localStorage.setItem('live-hints-font-size', sizeVal);
+      } catch {}
+    };
+
+    try {
+      const savedFontSize = localStorage.getItem('live-hints-font-size') || 'normal';
+      const idx = savedFontSize === 'xlarge' ? 2 : savedFontSize === 'large' ? 1 : 0;
+      setFontSizeByIndex(idx);
+    } catch {}
+
+    document.getElementById('btn-font-decrease')?.addEventListener('click', () => {
+      setFontSizeByIndex(currentFontIndex - 1);
+    });
+
+    document.getElementById('btn-font-increase')?.addEventListener('click', () => {
+      setFontSizeByIndex(currentFontIndex + 1);
+    });
+
+    fontSizeSelect?.addEventListener('change', (e) => {
+      const idx = e.target.value === 'xlarge' ? 2 : e.target.value === 'large' ? 1 : 0;
+      setFontSizeByIndex(idx);
+    });
+
+    // Export session as Markdown
+    document.getElementById('btn-export-session')?.addEventListener('click', () => {
+      this.exportSessionAsMarkdown();
+    });
+
+    // Session context upload in settings
+    const resumeInput = document.getElementById('file-resume-input');
+    const vacancyInput = document.getElementById('file-vacancy-input');
+    const btnUploadResume = document.getElementById('btn-upload-resume');
+    const btnUploadVacancy = document.getElementById('btn-upload-vacancy');
+    const resumeStatus = document.getElementById('resume-status');
+    const vacancyStatus = document.getElementById('vacancy-status');
+
+    btnUploadResume?.addEventListener('click', () => resumeInput?.click());
+    btnUploadVacancy?.addEventListener('click', () => vacancyInput?.click());
+
+    resumeInput?.addEventListener('change', async (e) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      try {
+        const buffer = await file.arrayBuffer();
+        const ext = file.name.split('.').pop().toLowerCase();
+        const text = await window.electron?.parseFileBuffer?.(buffer, ext);
+        if (text) {
+          await window.electron?.saveContextFile?.('resume', text);
+          if (resumeStatus) {
+            resumeStatus.textContent = `${file.name}`;
+            resumeStatus.classList.add('badge-success');
+          }
+          this.showToast(`Резюме загружено (${text.length} симв.)`, 'success');
+        }
+      } catch (err) {
+        this.showToast('Ошибка при загрузке резюме: ' + err.message, 'error');
+      }
+    });
+
+    vacancyInput?.addEventListener('change', async (e) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      try {
+        const buffer = await file.arrayBuffer();
+        const ext = file.name.split('.').pop().toLowerCase();
+        const text = await window.electron?.parseFileBuffer?.(buffer, ext);
+        if (text) {
+          await window.electron?.saveContextFile?.('vacancy', text);
+          if (vacancyStatus) {
+            vacancyStatus.textContent = `${file.name}`;
+            vacancyStatus.classList.add('badge-success');
+          }
+          this.showToast(`Вакансия загружена (${text.length} симв.)`, 'success');
+        }
+      } catch (err) {
+        this.showToast('Ошибка при загрузке вакансии: ' + err.message, 'error');
+      }
+    });
+
     // Keyboard shortcuts
     document.addEventListener('keydown', (e) => {
       if (e.ctrlKey && e.key === ',') {
@@ -445,6 +598,72 @@ export class NewUIController {
   // Toast
   showToast(message, type = 'info') {
     this.toasts?.show(message, type);
+  }
+
+  // Export session as Markdown
+  exportSessionAsMarkdown() {
+    const transcripts = state.get('ui.transcripts') || [];
+    const hints = state.get('ui.hints') || [];
+    const profile = state.get('settings.profile') || 'job_interview_ru';
+    const dateStr = new Date().toLocaleString('ru-RU');
+
+    if (transcripts.length === 0 && hints.length === 0) {
+      this.showToast('Нет данных для экспорта', 'info');
+      return;
+    }
+
+    let md = `# Сессия Live Hints\n\n`;
+    md += `- Дата: ${dateStr}\n`;
+    md += `- Профиль: ${profile}\n`;
+    md += `- Всего реплик: ${transcripts.length}\n`;
+    md += `- Всего подсказок: ${hints.length}\n\n`;
+
+    md += `## Стенограмма разговора\n\n`;
+    if (transcripts.length === 0) {
+      md += `*Стенограмма пуста*\n\n`;
+    } else {
+      transcripts.forEach((item, i) => {
+        const time = item.timestamp
+          ? new Date(item.timestamp).toLocaleTimeString('ru-RU')
+          : `#${i + 1}`;
+        const sender = item.source === 'candidate' ? 'Кандидат' : 'Собеседник';
+        md += `**[${time}] ${sender}:** ${item.text}\n\n`;
+      });
+    }
+
+    md += `## Подсказки ассистента\n\n`;
+    if (hints.length === 0) {
+      md += `*Подсказок нет*\n\n`;
+    } else {
+      hints.forEach((hint, i) => {
+        const time = hint.timestamp
+          ? new Date(hint.timestamp).toLocaleTimeString('ru-RU')
+          : `#${i + 1}`;
+        const type = hint.type ? ` (${hint.type})` : '';
+        md += `### Подсказка ${i + 1}${type} [${time}]\n\n${hint.text}\n\n`;
+      });
+    }
+
+    // Копирование в буфер обмена
+    if (navigator.clipboard?.writeText) {
+      navigator.clipboard.writeText(md).catch(() => {});
+    }
+
+    // Сохранение в файл blob
+    try {
+      const blob = new Blob([md], { type: 'text/markdown;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `live-hints-session-${Date.now()}.md`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      this.showToast('Сессия сохранена в Markdown и скопирована в буфер', 'success');
+    } catch {
+      this.showToast('Сессия скопирована в буфер обмена', 'success');
+    }
   }
 }
 
