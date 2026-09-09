@@ -239,8 +239,14 @@ class LiveHintsApp {
         document.getElementById('btn-pause')?.click();
       }
 
-      // Ctrl/Cmd + H - Ask hint
+      // Ctrl/Cmd + H - Toggle stealth mode
       if ((e.ctrlKey || e.metaKey) && e.code === 'KeyH') {
+        e.preventDefault();
+        void window.electron?.stealthToggle?.();
+      }
+
+      // Ctrl/Cmd + Enter - Ask hint
+      if ((e.ctrlKey || e.metaKey) && e.code === 'Enter') {
         e.preventDefault();
         document.getElementById('btn-ask')?.click();
       }

@@ -174,6 +174,44 @@ export class NewUIController {
       void window.electron?.setAlwaysOnTop?.(e.target.checked);
     });
 
+    const stealthToggle = document.getElementById('stealth-mode');
+    const stealthBtn = document.getElementById('btn-stealth');
+
+    const updateStealthUI = (active) => {
+      const isAct = Boolean(active);
+      if (stealthToggle) stealthToggle.checked = isAct;
+      if (stealthBtn) {
+        stealthBtn.classList.toggle('stealth-active', isAct);
+        stealthBtn.title = isAct
+          ? 'Скрытие активно: окно скрыто в OBS, Zoom, Teams (Ctrl+H)'
+          : 'Скрытие выключено: окно видно при демонстрации экрана (Ctrl+H)';
+      }
+    };
+
+    void window.electron?.stealthStatus?.().then((active) => {
+      updateStealthUI(active);
+    });
+
+    window.electron?.onStealthActivated?.(() => {
+      updateStealthUI(true);
+      this.showToast('Скрытие включено: окно защищено от записи экрана', 'success');
+    });
+
+    window.electron?.onStealthDeactivated?.(() => {
+      updateStealthUI(false);
+      this.showToast('Скрытие выключено: окно видно на записи', 'info');
+    });
+
+    stealthToggle?.addEventListener('change', async () => {
+      const active = await window.electron?.stealthToggle?.();
+      updateStealthUI(active);
+    });
+
+    stealthBtn?.addEventListener('click', async () => {
+      const active = await window.electron?.stealthToggle?.();
+      updateStealthUI(active);
+    });
+
     document.getElementById('compact-mode')?.addEventListener('change', (e) => {
       state.updateSetting('compactMode', e.target.checked);
       document.body.classList.toggle('compact-mode', e.target.checked);
@@ -269,7 +307,6 @@ export class NewUIController {
     } else {
       await this.app?.pauseSession?.();
     }
-
   }
 
   updateToggleButton(isActive) {
