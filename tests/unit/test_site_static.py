@@ -35,6 +35,7 @@ def test_site_files_exist():
     assert os.path.exists(os.path.join(SITE_DIR, "assets", "icon.png"))
     # Авторские 3D-ассеты без фона
     assert os.path.exists(os.path.join(SITE_DIR, "assets", "hero-wave-3d.png"))
+    assert os.path.exists(os.path.join(SITE_DIR, "assets", "hero-dunes-horizon.png"))
     assert os.path.exists(os.path.join(SITE_DIR, "assets", "neural-orb-transparent.png"))
     assert os.path.exists(os.path.join(SITE_DIR, "assets", "titanium-ring-transparent.png"))
 

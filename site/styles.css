@@ -268,10 +268,35 @@ body {
    ========================================================================== */
 .hero-section {
   position: relative;
-  padding-top: clamp(3rem, 6vw, 5.5rem);
-  padding-bottom: clamp(4rem, 8vw, 7rem);
+  padding-top: clamp(2.5rem, 5vw, 4.5rem);
+  padding-bottom: clamp(3rem, 6vw, 5rem);
   text-align: center;
-  overflow: visible;
+  overflow-x: clip;
+}
+
+/* Панорамный фоновый 3D-ландшафт SpineEdge */
+.hero-bg-horizon,
+.hero-wave-wrapper {
+  position: absolute;
+  bottom: -180px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+  max-width: 1600px;
+  min-width: 1000px;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.9;
+  mask-image: linear-gradient(to bottom, black 0%, black 70%, transparent 95%);
+  -webkit-mask-image: linear-gradient(to bottom, black 0%, black 70%, transparent 95%);
+}
+
+.hero-horizon-img,
+.hero-wave-img {
+  width: 100%;
+  height: auto;
+  display: block;
+  filter: drop-shadow(0 0 40px rgba(190, 242, 100, 0.22));
 }
 
 .hero-content {
@@ -279,6 +304,7 @@ body {
   margin-inline: auto;
   position: relative;
   z-index: 2;
+  padding: 1rem 1rem;
 }
 
 /* Верхний Badge-pill */
@@ -296,6 +322,7 @@ body {
   text-decoration: none;
   margin-bottom: 2rem;
   backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   transition: all 0.25s ease;
   box-shadow: 0 0 20px rgba(0, 0, 0, 0.4);
 }
@@ -322,24 +349,26 @@ body {
   font-weight: 800;
   line-height: 1.1;
   letter-spacing: -0.035em;
-  color: var(--text-primary);
+  color: #ffffff;
   margin-bottom: 1.5rem;
   text-wrap: balance;
+  text-shadow: 0 4px 20px rgba(0, 0, 0, 0.9);
 }
 
 .text-lime-gradient {
   color: var(--accent-lime);
-  text-shadow: 0 0 40px rgba(190, 242, 100, 0.3);
+  text-shadow: 0 0 40px rgba(190, 242, 100, 0.35);
 }
 
 .hero-subtitle {
-  font-size: clamp(1.05rem, 2vw, 1.25rem);
-  color: var(--text-secondary);
-  line-height: 1.6;
-  max-width: 660px;
+  font-size: clamp(1.1rem, 2.2vw, 1.3rem);
+  color: #f1f5f9;
+  line-height: 1.65;
+  max-width: 680px;
   margin-inline: auto;
-  margin-bottom: 2.25rem;
+  margin-bottom: 3rem;
   text-wrap: balance;
+  text-shadow: 0 2px 20px rgba(5, 7, 10, 1), 0 0 40px rgba(5, 7, 10, 1);
 }
 
 .hero-actions {
@@ -348,27 +377,7 @@ body {
   justify-content: center;
   gap: 1rem;
   flex-wrap: wrap;
-  margin-bottom: 3.5rem;
-}
-
-/* 3D фоновая шелковая волна SpineEdge */
-.hero-wave-wrapper {
-  position: relative;
-  width: 100%;
-  max-width: 1100px;
-  margin-inline: auto;
-  margin-top: 1rem;
-  z-index: 1;
-  pointer-events: none;
-}
-
-.hero-wave-img {
-  width: 100%;
-  height: auto;
-  display: block;
-  filter: drop-shadow(0 0 35px rgba(190, 242, 100, 0.15));
-  mask-image: linear-gradient(to bottom, black 85%, transparent 100%);
-  -webkit-mask-image: linear-gradient(to bottom, black 85%, transparent 100%);
+  margin-bottom: 0.5rem;
 }
 
 /* ==========================================================================
