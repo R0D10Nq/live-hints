@@ -7,6 +7,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initDemoSimulator();
   initMobileMenu();
   initCopyButton();
+  initWindowControls();
 });
 
 // Данные для интерактивного симулятора оверлея
@@ -46,6 +47,17 @@ const DEMO_CASES = {
   },
 };
 
+// Таймеры для построчного стриминга
+let streamTimeouts = [];
+
+/**
+ * Очистить активные таймеры стриминга
+ */
+function clearStreamTimeouts() {
+  streamTimeouts.forEach((t) => clearTimeout(t));
+  streamTimeouts = [];
+}
+
 /**
  * Инициализация интерактивного симулятора оверлея
  */
@@ -73,29 +85,93 @@ function initDemoSimulator() {
       tab.classList.add('active');
       tab.setAttribute('aria-selected', 'true');
 
-      // Обновляем контент
+      // Обновляем вопрос
       questionEl.textContent = data.question;
-      latencyEl.textContent = data.latency;
 
-      // Очищаем и анимированно добавляем пункты
+      // Сбрасываем таймеры стриминга
+      clearStreamTimeouts();
+
+      // Имитация стриминга ИИ
+      latencyEl.textContent = 'Слушаю вопрос...';
       bulletsEl.innerHTML = '';
+
+      const timerLatency = setTimeout(() => {
+        latencyEl.textContent = data.latency;
+      }, 140);
+      streamTimeouts.push(timerLatency);
+
+      // Построчное появление тезисов
       data.bullets.forEach((bulletText, index) => {
-        const li = document.createElement('li');
-        li.className = 'demo-bullet-item';
+        const timerBullet = setTimeout(
+          () => {
+            const li = document.createElement('li');
+            li.className = 'demo-bullet-item';
 
-        const numSpan = document.createElement('span');
-        numSpan.className = 'bullet-num';
-        numSpan.textContent = String(index + 1);
+            const numSpan = document.createElement('span');
+            numSpan.className = 'bullet-num';
+            numSpan.textContent = String(index + 1);
 
-        const textSpan = document.createElement('span');
-        textSpan.textContent = bulletText;
+            const textSpan = document.createElement('span');
+            textSpan.textContent = bulletText;
 
-        li.appendChild(numSpan);
-        li.appendChild(textSpan);
-        bulletsEl.appendChild(li);
+            li.appendChild(numSpan);
+            li.appendChild(textSpan);
+            bulletsEl.appendChild(li);
+          },
+          150 + index * 120
+        );
+
+        streamTimeouts.push(timerBullet);
       });
     });
   });
+}
+
+/**
+ * Инициализация элементов управления окном Windows HUD (Свернуть / Закрыть)
+ */
+function initWindowControls() {
+  const minBtn = document.getElementById('demoMinBtn');
+  const closeBtn = document.getElementById('demoCloseBtn');
+  const demoBody = document.querySelector('.demo-body');
+
+  if (!demoBody) return;
+
+  const originalContent = demoBody.innerHTML;
+
+  function toggleMinimize() {
+    const isMinimized = demoBody.querySelector('.demo-minimized-notice');
+    if (isMinimized) {
+      demoBody.innerHTML = originalContent;
+      initDemoSimulator();
+      initCopyButton();
+    } else {
+      clearStreamTimeouts();
+      demoBody.innerHTML = `
+        <div class="demo-minimized-notice">
+          <p style="margin-bottom: 0.75rem;">Оверлей скрыт в фоновый режим за 1 кадр.</p>
+          <p style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 1.25rem;">
+            В реальной работе для быстрого вызова используется хоткей <kbd>Ctrl + Space</kbd>.
+          </p>
+          <button type="button" class="btn btn-lime" id="restoreDemoBtn" style="padding: 0.45rem 1.1rem; font-size: 0.8rem;">
+            <span>Развернуть оверлей</span>
+          </button>
+        </div>
+      `;
+      const restoreBtn = document.getElementById('restoreDemoBtn');
+      if (restoreBtn) {
+        restoreBtn.addEventListener('click', toggleMinimize);
+      }
+    }
+  }
+
+  if (minBtn) {
+    minBtn.addEventListener('click', toggleMinimize);
+  }
+
+  if (closeBtn) {
+    closeBtn.addEventListener('click', toggleMinimize);
+  }
 }
 
 /**
@@ -144,13 +220,18 @@ function initCopyButton() {
 
     try {
       await navigator.clipboard.writeText(textToCopy);
-      const originalText = copyBtn.innerHTML;
-      copyBtn.innerHTML = '<span>Скопировано</span>';
+      const originalHtml = copyBtn.innerHTML;
+      copyBtn.innerHTML = `
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
+          <polyline points="20 6 9 17 4 12"></polyline>
+        </svg>
+        <span>Скопировано</span>
+      `;
       setTimeout(() => {
-        copyBtn.innerHTML = originalText;
+        copyBtn.innerHTML = originalHtml;
       }, 2000);
     } catch {
-      // Fallback
+      // Игнорируем в средах без доступа к Clipboard API
     }
   });
 }

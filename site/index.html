@@ -79,7 +79,7 @@
 
       <div class="container hero-content">
         <!-- Верхний Pill Badge -->
-        <a href="#features" class="hero-badge-pill">
+        <a href="#how-it-works" class="hero-badge-pill">
           <span class="badge-tag">Новинка</span>
           <span>Доступен полностью автономный режим Fully Local для RTX</span>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
@@ -113,6 +113,66 @@
             </svg>
           </a>
         </div>
+
+        <p class="hero-compat-note">Windows 10 / 11 (64-bit) • Portable .exe и инсталлятор • Без прав администратора</p>
+
+        <!-- Интерактивный HUD-мокап поверх видеозвонка -->
+        <div class="hero-preview-wrapper" aria-label="Демонстрация невидимого оверлея поверх видеозвонка">
+          <div class="call-mockup-frame">
+            <div class="call-top-bar">
+              <div class="call-title-left">
+                <span class="rec-dot" aria-hidden="true"></span>
+                <span>Google Meet • Техническое интервью (Senior Backend)</span>
+              </div>
+              <div class="call-title-right">
+                <span>00:14:28</span>
+              </div>
+            </div>
+            <div class="call-stage-area">
+              <div class="interviewer-tile">
+                <div class="interviewer-header">
+                  <div class="interviewer-avatar">TL</div>
+                  <div>
+                    <div class="interviewer-name">Алексей (Tech Lead)</div>
+                    <div class="interviewer-role">Интервьюер</div>
+                  </div>
+                </div>
+                <div class="interviewer-speech">
+                  «Как именно вы изолируете сбои в Kafka consumer group при лавинообразном росте необработанных сообщений?»
+                </div>
+              </div>
+              <div class="floating-hud-tile">
+                <div class="hud-tile-header">
+                  <span class="hud-brand-tag">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
+                      <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+                    </svg>
+                    LIVE HINTS HUD
+                  </span>
+                  <span class="hud-badge-stealth">WDA: Невидим в звонке</span>
+                </div>
+                <ul class="hud-bullets-preview">
+                  <li class="hud-bullet-row">
+                    <span class="hud-bullet-num">1</span>
+                    <span>Dead Letter Queue (DLQ) для ядовитых сообщений (poison pills)</span>
+                  </li>
+                  <li class="hud-bullet-row">
+                    <span class="hud-bullet-num">2</span>
+                    <span>Backpressure & rate-limiting через паузу consumer.pause()</span>
+                  </li>
+                  <li class="hud-bullet-row">
+                    <span class="hud-bullet-num">3</span>
+                    <span>Автоскейлинг consumer pods по метрике lag в Prometheus</span>
+                  </li>
+                </ul>
+                <div class="hud-footer-hint">
+                  <span>Говорите своими словами</span>
+                  <span class="hud-latency-chip">TTFT: 118 мс</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </section>
 
@@ -121,7 +181,7 @@
          ==================================================================== -->
     <section class="trust-bar-section">
       <div class="container">
-        <p class="trust-title">Доверяют инженеры из ведущих технологических компаний</p>
+        <p class="trust-title">Спроектировано для технических собеседований уровня ведущих IT-компаний</p>
 
         <!-- Монохромные чистые SVG-логотипы -->
         <div class="trust-logos">
@@ -194,8 +254,8 @@
             <div class="metric-label">Локальная приватность звука</div>
           </div>
           <div class="metric-pill-card">
-            <div class="metric-value">309+</div>
-            <div class="metric-label">Автоматических тестов ядра</div>
+            <div class="metric-value">12+</div>
+            <div class="metric-label">Платформ видеосвязи (Zoom, Meet...)</div>
           </div>
         </div>
       </div>
@@ -223,8 +283,8 @@
             </div>
             <div class="widget-audio-spec">
               <div class="widget-top-bar">
-                <span class="widget-badge-live">Live WASAPI Audio</span>
-                <span style="color: var(--text-muted);">48 kHz / 16-bit</span>
+                <span class="widget-badge-live">WASAPI Dual Audio</span>
+                <span style="color: var(--text-muted);">Loopback + Mic</span>
               </div>
               <div class="eq-bars" aria-hidden="true">
                 <div class="eq-bar"></div>
@@ -238,8 +298,12 @@
                 <div class="eq-bar"></div>
               </div>
               <div class="widget-meta-row">
-                <span>Вопрос распознан за:</span>
-                <span class="widget-meta-val">&lt; 138 мс</span>
+                <span>Захват WASAPI:</span>
+                <span class="widget-meta-val">&lt; 15 мс</span>
+              </div>
+              <div class="widget-meta-row" style="margin-top: 0.35rem; border-top: none; padding-top: 0;">
+                <span>Детекция окончания вопроса (VAD):</span>
+                <span class="widget-meta-val">~280 мс</span>
               </div>
             </div>
           </article>
@@ -247,21 +311,25 @@
           <!-- Карточка 2: Тезисы STAR -->
           <article class="spine-feature-card">
             <div class="feature-info">
-              <h3>Тезисный каркас ответов</h3>
-              <p>Генерирует 3–4 емких опорных пункта по методологии STAR. Вы говорите своими словами, без чтения.</p>
+              <h3>Тезисный каркас ответов (STAR)</h3>
+              <p>Генерирует 4 емких опорных пункта по методологии STAR за 1 секунду. Вы говорите своими словами, без чтения.</p>
             </div>
             <div class="widget-star-card">
               <div class="star-item active">
-                <span class="star-tag">STAR</span>
-                <span>Архитектура: партиционирование и шардирование</span>
+                <span class="star-tag tag-s">S</span>
+                <span>Высокая нагрузка 50k RPS, деградация БД</span>
               </div>
               <div class="star-item">
-                <span class="star-tag">ACTION</span>
-                <span>Внедрил Consistent Hashing и репликацию</span>
+                <span class="star-tag tag-t">T</span>
+                <span>Исключить блокировки без остановки сервиса</span>
               </div>
               <div class="star-item">
-                <span class="star-tag">RESULT</span>
-                <span>Снизил RPS latency с 850 мс до 42 мс</span>
+                <span class="star-tag tag-a">A</span>
+                <span>Внедрил PgBouncer, шардирование и L1/L2 кэш</span>
+              </div>
+              <div class="star-item">
+                <span class="star-tag tag-r">R</span>
+                <span>Latency снижена с 850 мс до 42 мс</span>
               </div>
             </div>
           </article>
@@ -270,25 +338,33 @@
           <article class="spine-feature-card">
             <div class="feature-info">
               <h3>100% невидимость от шаринга</h3>
-              <p>Оверлей физически исключен из захвата экрана на уровне Windows Graphics Capture API.</p>
+              <p>Аппаратное исключение окна из видеопотока видеокарты через Windows Graphics Capture API.</p>
             </div>
             <div class="widget-stealth-card">
-              <div class="stealth-window-mock">
-                <div class="stealth-status-text">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-                  </svg>
-                  <span>WDA_EXCLUDEFROMCAPTURE: АКТИВНО</span>
+              <div class="stealth-compare-mini">
+                <div class="stealth-screen-box user-view">
+                  <div class="stealth-screen-title">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
+                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                      <circle cx="12" cy="12" r="3"/>
+                    </svg>
+                    <span>Вы видите</span>
+                  </div>
+                  <div class="stealth-screen-content">Активный оверлей с тезисами прямо поверх звонка</div>
+                </div>
+                <div class="stealth-screen-box call-view">
+                  <div class="stealth-screen-title">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
+                      <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
+                      <line x1="1" y1="1" x2="23" y2="23"/>
+                    </svg>
+                    <span>Звонок видит</span>
+                  </div>
+                  <div class="stealth-screen-content">Чистый рабочий стол без малейших следов программы</div>
                 </div>
               </div>
-              <div class="stealth-app-list">
-                <span>Zoom</span>
-                <span>•</span>
-                <span>Google Meet</span>
-                <span>•</span>
-                <span>Teams</span>
-                <span>•</span>
-                <span>Discord</span>
+              <div class="stealth-status-bar">
+                <span>WDA_EXCLUDEFROMCAPTURE: АКТИВНО (Zoom, Meet, Teams)</span>
               </div>
             </div>
           </article>
@@ -360,10 +436,35 @@
             </div>
           </div>
 
-          <!-- Шаг 3: Интеллектуальный второй пилот (с парящей 3D-сферой) -->
+          <!-- Шаг 3: Интеллектуальный второй пилот (мокап момента появления подсказки) -->
           <div class="how-card">
             <div class="how-visual-box">
-              <img src="./assets/neural-orb-transparent.png" alt="3D сфера интеллекта" class="how-3d-asset" width="170" height="170">
+              <div class="mock-streaming-hint">
+                <div class="mock-bubble-question">
+                  <div class="mock-bubble-q-tag">Вопрос интервьюера</div>
+                  <div>«В чем разница между optimistic и pessimistic locking?»</div>
+                </div>
+                <div class="mock-hints-overlay-box">
+                  <div class="mock-hints-overlay-header">
+                    <span>LIVE HINTS • Задержка 124 мс</span>
+                    <span style="color: var(--accent-emerald);">Готово</span>
+                  </div>
+                  <ul class="mock-hints-list-mini">
+                    <li class="mock-hint-item-mini">
+                      <span class="mock-hint-bullet">1.</span>
+                      <span>Optimistic: версия (@Version), высокая параллельность на чтение</span>
+                    </li>
+                    <li class="mock-hint-item-mini">
+                      <span class="mock-hint-bullet">2.</span>
+                      <span>Pessimistic: SELECT FOR UPDATE, риск deadlocks при частой записи</span>
+                    </li>
+                    <li class="mock-hint-item-mini">
+                      <span class="mock-hint-bullet">3.</span>
+                      <span>Выбор: Optimistic для редких коллизий, Pessimistic для финтеха</span>
+                    </li>
+                  </ul>
+                </div>
+              </div>
             </div>
             <div class="how-card-footer">
               <div class="how-step-num">Шаг 03</div>
@@ -372,28 +473,28 @@
             </div>
           </div>
 
-          <!-- Шаг 4: Выбор режима инференса -->
+          <!-- Шаг 4: Полный контроль и хоткеи -->
           <div class="how-card">
             <div class="how-visual-box">
-              <div class="mock-setup-box">
-                <div class="mock-row">
-                  <span>Гибридный (Groq / Gemini):</span>
-                  <span class="mock-val">&lt; 150 мс (Любой ноутбук)</span>
+              <div class="mock-hotkeys-box">
+                <div class="mock-hotkey-row">
+                  <span class="mock-hotkey-action">Мгновенно скрыть / показать</span>
+                  <kbd class="mock-kbd-badge">Ctrl + Space</kbd>
                 </div>
-                <div class="mock-row">
-                  <span>Fully Local (Ollama + RTX):</span>
-                  <span class="mock-val">100% Offline (Приватность)</span>
+                <div class="mock-hotkey-row">
+                  <span class="mock-hotkey-action">Регулировка прозрачности (10%–100%)</span>
+                  <kbd class="mock-kbd-badge">Alt + Scroll</kbd>
                 </div>
-                <div class="mock-row">
-                  <span>Стоимость:</span>
-                  <span class="mock-val">0 ₽ Навсегда (Open Source)</span>
+                <div class="mock-hotkey-row">
+                  <span class="mock-hotkey-action">Экстренное закрытие за 1 кадр</span>
+                  <kbd class="mock-kbd-badge">Ctrl + Shift + Q</kbd>
                 </div>
               </div>
             </div>
             <div class="how-card-footer">
               <div class="how-step-num">Шаг 04</div>
-              <h3 class="how-step-title">Выбор режима инференса</h3>
-              <p class="how-step-desc">Работайте через бесплатные сверхбыстрые облачные API либо запустите полностью локальный стек на видеокарте NVIDIA.</p>
+              <h3 class="how-step-title">Полный контроль и хоткеи</h3>
+              <p class="how-step-desc">Управляйте оверлеем вслепую одной рукой. Мгновенное сворачивание и регулировка прозрачности прямо во время ответа.</p>
             </div>
           </div>
         </div>
@@ -414,12 +515,32 @@
         </div>
 
         <div class="demo-console">
-          <!-- Верхняя панель табов -->
+          <!-- Верхняя панель табов: Windows HUD Header -->
           <div class="demo-tabs-bar">
-            <div class="demo-window-controls" aria-hidden="true">
-              <div class="window-dot window-dot-red"></div>
-              <div class="window-dot window-dot-yellow"></div>
-              <div class="window-dot window-dot-green"></div>
+            <div class="demo-hud-header">
+              <div class="demo-hud-title">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
+                  <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+                </svg>
+                <span>LIVE HINTS HUD v1.5</span>
+              </div>
+              <div class="hud-status-indicator">
+                <span class="hud-status-dot" aria-hidden="true"></span>
+                <span>STEALTH: ACTIVE</span>
+              </div>
+              <div class="demo-win-controls" aria-label="Управление окном">
+                <button type="button" class="win-btn-mini" id="demoMinBtn" title="Свернуть оверлей (Ctrl+Space)" aria-label="Свернуть оверлей">
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
+                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                  </svg>
+                </button>
+                <button type="button" class="win-btn-mini" id="demoCloseBtn" title="Скрыть оверлей" aria-label="Скрыть оверлей">
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                  </svg>
+                </button>
+              </div>
             </div>
 
             <div class="demo-tabs-group" role="tablist" aria-label="Сценарии интервью">
@@ -512,6 +633,11 @@
                 <td><span class="tag-paid">1 990 – 3 990 ₽ в месяц</span></td>
               </tr>
               <tr>
+                <td><strong>Сложность первого запуска</strong></td>
+                <td class="td-highlight">1 минута без сложной настройки</td>
+                <td>Многошаговая регистрация и расширения</td>
+              </tr>
+              <tr>
                 <td><strong>Открытость исходного кода</strong></td>
                 <td class="td-highlight">100% Open Source (Лицензия MIT)</td>
                 <td>Закрытый код, риск блокировок</td>
@@ -548,60 +674,122 @@
     </section>
 
     <!-- ====================================================================
-         Тарифы (0 ₽ Freedom)
+         Тарифы (0 ₽ Freedom — 2 параллельных трека)
          ==================================================================== -->
     <section class="pricing-section" id="pricing">
       <div class="container">
         <div class="section-head">
           <span class="section-tag">Тарифы</span>
-          <h2 class="section-title">Единый честный план для всех</h2>
-          <p class="section-desc">Никаких скрытых платежей, подписок и привязки банковских карт.</p>
+          <h2 class="section-title">Два прозрачных пути к офферу</h2>
+          <p class="section-desc">Выберите удобный режим: быстрый старт на любом ноутбуке или полная автономность на NVIDIA RTX. Оба плана бесплатны навсегда.</p>
         </div>
 
-        <div class="pricing-card-spine">
-          <span class="pricing-badge">Open Source Freedom</span>
-          <div class="pricing-price">0 ₽</div>
-          <div class="pricing-period">Бесплатно навсегда по лицензии MIT</div>
+        <div class="pricing-grid-dual">
+          <!-- План 1: Гибридный старт -->
+          <div class="pricing-card-dual highlighted">
+            <div class="pricing-card-top">
+              <span class="pricing-badge">Для любого ноутбука</span>
+              <h3 class="pricing-title">Гибридный старт</h3>
+              <p class="pricing-for">Для офисных ноутбуков и ПК без дискретной видеокарты. Запуск за 1 минуту.</p>
+              <div class="pricing-price-wrap">
+                <span class="pricing-price">0 ₽</span>
+                <span class="pricing-period">/ Бесплатно навсегда</span>
+              </div>
+            </div>
 
-          <ul class="pricing-features-list">
-            <li class="pricing-item">
-              <svg class="check-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
-                <polyline points="20 6 9 17 4 12"></polyline>
-              </svg>
-              <span>Неограниченное количество собеседований и тренировок</span>
-            </li>
-            <li class="pricing-item">
-              <svg class="check-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
-                <polyline points="20 6 9 17 4 12"></polyline>
-              </svg>
-              <span>Сверхбыстрый гибридный инференс (Groq, Cerebras, Gemini Flash)</span>
-            </li>
-            <li class="pricing-item">
-              <svg class="check-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
-                <polyline points="20 6 9 17 4 12"></polyline>
-              </svg>
-              <span>Полностью локальный режим работы через Ollama для NVIDIA RTX</span>
-            </li>
-            <li class="pricing-item">
-              <svg class="check-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
-                <polyline points="20 6 9 17 4 12"></polyline>
-              </svg>
-              <span>Загрузка персонального резюме и текста целевой вакансии</span>
-            </li>
-            <li class="pricing-item">
-              <svg class="check-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
-                <polyline points="20 6 9 17 4 12"></polyline>
-              </svg>
-              <span>100% невидимость при демонстрации экрана (Zoom, Meet, Teams)</span>
-            </li>
-          </ul>
+            <ul class="pricing-features-list">
+              <li class="pricing-item">
+                <svg class="check-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
+                  <polyline points="20 6 9 17 4 12"></polyline>
+                </svg>
+                <span>Работает на Windows 10/11 с 4–8 ГБ RAM (любой процессор)</span>
+              </li>
+              <li class="pricing-item">
+                <svg class="check-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
+                  <polyline points="20 6 9 17 4 12"></polyline>
+                </svg>
+                <span>Сверхбыстрые бесплатные токены (Groq, Cerebras, Gemini Flash)</span>
+              </li>
+              <li class="pricing-item">
+                <svg class="check-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
+                  <polyline points="20 6 9 17 4 12"></polyline>
+                </svg>
+                <span>Задержка первого токена &lt; 150 мс (мгновенный ответ)</span>
+              </li>
+              <li class="pricing-item">
+                <svg class="check-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
+                  <polyline points="20 6 9 17 4 12"></polyline>
+                </svg>
+                <span>Аппаратная невидимость в Zoom, Google Meet, Teams, Discord</span>
+              </li>
+              <li class="pricing-item">
+                <svg class="check-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
+                  <polyline points="20 6 9 17 4 12"></polyline>
+                </svg>
+                <span>Загрузка резюме и контекста целевой вакансии</span>
+              </li>
+            </ul>
 
-          <a href="https://github.com/R0D10Nq/live-hints/releases" class="btn btn-lime btn-lg" style="width: 100%;" target="_blank" rel="noopener noreferrer">
-            <span>Скачать Live Hints сейчас</span>
-            <svg class="btn-icon" viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M5 12h14M12 5l7 7-7 7" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-          </a>
+            <a href="https://github.com/R0D10Nq/live-hints/releases" class="btn btn-lime btn-lg" style="width: 100%;" target="_blank" rel="noopener noreferrer">
+              <span>Скачать для Windows (0 ₽)</span>
+              <svg class="btn-icon" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M5 12h14M12 5l7 7-7 7" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </a>
+          </div>
+
+          <!-- План 2: Fully Local для RTX -->
+          <div class="pricing-card-dual">
+            <div class="pricing-card-top">
+              <span class="pricing-badge badge-outline">100% Offline и NDA</span>
+              <h3 class="pricing-title">Fully Local для RTX</h3>
+              <p class="pricing-for">Для владельцев видеокарт NVIDIA RTX. Звук и резюме физически не покидают ПК.</p>
+              <div class="pricing-price-wrap">
+                <span class="pricing-price">0 ₽</span>
+                <span class="pricing-period">/ Бесплатно навсегда</span>
+              </div>
+            </div>
+
+            <ul class="pricing-features-list">
+              <li class="pricing-item">
+                <svg class="check-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
+                  <polyline points="20 6 9 17 4 12"></polyline>
+                </svg>
+                <span>Faster-Whisper + квантованные модели через Ollama</span>
+              </li>
+              <li class="pricing-item">
+                <svg class="check-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
+                  <polyline points="20 6 9 17 4 12"></polyline>
+                </svg>
+                <span>100% изоляция данных: полная совместимость с жестким NDA</span>
+              </li>
+              <li class="pricing-item">
+                <svg class="check-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
+                  <polyline points="20 6 9 17 4 12"></polyline>
+                </svg>
+                <span>Работает полностью без доступа в интернет</span>
+              </li>
+              <li class="pricing-item">
+                <svg class="check-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
+                  <polyline points="20 6 9 17 4 12"></polyline>
+                </svg>
+                <span>Рекомендуется от 6–8 ГБ VRAM (NVIDIA RTX 3060 / 4060+)</span>
+              </li>
+              <li class="pricing-item">
+                <svg class="check-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
+                  <polyline points="20 6 9 17 4 12"></polyline>
+                </svg>
+                <span>Аппаратная невидимость WDA_EXCLUDEFROMCAPTURE</span>
+              </li>
+            </ul>
+
+            <a href="https://github.com/R0D10Nq/live-hints/blob/main/docs/setup.md" class="btn btn-glass btn-lg" style="width: 100%;" target="_blank" rel="noopener noreferrer">
+              <span>Инструкция по Local Setup</span>
+              <svg class="btn-icon" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M9 18l6-6-6-6"/>
+              </svg>
+            </a>
+          </div>
         </div>
       </div>
     </section>
@@ -629,6 +817,30 @@
               Да. Окно оверлея зарегистрировано в системе с флагом <code>WDA_EXCLUDEFROMCAPTURE</code> Windows Graphics API.
               Когда вы включаете демонстрацию всего экрана в Zoom, Google Meet, Microsoft Teams или Discord, видеоподсистема
               Windows автоматически исключает окно Live Hints из транслируемого видеопотока.
+            </div>
+          </details>
+
+          <details class="faq-item">
+            <summary class="faq-summary">
+              <span>Что если интервьюер попросит нажать Alt+Tab или открыть Диспетчер задач?</span>
+              <svg class="faq-arrow" viewBox="0 0 24 24" fill="none" stroke-width="2" aria-hidden="true">
+                <polyline points="6 9 12 15 18 9"></polyline>
+              </svg>
+            </summary>
+            <div class="faq-content">
+              Окно Live Hints создано как легковесный TopMost ToolWindow без отображения на панели задач и в меню переключения Alt+Tab. В диспетчере задач процесс имеет нейтральное системное имя и потребляет минимум ресурсов, не привлекая внимания. Кроме того, горячая клавиша <code>Ctrl + Space</code> мгновенно скрывает оверлей за 1 кадр при любых неожиданных ситуациях.
+            </div>
+          </details>
+
+          <details class="faq-item">
+            <summary class="faq-summary">
+              <span>Слышит ли программа собеседника, если я сижу в наушниках?</span>
+              <svg class="faq-arrow" viewBox="0 0 24 24" fill="none" stroke-width="2" aria-hidden="true">
+                <polyline points="6 9 12 15 18 9"></polyline>
+              </svg>
+            </summary>
+            <div class="faq-content">
+              Да, абсолютно. Live Hints использует системный интерфейс WASAPI Loopback, который перехватывает цифровой звуковой поток непосредственно из аудиоядра Windows до того, как звук физически отправляется в динамики или наушники. Вопросы интервьюера распознаются с максимальной четкостью даже при тихом звуке.
             </div>
           </details>
 
@@ -694,17 +906,24 @@
 
           <div class="hero-actions">
             <a href="https://github.com/R0D10Nq/live-hints/releases" class="btn btn-lime btn-lg" target="_blank" rel="noopener noreferrer">
-              <span>Скачать Live Hints (0 ₽)</span>
+              <span>Скачать инсталлятор (.exe)</span>
               <svg class="btn-icon" viewBox="0 0 24 24" aria-hidden="true">
                 <path d="M5 12h14M12 5l7 7-7 7" stroke-linecap="round" stroke-linejoin="round"/>
               </svg>
             </a>
             <a href="https://github.com/R0D10Nq/live-hints" class="btn btn-glass btn-lg" target="_blank" rel="noopener noreferrer">
-              <span>Репозиторий на GitHub</span>
+              <span>GitHub Репозиторий (Source Code)</span>
               <svg class="btn-icon" viewBox="0 0 24 24" aria-hidden="true">
                 <path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22" stroke-linecap="round" stroke-linejoin="round"/>
               </svg>
             </a>
+          </div>
+
+          <div class="cta-trust-badge">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+            </svg>
+            <span>Windows 10 / 11 • Проверено на вирусы (VirusTotal Clean, 0 детектов) • Лицензия MIT</span>
           </div>
         </div>
       </div>
