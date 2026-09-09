@@ -150,7 +150,7 @@ class OllamaClient:
         self.metrics.reset()
         self.metrics.request_started()
 
-        cached = self.hint_cache.get(text, context or [])
+        cached = self.hint_cache.get(text, context or [], profile or self.profile)
         if cached:
             self.metrics.first_token()
             self.metrics.done()
@@ -215,7 +215,7 @@ class OllamaClient:
                 )
 
                 if hint.strip():
-                    self.hint_cache.set(text, context or [], hint)
+                    self.hint_cache.set(text, context or [], hint, profile or self.profile)
                 return hint
             else:
                 logger.error(f"[LLM] Ollama ошибка: {resp.status_code}")
@@ -291,7 +291,7 @@ class OllamaClient:
             yield cached
             return
 
-        cached_lru = self.hint_cache.get(text, context or [])
+        cached_lru = self.hint_cache.get(text, context or [], self.profile)
         if cached_lru:
             self.metrics.first_token()
             self.metrics.done()
@@ -406,7 +406,7 @@ class OllamaClient:
                                         self.metrics.done()
                                         if accumulated_hint.strip():
                                             self.hint_cache.set(
-                                                text, context or [], accumulated_hint
+                                                text, context or [], accumulated_hint, self.profile
                                             )
                                             semantic_cache.set(
                                                 text, context or [], accumulated_hint

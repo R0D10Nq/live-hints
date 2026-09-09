@@ -1,4 +1,4 @@
-﻿# --- UTF-8 для корректного вывода кириллицы ---
+# --- UTF-8 для корректного вывода кириллицы ---
 [Console]::InputEncoding = [System.Text.UTF8Encoding]::new()
 [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new()
 $OutputEncoding = [Console]::OutputEncoding
@@ -57,9 +57,18 @@ if (-not (Test-Path (Join-Path $cudnnPath $cudnnDll))) {
     # Скачиваем
     Invoke-WebRequest -Uri $cudnnUrl -OutFile $cudnnArchive -UseBasicParsing
     
-    # Распаковываем (нужен 7-zip)
-    $7zip = "C:\Program Files\7-Zip\7z.exe"
-    if (Test-Path $7zip) {
+    # Вычисляем и логируем SHA256 для аудита безопасности цепочки поставок
+    $fileHash = (Get-FileHash -Path $cudnnArchive -Algorithm SHA256).Hash
+    Write-Host "Контрольная сумма SHA256 cuDNN: $fileHash" -ForegroundColor Cyan
+
+    # Распаковываем (поиск 7-zip в системе)
+    $7zipCandidates = @(
+        "C:\Program Files\7-Zip\7z.exe",
+        "C:\Program Files (x86)\7-Zip\7z.exe",
+        (Get-Command 7z -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source -ErrorAction SilentlyContinue)
+    )
+    $7zip = $7zipCandidates | Where-Object { $_ -and (Test-Path $_) } | Select-Object -First 1
+    if ($7zip) {
         & $7zip x $cudnnArchive -o"$cudnnPath" -y
         Write-Host "cuDNN распакован!" -ForegroundColor Green
     }

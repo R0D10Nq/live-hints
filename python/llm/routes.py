@@ -104,7 +104,7 @@ class LLMRouter:
 
         vector_db = get_vector_db()
         instant_answer = vector_db.get_instant_answer(request.text)
-        cached = instant_answer or self.hint_cache.get(request.text, request.context or [])
+        cached = instant_answer or self.hint_cache.get(request.text, request.context or [], request.profile)
         question_type = classify_question(request.text)
 
         async def stream():
