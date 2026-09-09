@@ -1,216 +1,156 @@
 /**
- * Live Hints — Скрипты промо-лендинга
- * Интерактивный симулятор оверлея, навигация, доступность.
+ * Live Hints — Скрипты промо-лендинга в стиле SpineEdge
+ * Интерактивный симулятор оверлея, навигация, анимации.
  */
 
 document.addEventListener('DOMContentLoaded', () => {
   initDemoSimulator();
   initMobileMenu();
-  initCopyButtons();
+  initCopyButton();
 });
 
 // Данные для интерактивного симулятора оверлея
 const DEMO_CASES = {
-  architecture: {
-    category: 'Архитектура БД • PostgreSQL',
-    question: 'Как масштабировать PostgreSQL при высокой нагрузке на чтение (от 50 000 RPS)?',
+  arch: {
+    question:
+      'Как масштабировать базу данных PostgreSQL при нагрузке 50,000 RPS на чтение и частых блокировках?',
+    latency: 'Задержка: 142 мс',
     bullets: [
-      {
-        marker: 'Паттерн',
-        text: 'Read Replicas + пул соединений PgBouncer (Streaming Replication)',
-      },
-      {
-        marker: 'Кэширование',
-        text: 'Redis Cache-Aside для горячих ключей (TTL 60–300 секунд)',
-      },
-      {
-        marker: 'Оптимизация',
-        text: 'Составные индексы, EXPLAIN ANALYZE, партиционирование таблиц по датам',
-      },
-      {
-        marker: 'Подводный камень',
-        text: 'Replication Lag при критичных транзакциях (паттерн read-your-writes)',
-      },
+      'Вынести тяжелые SELECT-запросы на read-only реплики через PgBouncer (Transaction Pooling).',
+      'Внедрить двухуровневый кэш: локальный in-memory L1 + Redis Sentinel L2 с TTL 60 секунд.',
+      'Партиционировать критичные таблицы по диапазонам дат (Declarative Partitioning).',
+      'Проверить медленные транзакции: устранить N+1 запросы и оптимизировать составные B-Tree индексы.',
     ],
-    latency: '138 мс',
-    provider: 'Groq LPU (Llama 3.3 70B)',
-    tokens: '124 токена',
   },
   star: {
-    category: 'Опыт по схеме STAR • Резюме кандидата',
-    question: 'Расскажите о самой сложной технической задаче, которую вы решили',
+    question:
+      'Расскажите о ситуации, когда сервис упал в продакшене под пиковой нагрузкой, и как вы справились?',
+    latency: 'Задержка: 168 мс',
     bullets: [
-      {
-        marker: 'Ситуация',
-        text: 'Время ответа API выросло до 5 секунд при росте платформы до 400 клиентов',
-      },
-      {
-        marker: 'Причина',
-        text: 'Проблема N+1 запросов в ORM и отсутствие индексов на внешних ключах',
-      },
-      {
-        marker: 'Действия',
-        text: 'Переписал выборки на select_related, настроил Redis-кэш и фоновый Celery',
-      },
-      {
-        marker: 'Результат',
-        text: 'Снижение задержки в 16 раз (до 300 мс), нагрузка на БД снизилась на 60%',
-      },
+      'Situation: В Черную Пятницу сервис заказов превысил пул соединений БД, latency выросла до 12 с.',
+      'Task: Восстановить пропускную способность за 15 минут без потери платежных транзакций.',
+      'Action: Включил деградацию (Circuit Breaker на второстепенные виджеты) и отмасштабировал реплики.',
+      'Result: Доступность 99.98%, ни один оформленный заказ не был потерян, время ответа вернулось к 45 мс.',
     ],
-    latency: '145 мс',
-    provider: 'Локальная Ollama (Qwen 2.5 7B)',
-    tokens: '138 токенов',
   },
-  algorithms: {
-    category: 'Python Core • Concurrency & GIL',
-    question: 'В чем разница между процессами и потоками в Python? Как влияет GIL?',
+  algo: {
+    question:
+      'Как найти длину наибольшей непрерывной возрастающей подпоследовательности в массиве за O(N)?',
+    latency: 'Задержка: 125 мс',
     bullets: [
-      {
-        marker: 'Концепция',
-        text: 'multiprocessing (изолированная память) vs threading (общая память)',
-      },
-      {
-        marker: 'Механизм GIL',
-        text: 'Global Interpreter Lock держит 1 поток на байткод CPython для безопасности памяти',
-      },
-      {
-        marker: 'I/O задачи',
-        text: 'asyncio или threading для сети и диска (GIL отпускается при ожидании сокета)',
-      },
-      {
-        marker: 'CPU задачи',
-        text: 'multiprocessing, Cython, C-расширения или сборка Python 3.13 без GIL',
-      },
+      'Использовать скользящее окно (Two Pointers / Sliding Window) с динамическим сдвигом левой границы.',
+      'Хранить текущую длину cur_len и глобальный максимум max_len, обновляя при array[i] > array[i-1].',
+      'При нарушении возрастания сбрасывать cur_len в 1. Итоговая сложность: O(N) по времени, O(1) по памяти.',
+      'Граничные случаи: пустой массив, массив из одного элемента, строго убывающая последовательность.',
     ],
-    latency: '112 мс',
-    provider: 'Groq LPU (Llama 3.3 70B)',
-    tokens: '116 токенов',
   },
 };
 
 /**
- * Инициализация интерактивного демонстрационного симулятора оверлея
+ * Инициализация интерактивного симулятора оверлея
  */
 function initDemoSimulator() {
   const tabs = document.querySelectorAll('.demo-tab-btn');
-  const categoryEl = document.getElementById('demo-category');
-  const questionEl = document.getElementById('demo-question');
-  const bulletsEl = document.getElementById('demo-bullets');
-  const latencyEl = document.getElementById('demo-latency');
-  const providerEl = document.getElementById('demo-provider');
+  const questionEl = document.getElementById('demoQuestion');
+  const latencyEl = document.getElementById('demoLatency');
+  const bulletsEl = document.getElementById('demoBullets');
 
-  if (!tabs.length || !questionEl || !bulletsEl) return;
-
-  function applyCase(caseKey) {
-    const data = DEMO_CASES[caseKey];
-    if (!data) return;
-
-    // Обновляем вопрос и категорию
-    if (categoryEl) categoryEl.textContent = data.category;
-    questionEl.textContent = data.question;
-
-    // Обновляем метрики
-    if (latencyEl) latencyEl.textContent = data.latency;
-    if (providerEl) providerEl.textContent = data.provider;
-
-    // Плавно рендерим пункты шпаргалки
-    bulletsEl.innerHTML = '';
-    data.bullets.forEach((item, index) => {
-      const li = document.createElement('li');
-      li.className = 'demo-hint-item';
-      li.style.opacity = '0';
-      li.style.transform = 'translateY(6px)';
-      li.style.transition = `all 0.25s ease ${index * 0.08}s`;
-
-      li.innerHTML = `
-        <span class="demo-bullet-marker" aria-hidden="true"></span>
-        <div>
-          <span class="demo-bullet-strong">${escapeHtml(item.marker)}:</span>
-          <span>${escapeHtml(item.text)}</span>
-        </div>
-      `;
-      bulletsEl.appendChild(li);
-
-      // Запуск анимации появления
-      requestAnimationFrame(() => {
-        li.style.opacity = '1';
-        li.style.transform = 'translateY(0)';
-      });
-    });
+  if (!tabs.length || !questionEl || !latencyEl || !bulletsEl) {
+    return;
   }
 
   tabs.forEach((tab) => {
     tab.addEventListener('click', () => {
-      tabs.forEach((t) => t.classList.remove('active'));
+      const scenarioKey = tab.getAttribute('data-scenario');
+      const data = DEMO_CASES[scenarioKey];
+      if (!data) return;
+
+      // Обновляем состояние табов
+      tabs.forEach((t) => {
+        t.classList.remove('active');
+        t.setAttribute('aria-selected', 'false');
+      });
       tab.classList.add('active');
-      const caseKey = tab.getAttribute('data-case');
-      applyCase(caseKey);
+      tab.setAttribute('aria-selected', 'true');
+
+      // Обновляем контент
+      questionEl.textContent = data.question;
+      latencyEl.textContent = data.latency;
+
+      // Очищаем и анимированно добавляем пункты
+      bulletsEl.innerHTML = '';
+      data.bullets.forEach((bulletText, index) => {
+        const li = document.createElement('li');
+        li.className = 'demo-bullet-item';
+
+        const numSpan = document.createElement('span');
+        numSpan.className = 'bullet-num';
+        numSpan.textContent = String(index + 1);
+
+        const textSpan = document.createElement('span');
+        textSpan.textContent = bulletText;
+
+        li.appendChild(numSpan);
+        li.appendChild(textSpan);
+        bulletsEl.appendChild(li);
+      });
     });
   });
-
-  // Запуск начального сценария
-  applyCase('architecture');
 }
 
 /**
- * Мобильное меню навигации
+ * Инициализация мобильного меню
  */
 function initMobileMenu() {
-  const toggleBtn = document.querySelector('.mobile-menu-btn');
-  const navLinks = document.querySelector('.nav-links');
+  const toggleBtn = document.getElementById('mobileMenuBtn');
+  const navMenu = document.getElementById('navMenu');
 
-  if (!toggleBtn || !navLinks) return;
+  if (!toggleBtn || !navMenu) return;
 
   toggleBtn.addEventListener('click', () => {
-    const isOpen = navLinks.classList.toggle('open');
-    toggleBtn.setAttribute('aria-expanded', String(isOpen));
+    const isExpanded = toggleBtn.getAttribute('aria-expanded') === 'true';
+    toggleBtn.setAttribute('aria-expanded', String(!isExpanded));
+    navMenu.classList.toggle('mobile-open');
   });
 
-  // Закрытие мобильного меню при клике на ссылку
-  navLinks.querySelectorAll('a').forEach((link) => {
+  // Закрытие при клике по ссылке
+  navMenu.querySelectorAll('.nav-link').forEach((link) => {
     link.addEventListener('click', () => {
-      navLinks.classList.remove('open');
+      navMenu.classList.remove('mobile-open');
       toggleBtn.setAttribute('aria-expanded', 'false');
     });
   });
 }
 
 /**
- * Кнопки копирования текста
+ * Инициализация кнопки копирования текста из демо
  */
-function initCopyButtons() {
-  document.querySelectorAll('[data-copy]').forEach((btn) => {
-    btn.addEventListener('click', async () => {
-      const textToCopy = btn.getAttribute('data-copy');
-      if (!textToCopy) return;
+function initCopyButton() {
+  const copyBtn = document.getElementById('copyDemoBtn');
+  const questionEl = document.getElementById('demoQuestion');
+  const bulletsEl = document.getElementById('demoBullets');
 
-      try {
-        await navigator.clipboard.writeText(textToCopy);
-        const originalText = btn.textContent;
-        btn.textContent = 'Скопировано!';
-        btn.style.borderColor = 'var(--accent-emerald)';
-        btn.style.color = 'var(--accent-emerald)';
+  if (!copyBtn || !questionEl || !bulletsEl) return;
 
-        setTimeout(() => {
-          btn.textContent = originalText;
-          btn.style.borderColor = '';
-          btn.style.color = '';
-        }, 2000);
-      } catch (err) {
-        console.warn('Не удалось скопировать текст в буфер:', err);
-      }
-    });
+  copyBtn.addEventListener('click', async () => {
+    const textToCopy = [
+      `Вопрос: ${questionEl.textContent.trim()}`,
+      '',
+      'Тезисы подсказки:',
+      ...Array.from(bulletsEl.querySelectorAll('li')).map(
+        (li, i) => `${i + 1}. ${li.textContent.replace(/^\d+/, '').trim()}`
+      ),
+    ].join('\n');
+
+    try {
+      await navigator.clipboard.writeText(textToCopy);
+      const originalText = copyBtn.innerHTML;
+      copyBtn.innerHTML = '<span>Скопировано</span>';
+      setTimeout(() => {
+        copyBtn.innerHTML = originalText;
+      }, 2000);
+    } catch {
+      // Fallback
+    }
   });
-}
-
-/**
- * Безопасное экранирование строк
- */
-function escapeHtml(str) {
-  return String(str)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#039;');
 }

@@ -1,6 +1,6 @@
 """
 Тесты валидации статических файлов промо-сайта для GitHub Pages.
-Проверяют структуру, относительные ссылки, отсутствие эмодзи и семантическую разметку.
+Проверяют структуру, относительные ссылки, отсутствие эмодзи, 3D-ассеты и семантическую разметку.
 """
 
 import os
@@ -9,6 +9,7 @@ SITE_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "site")
 WORKFLOW_PATH = os.path.join(
     os.path.dirname(__file__), "..", "..", ".github", "workflows", "pages.yml"
 )
+
 
 def find_emojis(text: str) -> list[str]:
     """Находит эмодзи и графические пиктограммы в тексте без диапазонов regex."""
@@ -27,11 +28,15 @@ def find_emojis(text: str) -> list[str]:
 
 
 def test_site_files_exist():
-    """Все ключевые файлы промо-сайта должны присутствовать на диске."""
+    """Все ключевые файлы промо-сайта и 3D-ассеты должны присутствовать на диске."""
     assert os.path.exists(os.path.join(SITE_DIR, "index.html"))
     assert os.path.exists(os.path.join(SITE_DIR, "styles.css"))
     assert os.path.exists(os.path.join(SITE_DIR, "app.js"))
     assert os.path.exists(os.path.join(SITE_DIR, "assets", "icon.png"))
+    # Авторские 3D-ассеты без фона
+    assert os.path.exists(os.path.join(SITE_DIR, "assets", "hero-wave-3d.png"))
+    assert os.path.exists(os.path.join(SITE_DIR, "assets", "neural-orb-transparent.png"))
+    assert os.path.exists(os.path.join(SITE_DIR, "assets", "titanium-ring-transparent.png"))
 
 
 def test_site_no_emojis():
@@ -70,7 +75,8 @@ def test_site_semantic_sections():
     assert "<main" in content
     assert "<footer" in content
     assert 'id="features"' in content
-    assert 'id="modes"' in content
+    assert 'id="how-it-works"' in content
+    assert 'id="demo"' in content
     assert 'id="comparison"' in content
     assert 'id="pricing"' in content
     assert 'id="faq"' in content
@@ -80,7 +86,6 @@ def test_site_semantic_sections():
     assert "<summary" in content
 
     # Интерактивный симулятор оверлея
-    assert "demo-window" in content
     assert "demo-tab-btn" in content
 
     # Упоминание 0 рублей и Open Source
