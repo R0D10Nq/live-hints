@@ -4,29 +4,26 @@
 """
 
 import os
-import re
 
 SITE_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "site")
 WORKFLOW_PATH = os.path.join(
     os.path.dirname(__file__), "..", "..", ".github", "workflows", "pages.yml"
 )
 
-# Регулярное выражение для обнаружения эмодзи и графических символов юникода
-EMOJI_PATTERN = re.compile(
-    "["
-    "\U0001f300-\U0001f5ff"  # символы и пиктограммы
-    "\U0001f600-\U0001f64f"  # смайлики
-    "\U0001f680-\U0001f6ff"  # транспорт и карты
-    "\U0001f700-\U0001f77f"
-    "\U0001f780-\U0001f7ff"
-    "\U0001f800-\U0001f8ff"
-    "\U0001f900-\U0001f9ff"  # дополнительные символы
-    "\U0001fa00-\U0001faff"
-    "\U00002702-\U000027b0"  # Dingbats
-    "\U000024c2-\U0001f251"
-    "]+",
-    flags=re.UNICODE,
-)
+def find_emojis(text: str) -> list[str]:
+    """Находит эмодзи и графические пиктограммы в тексте без диапазонов regex."""
+    found: list[str] = []
+    for ch in text:
+        cp = ord(ch)
+        # Стандартные диапазоны эмодзи и пиктограмм Unicode
+        if (
+            (0x1F300 <= cp <= 0x1FAFF)
+            or (0x1F600 <= cp <= 0x1F64F)
+            or (0x2702 <= cp <= 0x27B0)
+            or (0x2600 <= cp <= 0x26FF)
+        ):
+            found.append(ch)
+    return found
 
 
 def test_site_files_exist():
@@ -43,7 +40,7 @@ def test_site_no_emojis():
         filepath = os.path.join(SITE_DIR, filename)
         with open(filepath, "r", encoding="utf-8") as f:
             content = f.read()
-            matches = EMOJI_PATTERN.findall(content)
+            matches = find_emojis(content)
             assert not matches, f"В файле {filename} обнаружены запрещенные эмодзи: {matches}"
 
 
