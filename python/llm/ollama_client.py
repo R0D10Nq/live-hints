@@ -92,7 +92,7 @@ class OllamaClient:
         provider: Optional[object] = None,
     ):
         self.base_url = base_url
-        self.model = model
+        self._model = model
         self.metrics = HintMetrics()
         self.hint_cache = hint_cache
         self.user_context = user_context
@@ -100,12 +100,33 @@ class OllamaClient:
         self.provider = provider
         self._last_question_type = "general"
         self._last_similarity = 0.0
+        self._sync_provider_model(model)
+
+    @property
+    def model(self) -> str:
+        return self._model
+
+    @model.setter
+    def model(self, value: str) -> None:
+        self._model = value
+        self._sync_provider_model(value)
+
+    def _sync_provider_model(self, value: str) -> None:
+        if self.provider is not None:
+            if hasattr(self.provider, "local") and hasattr(self.provider.local, "model"):
+                self.provider.local.model = value
+            elif hasattr(self.provider, "model"):
+                self.provider.model = value
 
     def _check_available(self) -> bool:
         if self.provider is not None and hasattr(self.provider, "check_available"):
             return self.provider.check_available()
         try:
-            resp = requests.get(f"{self.base_url}/api/tags", timeout=2)
+            resp = requests.get(
+                f"{self.base_url}/api/tags",
+                timeout=2,
+                proxies={"http": None, "https": None},
+            )
             return resp.status_code == 200
         except (requests.RequestException, OSError):
             return False
@@ -113,7 +134,11 @@ class OllamaClient:
     def list_models(self) -> list:
         """Получить список доступных моделей от Ollama"""
         try:
-            resp = requests.get(f"{self.base_url}/api/tags", timeout=5)
+            resp = requests.get(
+                f"{self.base_url}/api/tags",
+                timeout=5,
+                proxies={"http": None, "https": None},
+            )
             if resp.status_code == 200:
                 data = resp.json()
                 models = []
@@ -193,6 +218,7 @@ class OllamaClient:
                     "model": self.model,
                     "messages": messages,
                     "stream": False,
+                    "think": False,
                     "keep_alive": -1,
                     "options": {
                         "temperature": temperature,
@@ -201,6 +227,7 @@ class OllamaClient:
                     },
                 },
                 timeout=60,
+                proxies={"http": None, "https": None},
             )
 
             self.metrics.first_token()
@@ -377,11 +404,12 @@ class OllamaClient:
 
         try:
             timeout = aiohttp.ClientTimeout(total=120)
-            async with aiohttp.ClientSession(timeout=timeout) as session:
+            async with aiohttp.ClientSession(timeout=timeout, trust_env=False) as session:
                 payload = {
                     "model": self.model,
                     "messages": messages,
                     "stream": True,
+                    "think": False,
                     "keep_alive": -1,
                     "options": {
                         "temperature": temperature,

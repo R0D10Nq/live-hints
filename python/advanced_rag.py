@@ -69,9 +69,8 @@ class AdvancedRAG:
     def _init_embedding_model(self):
         """Инициализация модели embeddings"""
         try:
-            from sentence_transformers import SentenceTransformer
-            # Многоязычная модель для русского и английского
-            self.embedding_model = SentenceTransformer('paraphrase-multilingual-MiniLM-L12-v2')
+            from semantic_cache import _get_shared_embedding_model
+            self.embedding_model = _get_shared_embedding_model()
             self._model_loaded = True
             logger.info('[RAG] Модель embeddings загружена')
         except ImportError:

@@ -104,13 +104,14 @@ def load_vacancy_context() -> str:
 
 
 def preload_model(model: str = DEFAULT_MODEL):
-    """Предзагрузка модели в память Ollama"""
+    """Предзагрузка модели в память Ollama и прогрев локальных эмбеддингов"""
     try:
         logger.info(f'[PRELOAD] Загрузка модели {model}...')
         resp = requests.post(
             f'{OLLAMA_URL}/api/generate',
             json={'model': model, 'prompt': '', 'keep_alive': -1},
-            timeout=120
+            timeout=120,
+            proxies={'http': None, 'https': None},
         )
         if resp.status_code == 200:
             logger.info(f'[PRELOAD] Модель {model} загружена')
@@ -118,6 +119,16 @@ def preload_model(model: str = DEFAULT_MODEL):
             logger.warning(f'[PRELOAD] Ошибка загрузки: {resp.status_code}')
     except Exception as e:
         logger.warning(f'[PRELOAD] Не удалось загрузить модель: {e}')
+
+    try:
+        from semantic_cache import get_semantic_cache
+        from advanced_rag import get_advanced_rag
+
+        get_semantic_cache()
+        get_advanced_rag()
+        logger.info('[PRELOAD] SemanticCache и AdvancedRAG прогреты')
+    except Exception as e:
+        logger.warning(f'[PRELOAD] Не удалось прогреть эмбеддинги: {e}')
 
 
 # ========== PYDANTIC MODELS ==========
@@ -315,9 +326,13 @@ async def generate_hint_stream(hint_request: HintRequest):
                     yield f"data: {json.dumps({'done': True, 'cached': True, 'question_type': question_type, 'latency_ms': 0, 'ttft_ms': 0}, ensure_ascii=False)}\n\n"
                 else:
                     async for chunk in ollama.generate_stream(
-                        request.text, request.context,
-                        request.max_tokens, request.temperature,
-                        request.system_prompt, request.user_context
+                        text=request.text,
+                        context=request.context,
+                        profile=request.profile,
+                        max_tokens=request.max_tokens,
+                        temperature=request.temperature,
+                        custom_system_prompt=request.system_prompt,
+                        custom_user_context=request.user_context,
                     ):
                         yield f"data: {json.dumps({'chunk': chunk}, ensure_ascii=False)}\n\n"
                     
@@ -442,6 +457,6 @@ async def vision_analyze(vision_request: VisionRequest):
 
 
 if __name__ == '__main__':
-    preload_model()
+    threading.Thread(target=preload_model, daemon=True).start()
     logger.info(f'[START] LLM Server on http://{HTTP_HOST}:{HTTP_PORT}')
     uvicorn.run(app, host=HTTP_HOST, port=HTTP_PORT, log_level='warning')

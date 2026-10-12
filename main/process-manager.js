@@ -244,7 +244,7 @@ async function startLLMProcess(port = 8766) {
   });
 
   try {
-    await waitForPort(port, '127.0.0.1', 30000, process, 'LLM');
+    await waitForPort(port, '127.0.0.1', 60000, process, 'LLM');
     return process;
   } catch (error) {
     stopProcess(process);
