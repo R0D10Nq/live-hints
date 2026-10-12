@@ -21,6 +21,8 @@ def test_classify_technical_question():
     assert classify_question('Что такое декоратор?') == 'technical'
     assert classify_question('Как работает генератор?') == 'technical'
     assert classify_question('Объясни разницу между list и tuple') == 'technical'
+    assert classify_question('Чем отличаются list, tuple, set и dict?') == 'technical'
+    assert classify_question('Сравни REST и gRPC') == 'technical'
     assert classify_question('Какой принцип работы алгоритма быстрой сортировки?') == 'technical'
 
 
@@ -95,10 +97,10 @@ def test_get_max_tokens_for_type():
     """Тест get_max_tokens_for_type"""
     from classification import get_max_tokens_for_type
     
-    assert get_max_tokens_for_type('experience') == 160
-    assert get_max_tokens_for_type('technical') == 140
-    assert get_max_tokens_for_type('general') == 100
-    assert get_max_tokens_for_type('unknown') == 130  # fallback
+    assert get_max_tokens_for_type('experience') == 250
+    assert get_max_tokens_for_type('technical') == 220
+    assert get_max_tokens_for_type('general') == 180
+    assert get_max_tokens_for_type('unknown') == 200  # fallback
 
 
 def test_get_temperature_for_type():

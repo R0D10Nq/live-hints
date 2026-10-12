@@ -26,6 +26,8 @@ class LiveHintsApp {
     this.microphoneReconnectAttempts = 0;
     this.maxReconnectAttempts = 5;
     this.sessionEpoch = 0;
+    this.autoHintTimeout = null;
+    this.isHintRequestPending = false;
 
     this.init();
   }
@@ -171,7 +173,7 @@ class LiveHintsApp {
             !this.audioManager?.micMuted
           ) {
             state.addTranscript(data.text);
-            if (state.get('settings.autoHints')) void this.requestHint(data.text);
+            if (state.get('settings.autoHints')) this.scheduleAutoHint(data.text);
           }
         } catch (error) {
           console.error('[APP] Не удалось разобрать сообщение микрофона:', error);
@@ -228,7 +230,7 @@ class LiveHintsApp {
         if (!state.get('session.isActive') || state.get('session.isPaused')) break;
         state.addTranscript(data.text);
         if (state.get('settings.autoHints')) {
-          void this.requestHint(data.text);
+          this.scheduleAutoHint(data.text);
         }
         break;
       case 'status':
@@ -421,6 +423,10 @@ class LiveHintsApp {
   }
 
   async stopSession() {
+    if (this.autoHintTimeout) {
+      clearTimeout(this.autoHintTimeout);
+      this.autoHintTimeout = null;
+    }
     this.sessionEpoch++;
     state.stopSession();
     this.audioManager?.stopVUMeter();
@@ -437,6 +443,10 @@ class LiveHintsApp {
   }
 
   async pauseSession() {
+    if (this.autoHintTimeout) {
+      clearTimeout(this.autoHintTimeout);
+      this.autoHintTimeout = null;
+    }
     this.sessionEpoch++;
     state.pauseSession();
     this.audioManager?.stopVUMeter();
@@ -480,14 +490,48 @@ class LiveHintsApp {
     return this.stopSession();
   }
 
-  async requestHint(text = null) {
+  scheduleAutoHint(text) {
+    if (!text || typeof text !== 'string') return;
+    const cleanText = text.trim();
+    if (cleanText.length < 15) return;
+
+    // Игнорируем изолированные междометия и короткий разговорный шум
+    const noisePatterns =
+      /^(да|нет|ага|угу|ок|окей|хорошо|ясно|понятно|ну|вот|так|например|слушаю|спасибо|алло|съявните)[.!?]?$/i;
+    if (noisePatterns.test(cleanText)) return;
+
+    if (this.autoHintTimeout) {
+      clearTimeout(this.autoHintTimeout);
+      this.autoHintTimeout = null;
+    }
+
+    const hasQuestionMark = cleanText.includes('?');
+    const hasQuestionWords =
+      /\b(что|как|почему|зачем|расскажи|расскажите|чем|какой|какие|где|когда|в чем|разница|сравни)\b/i.test(
+        cleanText
+      );
+    const delay = hasQuestionMark ? 800 : hasQuestionWords ? 1200 : 1800;
+
+    this.autoHintTimeout = setTimeout(() => {
+      this.autoHintTimeout = null;
+      if (!state.get('session.isActive') || state.get('session.isPaused')) return;
+      if (this.isHintRequestPending) return;
+      void this.requestHint(cleanText, { isAuto: true });
+    }, delay);
+  }
+
+  async requestHint(text = null, options = {}) {
+    if (this.isHintRequestPending) return false;
     const requestEpoch = this.sessionEpoch;
     const transcript = text || state.get('ui.transcripts').at(-1)?.text;
     if (!transcript || transcript.trim().length < 5) {
-      this.ui.showToast('Недостаточно текста для подсказки', 'warning');
-      return;
+      if (!options.isAuto) {
+        this.ui.showToast('Недостаточно текста для подсказки', 'warning');
+      }
+      return false;
     }
 
+    this.isHintRequestPending = true;
     const context = state
       .get('ui.transcripts')
       .slice(-10)
@@ -556,7 +600,11 @@ class LiveHintsApp {
     } catch (error) {
       if (requestEpoch !== this.sessionEpoch) return false;
       state.set('ui.status', 'error');
-      this.ui.showToast(error.message || 'Не удалось получить подсказку', 'error');
+      if (!options.isAuto) {
+        this.ui.showToast(error.message || 'Не удалось получить подсказку', 'error');
+      } else {
+        console.warn('[APP] Не удалось получить авто-подсказку:', error.message);
+      }
       const currentHint = state.getCurrentHint();
       if (currentHint) {
         this.ui.hints.displayHint(
@@ -568,6 +616,8 @@ class LiveHintsApp {
         this.ui.hints.showEmptyState();
       }
       return false;
+    } finally {
+      this.isHintRequestPending = false;
     }
   }
 

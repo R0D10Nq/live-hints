@@ -165,6 +165,8 @@ html, body {
 
 /* Settings panel */
 .settings-panel {
+  display: flex;
+  flex-direction: column;
   position: absolute;
   top: var(--header-height);
   right: 0;
@@ -175,10 +177,23 @@ html, body {
   z-index: var(--z-dropdown);
   transform: translateX(100%);
   transition: transform var(--duration-normal) var(--ease-out);
+  overflow: hidden;
 }
 
 .settings-panel.open {
   transform: translateX(0);
+}
+
+.settings-panel .sidebar-header {
+  flex-shrink: 0;
+}
+
+.settings-panel .sidebar-content {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 0;
 }
 
 .settings-section {

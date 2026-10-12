@@ -27,7 +27,12 @@
   user-select: none;
 }
 
-.app-header > * {
+.app-header button,
+.app-header .btn,
+.app-header input,
+.app-header select,
+.app-header a,
+.app-header [role="button"] {
   -webkit-app-region: no-drag;
 }
 

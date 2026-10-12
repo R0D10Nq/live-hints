@@ -27,28 +27,28 @@ _INTERVIEW_RU = {
         {
             'user': 'Расскажите о себе',
             'assistant': (
-                '• Python Backend Developer (3+ года опыта, Middle/Senior)\n'
-                '• Основной стек: Django, FastAPI, PostgreSQL, Redis, Celery\n'
-                '• Достижение: мультитенантная платформа 400+ клиентов, снижение latency на 40%\n'
-                '• Фокус: микросервисная архитектура, асинхронность и масштабирование'
+                '• Бэкенд-разработчик с опытом построения надежных сервисов\n'
+                '• Ключевой стек: Python, FastAPI/Django, PostgreSQL, Redis, брокеры сообщений\n'
+                '• Опыт: проектирование отказоустойчивых API и оптимизация работы с базами данных\n'
+                '• Фокус: чистая архитектура, надежность систем и командная разработка'
             )
         },
         {
             'user': 'Что такое декоратор в Python?',
             'assistant': (
-                '• Паттерн: функция высшего порядка, модифицирующая поведение другой функции\n'
-                '• Механизм: использует замыкания (closure), синтаксис @decorator\n'
-                '• Практика: @login_required, @cached, @transaction.atomic\n'
-                '• Нюанс: сохранение метаданных функции через functools.wraps'
+                '• Определение: функция высшего порядка, модифицирующая поведение другой функции\n'
+                '• Механизм: использует замыкание (closure), синтаксис через символ @\n'
+                '• Практика: логирование, проверка прав доступа, кэширование, валидация\n'
+                '• Нюанс: сохранение метаданных оборачиваемой функции через @functools.wraps'
             )
         },
         {
-            'user': 'Расскажите о сложной задаче которую вы решили',
+            'user': 'Расскажите о сложной технической задаче которую вы решили',
             'assistant': (
-                '• Ситуация: время ответа API выросло до 5 секунд при 400 клиентах\n'
-                '• Причина: N+1 запросы в ORM, отсутствие индексов в PostgreSQL\n'
-                '• Действия: select_related/prefetch_related, Redis-кэш, EXPLAIN ANALYZE\n'
-                '• Результат: время ответа снизилось в 16 раз (до 300 мс), нагрузка БД -60%'
+                '• Ситуация: деградация времени ответа ключевого API под растущей нагрузкой\n'
+                '• Причина: неоптимальные обращения к БД и отсутствие эффективного кэширования\n'
+                '• Действия: пакетная выборка данных, составные индексы и промежуточный кэш\n'
+                '• Результат: многократное снижение задержки и стабилизация нагрузки на инфраструктуру'
             )
         }
     ],
@@ -80,10 +80,10 @@ _INTERVIEW_EN = {
         {
             'user': 'Tell me about yourself',
             'assistant': (
-                '• Python Backend Developer (3+ years experience, high-load systems)\n'
-                '• Core stack: Django, FastAPI, PostgreSQL, Redis, Celery\n'
-                '• Key win: multi-tenant platform for 400+ clients (-40% latency)\n'
-                '• Focus: microservices, distributed systems, and performance tuning'
+                '• Backend Engineer experienced in building scalable web services\n'
+                '• Core stack: Python, FastAPI, Django, PostgreSQL, Redis, message queues\n'
+                '• Track record: designing high-throughput APIs and reliable databases\n'
+                '• Focus: distributed systems, code quality, and production observability'
             )
         },
         {
