@@ -2,6 +2,14 @@
 
 Все заметные изменения в проекте `live-hints` документируются в этом файле.
 
+## [1.5.5] — 2026-10-13
+
+### Выбор модели LLM в настройках и надежный локальный старт STT/Ollama
+- **Выбор модели Ollama в интерфейсе (`renderer/index.html`, `renderer/modules/app/app-models.js`, `renderer/app.js`):** В панель настроек (`#settings-panel`) добавлен выпадающий список `#ollama-model` (`data-testid="ollama-model-select"`) с кнопкой принудительного обновления списка моделей `#btn-refresh-models` (`data-testid="btn-refresh-models"`) и строкой статуса `#ollama-model-help`.
+- **Сохранение и синхронизация выбранной модели (`main/ipc-handlers.js`, `renderer/modules/ui-new/state-manager.js`):** Ключ `model` добавлен в `ALLOWED_SETTINGS` IPC-валидатора и состояние настроек (по умолчанию `qwen3:8b`). Выбранная модель передается в запросы генерации подсказок `POST /hint/stream` и синхронизируется с `POST /model/{name}`.
+- **Приоритет локального кэша моделей Whisper (`python/stt/transcriber.py`):** Метод `StreamingTranscriber._load_model()` сначала перебирает `MODEL_PRIORITY` с флагом `local_only=True`, загружая закэшированную модель `faster-whisper-medium` за ~3.3 с без блокировки старта попыткой скачивания `large-v3-turbo` (1.6 ГБ).
+- **Обход системного прокси для локального Ollama (`python/llm/provider.py`):** Во все вызовы `httpx.Client` внутри `OllamaProvider` добавлен параметр `trust_env=False`, исключающий перехват трафика к `127.0.0.1:11434` системным прокси Windows.
+
 ## [1.5.4] — 2026-09-10
 
 ### Комплексное внедрение недостающих элементов управления интерфейса

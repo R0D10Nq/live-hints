@@ -68,7 +68,7 @@ class OllamaProvider(BaseLLMProvider):
     def check_available(self) -> bool:
         """Проверка ответа эндпоинта Ollama tags."""
         try:
-            with httpx.Client(timeout=3.0) as client:
+            with httpx.Client(timeout=3.0, trust_env=False) as client:
                 resp = client.get(f"{self.base_url}/api/tags")
                 return resp.status_code == 200
         except Exception as e:
@@ -91,7 +91,7 @@ class OllamaProvider(BaseLLMProvider):
                 "temperature": temperature,
             },
         }
-        with httpx.Client(timeout=self.timeout) as client:
+        with httpx.Client(timeout=self.timeout, trust_env=False) as client:
             resp = client.post(url, json=payload)
             resp.raise_for_status()
             data = resp.json()
@@ -113,7 +113,7 @@ class OllamaProvider(BaseLLMProvider):
                 "temperature": temperature,
             },
         }
-        with httpx.Client(timeout=self.timeout) as client:
+        with httpx.Client(timeout=self.timeout, trust_env=False) as client:
             with client.stream("POST", url, json=payload) as response:
                 response.raise_for_status()
                 for line in response.iter_lines():

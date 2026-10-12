@@ -543,6 +543,46 @@
                 Сейчас поддерживается только локальный Ollama.
               </small>
             </div>
+            <div class="settings-group">
+              <label class="settings-label" for="ollama-model">Модель LLM</label>
+              <div class="settings-row-inline">
+                <select
+                  id="ollama-model"
+                  name="model"
+                  class="select"
+                  data-testid="ollama-model-select"
+                  aria-describedby="ollama-model-help"
+                >
+                  <option value="qwen3:8b" selected>qwen3:8b (рекомендуется)</option>
+                  <option value="qwen2.5:7b">qwen2.5:7b (быстрая)</option>
+                  <option value="gemma3:4b">gemma3:4b (компактная)</option>
+                  <option value="qwen2.5-coder:7b">qwen2.5-coder:7b (код)</option>
+                </select>
+                <button
+                  id="btn-refresh-models"
+                  type="button"
+                  class="btn btn-icon btn-ghost"
+                  title="Обновить список моделей Ollama"
+                  aria-label="Обновить список моделей Ollama"
+                  data-testid="btn-refresh-models"
+                >
+                  <svg
+                    class="icon icon-sm"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    aria-hidden="true"
+                  >
+                    <path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8" />
+                    <path d="M21 3v5h-5" />
+                  </svg>
+                </button>
+              </div>
+              <small id="ollama-model-help" class="text-muted">
+                Для загрузки: ollama pull qwen3:8b
+              </small>
+            </div>
           </div>
 
           <!-- Profile -->

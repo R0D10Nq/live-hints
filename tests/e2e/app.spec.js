@@ -97,6 +97,22 @@ test.describe('Live Hints E2E', () => {
     await btnSettings.click();
   });
 
+  test('должен отображать выбор модели LLM и кнопку обновления в настройках', async () => {
+    const btnSettings = window.locator('[data-testid="btn-settings"]');
+    await btnSettings.click();
+    await window.waitForTimeout(300);
+
+    const modelSelect = window.locator('[data-testid="ollama-model-select"]');
+    const refreshBtn = window.locator('[data-testid="btn-refresh-models"]');
+    await expect(modelSelect).toBeVisible();
+    await expect(refreshBtn).toBeVisible();
+
+    const optionsCount = await modelSelect.locator('option').count();
+    expect(optionsCount).toBeGreaterThan(0);
+
+    await btnSettings.click();
+  });
+
   test('должен отображать выбор AI профиля', async () => {
     // Открываем настройки
     const btnSettings = window.locator('[data-testid="btn-settings"]');

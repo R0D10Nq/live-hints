@@ -9,6 +9,7 @@ const MAX_CONTEXT_CHARS = 1_000_000;
 const ALLOWED_FILE_TYPES = new Set(['pdf', 'docx', 'txt', 'md']);
 const ALLOWED_SETTINGS = new Map([
   ['provider', 'string'],
+  ['model', 'string'],
   ['profile', 'string'],
   ['autoHints', 'boolean'],
   ['dualAudio', 'boolean'],

@@ -8,6 +8,7 @@ import { NewUIController } from './modules/ui-new/index.js';
 import { state } from './modules/ui-new/state-manager.js';
 import { SERVERS } from './modules/constants.js';
 import { AudioManager } from './modules/audio-manager.js';
+import { AppModels } from './modules/app/app-models.js';
 
 function normalizeStoredBoolean(value) {
   return value === true || value === 1 || value === 'true';
@@ -18,6 +19,7 @@ class LiveHintsApp {
   constructor() {
     this.ui = null;
     this.audioManager = null;
+    this.models = null;
     this.ws = null;
     this.wsMicrophone = null;
     this.reconnectAttempts = 0;
@@ -38,6 +40,10 @@ class LiveHintsApp {
     this.audioManager = new AudioManager(this);
     this.audioManager.setup();
 
+    // Initialize LLM models manager
+    this.models = new AppModels(this);
+    this.models.setup();
+
     // Setup IPC listeners
     this.setupIPCListeners();
 
@@ -45,7 +51,7 @@ class LiveHintsApp {
     this.setupKeyboardShortcuts();
 
     // Load initial settings
-    this.loadSettings();
+    await this.loadSettings();
 
     // Setup particles for visual effect
     this.setupParticles();
@@ -324,6 +330,13 @@ class LiveHintsApp {
         const providerSelect = document.getElementById('llm-provider');
         if (providerSelect) providerSelect.value = settings.provider;
       }
+      if (settings.model) {
+        state.applySetting('model', settings.model);
+        const modelSelect = document.getElementById('ollama-model');
+        if (modelSelect) {
+          this.models?.renderPresetOptions(modelSelect, settings.model);
+        }
+      }
       if (settings.profile) {
         state.applySetting('profile', settings.profile);
         const profileSelect = document.getElementById('ai-profile');
@@ -391,6 +404,7 @@ class LiveHintsApp {
         dualAudio: state.get('settings.dualAudio') === true,
       });
       if (!result?.success) throw new Error(result?.error || 'Сервисы не запустились');
+      void this.models?.loadModels({ silent: true });
       this.connectWebSocket();
       void this.audioManager?.startVUMeter();
       return true;
@@ -488,6 +502,7 @@ class LiveHintsApp {
         body: JSON.stringify({
           text: transcript,
           context,
+          model: state.get('settings.model') || 'qwen3:8b',
           profile: state.get('settings.profile'),
           max_tokens: 512,
           temperature: 0.3,

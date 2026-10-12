@@ -52,23 +52,31 @@ class StreamingTranscriber:
         self.metrics = LatencyMetrics()
     
     def _load_model(self):
-        """Загрузка модели - ТОЛЬКО GPU"""
+        """Загрузка модели - ТОЛЬКО GPU (с приоритетом локального кэша)"""
         last_error = None
-        
-        for model_name in MODEL_PRIORITY:
-            logger.info(f'[GPU] Загрузка {model_name} на {DEVICE}...')
-            
-            try:
-                self.model = WhisperModel(model_name, device=DEVICE, compute_type=COMPUTE_TYPE)
-                self.device_used = DEVICE
-                self.model_name = model_name
-                logger.info(f'[GPU] Модель {model_name} загружена')
-                return
-            except Exception as e:
-                last_error = e
-                logger.warning(f'[GPU] Не удалось загрузить {model_name}: {e}')
-                continue
-        
+
+        for local_only in (True, False):
+            for model_name in MODEL_PRIORITY:
+                logger.info(
+                    f'[GPU] Загрузка {model_name} на {DEVICE} (local_only={local_only})...'
+                )
+
+                try:
+                    self.model = WhisperModel(
+                        model_name,
+                        device=DEVICE,
+                        compute_type=COMPUTE_TYPE,
+                        local_files_only=local_only,
+                    )
+                    self.device_used = DEVICE
+                    self.model_name = model_name
+                    logger.info(f'[GPU] Модель {model_name} загружена')
+                    return
+                except Exception as e:
+                    last_error = e
+                    logger.warning(f'[GPU] Не удалось загрузить {model_name}: {e}')
+                    continue
+
         logger.error('[GPU] Все модели недоступны')
         raise RuntimeError(f'GPU недоступен: {last_error}')
     

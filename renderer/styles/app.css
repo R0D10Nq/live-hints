@@ -208,6 +208,16 @@ html, body {
   margin-bottom: var(--space-3);
 }
 
+.settings-row-inline {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.settings-row-inline .select {
+  flex: 1;
+}
+
 /* Toggle switch */
 .toggle {
   position: relative;
