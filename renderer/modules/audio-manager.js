@@ -14,6 +14,10 @@ export class AudioManager {
     this.dualAudioEnabled = false; // Загружается из настроек
     this.inputDeviceIndex = null;
     this.loopbackDeviceIndex = null;
+    this.audioContext = null;
+    this.analyser = null;
+    this.vuStream = null;
+    this.vuAnimationId = null;
   }
 
   setup() {
@@ -93,8 +97,39 @@ export class AudioManager {
 
   async loadDevices() {
     try {
-      const resp = await fetch(`${SERVERS.LLM}/audio/devices`);
-      const data = await resp.json();
+      let data = { input: [], output: [] };
+      try {
+        const resp = await fetch(`${SERVERS.LLM}/audio/devices`);
+        if (resp.ok) {
+          data = await resp.json();
+        }
+      } catch (err) {
+        logger.warn('AudioManager', 'Не удалось получить устройства через бэкенд:', err);
+      }
+
+      // Если бэкенд не вернул устройства, используем Web API navigator.mediaDevices
+      if (
+        (!data.input || data.input.length === 0) &&
+        typeof navigator !== 'undefined' &&
+        navigator.mediaDevices?.enumerateDevices
+      ) {
+        try {
+          const devs = await navigator.mediaDevices.enumerateDevices();
+          const inputs = devs.filter((d) => d.kind === 'audioinput');
+          const outputs = devs.filter((d) => d.kind === 'audiooutput');
+          data.input = inputs.map((d, i) => ({
+            index: d.deviceId || String(i),
+            name: d.label || `Микрофон ${i + 1}`,
+          }));
+          data.output = outputs.map((d, i) => ({
+            index: d.deviceId || String(i),
+            name: d.label || `Динамики ${i + 1}`,
+            isLoopback: true,
+          }));
+        } catch (e) {
+          logger.warn('AudioManager', 'Не удалось получить устройства через navigator.mediaDevices:', e);
+        }
+      }
 
       const inputSelect = document.getElementById('input-device');
       const loopbackSelect = document.getElementById('loopback-device');
@@ -104,6 +139,9 @@ export class AudioManager {
         inputSelect.replaceChildren(defaultInputOption);
         for (const device of Array.from(data.input)) {
           const option = new Option(String(device.name || 'Без названия'), String(device.index));
+          if (String(device.index) === String(this.inputDeviceIndex)) {
+            option.selected = true;
+          }
           inputSelect.appendChild(option);
         }
       }
@@ -115,7 +153,11 @@ export class AudioManager {
         for (const loopback of Array.from(loopbacks)) {
           const name = String(loopback.name || 'Без названия');
           const value = String(loopback.index);
-          loopbackSelect.appendChild(new Option(name, value));
+          const opt = new Option(name, value);
+          if (value === String(this.loopbackDeviceIndex)) {
+            opt.selected = true;
+          }
+          loopbackSelect.appendChild(opt);
         }
       }
     } catch (e) {
@@ -348,15 +390,82 @@ export class AudioManager {
     const btn = document.getElementById('btn-mic-mute');
     if (btn) {
       btn.innerHTML = this.micMuted
-        ? '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="1" y1="1" x2="23" y2="23"/><path d="M9 9v3a3 3 0 0 0 5.12 2.12M15 9.34V4a3 3 0 0 0-5.94-.6"/><path d="M17 16.95A7 7 0 0 1 5 12v-2m14 0v2a7 7 0 0 1-.11 1.23"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>'
-        : '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>';
-      btn.title = this.micMuted ? 'Включить микрофон' : 'Выключить микрофон';
+        ? '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="1" y1="1" x2="23" y2="23"/><path d="M9 9v3a3 3 0 0 0 5.12 2.12M15 9.34V4a3 3 0 0 0-5.94-.6"/><path d="M17 16.95A7 7 0 0 1 5 12v-2m14 0v2a7 7 0 0 1-.11 1.23"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg><span id="text-mic-mute">Микрофон</span>'
+        : '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg><span id="text-mic-mute">Микрофон</span>';
+      btn.title = this.micMuted ? 'Включить микрофон (Ctrl+M)' : 'Выключить микрофон (Ctrl+M)';
+      btn.classList.toggle('muted', this.micMuted);
     }
-    this.app.ui.showToast(this.micMuted ? 'Микрофон выключен' : 'Микрофон включён', 'info');
+    if (this.micMuted) {
+      this.updateVUMeter(0);
+    }
+    this.app.ui?.showToast?.(this.micMuted ? 'Микрофон выключен' : 'Микрофон включён', 'info');
   }
 
   toggleMute() {
     this.toggleMicMute();
+  }
+
+  updateVUMeter(level) {
+    const meter = document.getElementById('audio-vu-meter');
+    if (!meter) return;
+    const bars = meter.querySelectorAll('.vu-bar');
+    bars.forEach((bar, idx) => {
+      bar.className = 'vu-bar';
+      if (level > idx * 0.25 + 0.08) {
+        bar.classList.add(`active-${idx + 1}`);
+      }
+    });
+  }
+
+  async startVUMeter() {
+    if (typeof navigator === 'undefined' || !navigator.mediaDevices?.getUserMedia) return;
+    try {
+      if (this.audioContext) return;
+      this.vuStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      if (!AudioCtx) return;
+      this.audioContext = new AudioCtx();
+      this.analyser = this.audioContext.createAnalyser();
+      this.analyser.fftSize = 64;
+      const source = this.audioContext.createMediaStreamSource(this.vuStream);
+      source.connect(this.analyser);
+      const dataArray = new Uint8Array(this.analyser.frequencyBinCount);
+
+      const checkAudio = () => {
+        if (!this.audioContext || this.audioContext.state === 'closed') return;
+        if (this.micMuted) {
+          this.updateVUMeter(0);
+        } else {
+          this.analyser.getByteFrequencyData(dataArray);
+          let sum = 0;
+          for (let i = 0; i < dataArray.length; i++) {
+            sum += dataArray[i];
+          }
+          const avg = sum / dataArray.length / 255;
+          this.updateVUMeter(avg);
+        }
+        this.vuAnimationId = requestAnimationFrame(checkAudio);
+      };
+      this.vuAnimationId = requestAnimationFrame(checkAudio);
+    } catch (err) {
+      logger.warn('AudioManager', 'Не удалось запустить VU-метр:', err);
+    }
+  }
+
+  stopVUMeter() {
+    if (this.vuAnimationId && typeof cancelAnimationFrame === 'function') {
+      cancelAnimationFrame(this.vuAnimationId);
+      this.vuAnimationId = null;
+    }
+    if (this.vuStream) {
+      this.vuStream.getTracks?.().forEach((t) => t.stop?.());
+      this.vuStream = null;
+    }
+    if (this.audioContext) {
+      this.audioContext.close?.().catch(() => {});
+      this.audioContext = null;
+    }
+    this.updateVUMeter(0);
   }
 
   // Общий аккумулятор контекста транскрипта — одна точка накопления вместо дублирования
@@ -374,6 +483,7 @@ export class AudioManager {
       this.wsConnection = null;
     }
     this.disconnectMicrophone();
+    this.stopVUMeter();
   }
 
   async testRemoteConnection(sttUrl, llmUrl) {

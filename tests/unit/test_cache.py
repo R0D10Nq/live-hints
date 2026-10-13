@@ -111,3 +111,17 @@ def test_cache_key_generation():
     
     # Разные вопросы должны давать разные ключи
     assert key1 != key3
+
+
+def test_cache_with_different_profiles():
+    """Тест изоляции кэша между разными профилями подсказок"""
+    cache = HintCache()
+
+    # Одинаковый вопрос в разных профилях
+    question = 'Расскажи о себе'
+    cache.set(question, [], 'Ответ для собеседования', profile='job_interview_ru')
+    cache.set(question, [], 'Ответ для дейлика', profile='daily_sync')
+
+    assert cache.get(question, [], profile='job_interview_ru') == 'Ответ для собеседования'
+    assert cache.get(question, [], profile='daily_sync') == 'Ответ для дейлика'
+    assert cache.get(question, [], profile='unknown') is None

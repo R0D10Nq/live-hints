@@ -9,6 +9,7 @@ const MAX_CONTEXT_CHARS = 1_000_000;
 const ALLOWED_FILE_TYPES = new Set(['pdf', 'docx', 'txt', 'md']);
 const ALLOWED_SETTINGS = new Map([
   ['provider', 'string'],
+  ['model', 'string'],
   ['profile', 'string'],
   ['autoHints', 'boolean'],
   ['dualAudio', 'boolean'],
@@ -185,12 +186,8 @@ function setupIPC(handlers) {
         processManager.startAudioCaptureProcess(options);
       const win = windowManager.getMainWindow();
       if (win) {
-        audioCaptureProcess?.stdout?.on('data', (data) => {
-          win.webContents.send('audio:pcm-data', data, 'loopback');
-        });
-        micCaptureProcess?.stdout?.on('data', (data) => {
-          win.webContents.send('audio:pcm-data', data, 'microphone');
-        });
+        // Аудио отправляется напрямую через WebSocket в STT-сервер.
+        // IPC-шину для потоковых бинарных данных использовать не следует.
       }
       return { success: true, dualAudio: options.dualAudio };
     } catch (error) {

@@ -1,13 +1,6 @@
 [run]
 source = python
 omit = 
-    python/audio_capture.py
-    python/mic_capture.py
-    python/stt/transcriber.py
-    python/advanced_rag.py
-    python/semantic_cache.py
-    python/vector_db.py
-    python/stt_server.py
     python/device_monitor.py
     python/dynamic_audio_capture.py
     python/stt_server_dynamic.py
@@ -27,10 +20,6 @@ exclude_lines =
     except websockets.exceptions.ConnectionClosed
     except json.JSONDecodeError
     except ImportError
-    except Exception as e:
-    except:
-    logger.warning
-    logger.error
     logger.info
     yield
     nonlocal

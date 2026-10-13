@@ -7,6 +7,8 @@
 import { NewUIController } from './modules/ui-new/index.js';
 import { state } from './modules/ui-new/state-manager.js';
 import { SERVERS } from './modules/constants.js';
+import { AudioManager } from './modules/audio-manager.js';
+import { AppModels } from './modules/app/app-models.js';
 
 function normalizeStoredBoolean(value) {
   return value === true || value === 1 || value === 'true';
@@ -16,12 +18,16 @@ function normalizeStoredBoolean(value) {
 class LiveHintsApp {
   constructor() {
     this.ui = null;
+    this.audioManager = null;
+    this.models = null;
     this.ws = null;
     this.wsMicrophone = null;
     this.reconnectAttempts = 0;
     this.microphoneReconnectAttempts = 0;
     this.maxReconnectAttempts = 5;
     this.sessionEpoch = 0;
+    this.autoHintTimeout = null;
+    this.isHintRequestPending = false;
 
     this.init();
   }
@@ -32,6 +38,14 @@ class LiveHintsApp {
     // Initialize new UI controller
     this.ui = new NewUIController(this);
 
+    // Initialize audio manager
+    this.audioManager = new AudioManager(this);
+    this.audioManager.setup();
+
+    // Initialize LLM models manager
+    this.models = new AppModels(this);
+    this.models.setup();
+
     // Setup IPC listeners
     this.setupIPCListeners();
 
@@ -39,7 +53,7 @@ class LiveHintsApp {
     this.setupKeyboardShortcuts();
 
     // Load initial settings
-    this.loadSettings();
+    await this.loadSettings();
 
     // Setup particles for visual effect
     this.setupParticles();
@@ -78,6 +92,14 @@ class LiveHintsApp {
       if (!isActive && status !== 'idle') return;
       if (isPaused && status === 'recording') return;
       state.set('ui.status', status);
+    });
+
+    window.electron.onShortcutToggleMute?.(() => {
+      this.audioManager?.toggleMicMute();
+    });
+
+    window.electron.onShortcutToggleTranscript?.(() => {
+      this.ui?.sidebar?.toggle();
     });
   }
 
@@ -147,10 +169,11 @@ class LiveHintsApp {
             data.type === 'transcript' &&
             data.text &&
             state.get('session.isActive') &&
-            !state.get('session.isPaused')
+            !state.get('session.isPaused') &&
+            !this.audioManager?.micMuted
           ) {
             state.addTranscript(data.text);
-            if (state.get('settings.autoHints')) void this.requestHint(data.text);
+            if (state.get('settings.autoHints')) this.scheduleAutoHint(data.text);
           }
         } catch (error) {
           console.error('[APP] Не удалось разобрать сообщение микрофона:', error);
@@ -207,7 +230,7 @@ class LiveHintsApp {
         if (!state.get('session.isActive') || state.get('session.isPaused')) break;
         state.addTranscript(data.text);
         if (state.get('settings.autoHints')) {
-          void this.requestHint(data.text);
+          this.scheduleAutoHint(data.text);
         }
         break;
       case 'status':
@@ -239,8 +262,32 @@ class LiveHintsApp {
         document.getElementById('btn-pause')?.click();
       }
 
-      // Ctrl/Cmd + H - Ask hint
+      // Ctrl/Cmd + H - Toggle stealth mode
       if ((e.ctrlKey || e.metaKey) && e.code === 'KeyH') {
+        e.preventDefault();
+        void window.electron?.stealthToggle?.();
+      }
+
+      // Ctrl/Cmd + M - Toggle mute
+      if ((e.ctrlKey || e.metaKey) && e.code === 'KeyM') {
+        e.preventDefault();
+        this.audioManager?.toggleMicMute();
+      }
+
+      // Ctrl/Cmd + T - Toggle transcript
+      if ((e.ctrlKey || e.metaKey) && e.code === 'KeyT') {
+        e.preventDefault();
+        this.ui?.sidebar?.toggle();
+      }
+
+      // Ctrl/Cmd + Shift + C - Toggle click-through
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.code === 'KeyC') {
+        e.preventDefault();
+        document.getElementById('btn-click-through')?.click();
+      }
+
+      // Ctrl/Cmd + Enter - Ask hint
+      if ((e.ctrlKey || e.metaKey) && e.code === 'Enter') {
         e.preventDefault();
         document.getElementById('btn-ask')?.click();
       }
@@ -284,6 +331,13 @@ class LiveHintsApp {
         state.applySetting('provider', settings.provider);
         const providerSelect = document.getElementById('llm-provider');
         if (providerSelect) providerSelect.value = settings.provider;
+      }
+      if (settings.model) {
+        state.applySetting('model', settings.model);
+        const modelSelect = document.getElementById('ollama-model');
+        if (modelSelect) {
+          this.models?.renderPresetOptions(modelSelect, settings.model);
+        }
       }
       if (settings.profile) {
         state.applySetting('profile', settings.profile);
@@ -352,11 +406,14 @@ class LiveHintsApp {
         dualAudio: state.get('settings.dualAudio') === true,
       });
       if (!result?.success) throw new Error(result?.error || 'Сервисы не запустились');
+      void this.models?.loadModels({ silent: true });
       this.connectWebSocket();
+      void this.audioManager?.startVUMeter();
       return true;
     } catch (error) {
       await window.electron?.stopRuntime?.();
       state.stopSession();
+      this.audioManager?.stopVUMeter();
       this.ui.updateToggleButton(false);
       this.ui.updatePauseButton(true);
       state.set('ui.status', 'error');
@@ -366,8 +423,13 @@ class LiveHintsApp {
   }
 
   async stopSession() {
+    if (this.autoHintTimeout) {
+      clearTimeout(this.autoHintTimeout);
+      this.autoHintTimeout = null;
+    }
     this.sessionEpoch++;
     state.stopSession();
+    this.audioManager?.stopVUMeter();
     try {
       await window.electron?.stopRuntime?.();
     } finally {
@@ -381,8 +443,13 @@ class LiveHintsApp {
   }
 
   async pauseSession() {
+    if (this.autoHintTimeout) {
+      clearTimeout(this.autoHintTimeout);
+      this.autoHintTimeout = null;
+    }
     this.sessionEpoch++;
     state.pauseSession();
+    this.audioManager?.stopVUMeter();
     try {
       await window.electron?.stopSTT?.();
     } finally {
@@ -401,11 +468,12 @@ class LiveHintsApp {
       const result = await window.electron?.startSTT?.({
         dualAudio: state.get('settings.dualAudio') === true,
       });
-      if (!result?.success) throw new Error(result?.error || 'STT не запустился');
+      if (!result?.success) throw new Error(result?.error || 'Не удалось перезапустить STT');
       state.resumeSession();
+      this.connectWebSocket();
+      void this.audioManager?.startVUMeter();
       this.ui.updateToggleButton(true);
       this.ui.updatePauseButton(false);
-      this.connectWebSocket();
       return true;
     } catch (error) {
       state.set('ui.status', 'error');
@@ -422,14 +490,48 @@ class LiveHintsApp {
     return this.stopSession();
   }
 
-  async requestHint(text = null) {
+  scheduleAutoHint(text) {
+    if (!text || typeof text !== 'string') return;
+    const cleanText = text.trim();
+    if (cleanText.length < 15) return;
+
+    // Игнорируем изолированные междометия и короткий разговорный шум
+    const noisePatterns =
+      /^(да|нет|ага|угу|ок|окей|хорошо|ясно|понятно|ну|вот|так|например|слушаю|спасибо|алло|съявните)[.!?]?$/i;
+    if (noisePatterns.test(cleanText)) return;
+
+    if (this.autoHintTimeout) {
+      clearTimeout(this.autoHintTimeout);
+      this.autoHintTimeout = null;
+    }
+
+    const hasQuestionMark = cleanText.includes('?');
+    const hasQuestionWords =
+      /\b(что|как|почему|зачем|расскажи|расскажите|чем|какой|какие|где|когда|в чем|разница|сравни)\b/i.test(
+        cleanText
+      );
+    const delay = hasQuestionMark ? 800 : hasQuestionWords ? 1200 : 1800;
+
+    this.autoHintTimeout = setTimeout(() => {
+      this.autoHintTimeout = null;
+      if (!state.get('session.isActive') || state.get('session.isPaused')) return;
+      if (this.isHintRequestPending) return;
+      void this.requestHint(cleanText, { isAuto: true });
+    }, delay);
+  }
+
+  async requestHint(text = null, options = {}) {
+    if (this.isHintRequestPending) return false;
     const requestEpoch = this.sessionEpoch;
     const transcript = text || state.get('ui.transcripts').at(-1)?.text;
     if (!transcript || transcript.trim().length < 5) {
-      this.ui.showToast('Недостаточно текста для подсказки', 'warning');
-      return;
+      if (!options.isAuto) {
+        this.ui.showToast('Недостаточно текста для подсказки', 'warning');
+      }
+      return false;
     }
 
+    this.isHintRequestPending = true;
     const context = state
       .get('ui.transcripts')
       .slice(-10)
@@ -444,6 +546,7 @@ class LiveHintsApp {
         body: JSON.stringify({
           text: transcript,
           context,
+          model: state.get('settings.model') || 'qwen3:8b',
           profile: state.get('settings.profile'),
           max_tokens: 512,
           temperature: 0.3,
@@ -469,7 +572,7 @@ class LiveHintsApp {
           break;
         }
         buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split('\n');
+        const lines = buffer.split(/\r?\n/);
         buffer = lines.pop() || '';
         for (const line of lines) {
           this.consumeSSELine(line, (chunk) => {
@@ -497,7 +600,11 @@ class LiveHintsApp {
     } catch (error) {
       if (requestEpoch !== this.sessionEpoch) return false;
       state.set('ui.status', 'error');
-      this.ui.showToast(error.message || 'Не удалось получить подсказку', 'error');
+      if (!options.isAuto) {
+        this.ui.showToast(error.message || 'Не удалось получить подсказку', 'error');
+      } else {
+        console.warn('[APP] Не удалось получить авто-подсказку:', error.message);
+      }
       const currentHint = state.getCurrentHint();
       if (currentHint) {
         this.ui.hints.displayHint(
@@ -509,6 +616,8 @@ class LiveHintsApp {
         this.ui.hints.showEmptyState();
       }
       return false;
+    } finally {
+      this.isHintRequestPending = false;
     }
   }
 

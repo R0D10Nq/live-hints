@@ -68,7 +68,7 @@ class OllamaProvider(BaseLLMProvider):
     def check_available(self) -> bool:
         """Проверка ответа эндпоинта Ollama tags."""
         try:
-            with httpx.Client(timeout=3.0) as client:
+            with httpx.Client(timeout=3.0, trust_env=False) as client:
                 resp = client.get(f"{self.base_url}/api/tags")
                 return resp.status_code == 200
         except Exception as e:
@@ -86,12 +86,13 @@ class OllamaProvider(BaseLLMProvider):
             "model": self.model,
             "messages": messages,
             "stream": False,
+            "think": False,
             "options": {
                 "num_predict": max_tokens,
                 "temperature": temperature,
             },
         }
-        with httpx.Client(timeout=self.timeout) as client:
+        with httpx.Client(timeout=self.timeout, trust_env=False) as client:
             resp = client.post(url, json=payload)
             resp.raise_for_status()
             data = resp.json()
@@ -108,12 +109,13 @@ class OllamaProvider(BaseLLMProvider):
             "model": self.model,
             "messages": messages,
             "stream": True,
+            "think": False,
             "options": {
                 "num_predict": max_tokens,
                 "temperature": temperature,
             },
         }
-        with httpx.Client(timeout=self.timeout) as client:
+        with httpx.Client(timeout=self.timeout, trust_env=False) as client:
             with client.stream("POST", url, json=payload) as response:
                 response.raise_for_status()
                 for line in response.iter_lines():
@@ -317,7 +319,10 @@ class HybridProvider(BaseLLMProvider):
             self.last_source = "cloud"
             cloud_gen = self.primary_provider.generate_stream(messages, max_tokens, temperature)
             # Получаем первый токен для проверки отсутствия ошибок инициализации стрима
-            first_chunk = next(cloud_gen)
+            first_chunk = next(cloud_gen, None)
+            if first_chunk is None:
+                # Пустой ответ от облачного провайдера — не считаем ошибкой
+                return
             yield first_chunk
             yield from cloud_gen
         except Exception as err:

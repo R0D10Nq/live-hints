@@ -33,9 +33,22 @@ function isRunning(process) {
   return Boolean(process && process.exitCode === null && !process.killed);
 }
 
-function stopProcess(process) {
-  if (isRunning(process)) {
-    process.kill();
+function stopProcess(proc) {
+  if (isRunning(proc)) {
+    // На Windows process.kill() не убивает дочерние процессы.
+    // Используем taskkill /t /f для рекурсивного завершения дерева процессов.
+    if (process.platform === 'win32') {
+      try {
+        require('child_process').execSync(
+          `taskkill /pid ${proc.pid} /t /f`,
+          { stdio: 'ignore' }
+        );
+      } catch {
+        proc.kill('SIGKILL');
+      }
+    } else {
+      proc.kill();
+    }
   }
 }
 
@@ -231,7 +244,7 @@ async function startLLMProcess(port = 8766) {
   });
 
   try {
-    await waitForPort(port, '127.0.0.1', 30000, process, 'LLM');
+    await waitForPort(port, '127.0.0.1', 60000, process, 'LLM');
     return process;
   } catch (error) {
     stopProcess(process);

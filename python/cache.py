@@ -18,15 +18,15 @@ class HintCache:
         self.maxsize = maxsize
         self._lock = threading.Lock()
     
-    def _make_key(self, text: str, context: list) -> str:
-        """Создаёт ключ кэша из текста и контекста"""
+    def _make_key(self, text: str, context: list, profile: str = '') -> str:
+        """Создаёт ключ кэша из текста, контекста и профиля"""
         context_str = ' | '.join(context[-3:]) if context else ''
-        combined = f'{text.strip().lower()}|{context_str}'
+        combined = f'{text.strip().lower()}|{context_str}|{profile.strip().lower()}'
         return hashlib.md5(combined.encode()).hexdigest()
     
-    def get(self, text: str, context: list):
+    def get(self, text: str, context: list, profile: str = ''):
         """Получает из кэша или None"""
-        key = self._make_key(text, context)
+        key = self._make_key(text, context, profile)
         
         with self._lock:
             if key in self.cache:
@@ -39,9 +39,9 @@ class HintCache:
         logger.info(f'[CACHE] MISS: {text[:50]}...')
         return None
     
-    def set(self, text: str, context: list, hint: str):
+    def set(self, text: str, context: list, hint: str, profile: str = ''):
         """Сохраняет в кэш"""
-        key = self._make_key(text, context)
+        key = self._make_key(text, context, profile)
         
         with self._lock:
             if key in self.cache:

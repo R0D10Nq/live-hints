@@ -23,6 +23,7 @@ export class StateManager {
       },
       settings: {
         provider: 'ollama',
+        model: 'qwen3:8b',
         profile: 'job_interview_ru',
         autoHints: false,
         dualAudio: false,

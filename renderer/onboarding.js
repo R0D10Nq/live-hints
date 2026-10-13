@@ -91,7 +91,7 @@ class OnboardingController {
   // -- Вычисляемые свойства навигации --
 
   get steps() {
-    if (!this.selectedMode) return ['mode'];
+    if (!this.selectedMode) return MODE_CONFIG.job_interview_ru.steps;
     return MODE_CONFIG[this.selectedMode].steps;
   }
 
@@ -265,6 +265,10 @@ class OnboardingController {
     card.classList.add('sel');
 
     this.els.btnNext.disabled = false;
+    const badge = this.els.card.querySelector('.badge');
+    if (badge) {
+      badge.textContent = `Шаг 1 из ${this.totalSteps}`;
+    }
     this.renderIndicator();
     this.updateNav();
   }

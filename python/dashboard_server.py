@@ -10,7 +10,9 @@ import re
 import csv
 import io
 from datetime import datetime, timedelta
+import asyncio
 import os
+import secrets
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Request
@@ -19,7 +21,10 @@ import uvicorn
 
 app = FastAPI(title="Live Hints Dashboard")
 
-DASHBOARD_TOKEN = os.getenv('DASHBOARD_TOKEN')
+DASHBOARD_TOKEN = os.getenv('DASHBOARD_TOKEN') or secrets.token_urlsafe(32)
+if not os.getenv('DASHBOARD_TOKEN'):
+    print(f'[Dashboard] Сгенерирован токен доступа: {DASHBOARD_TOKEN}')
+    print(f'[Dashboard] Откройте http://127.0.0.1:8767/?token={DASHBOARD_TOKEN}')
 
 @app.middleware('http')
 async def verify_token(request: Request, call_next):
@@ -180,14 +185,14 @@ async def dashboard():
 @app.get("/api/stats")
 async def get_stats(hours: int = 24):
     """Получить статистику за последние N часов"""
-    metrics = load_metrics(max(1, min(hours, 24 * 30)))
+    metrics = await asyncio.to_thread(load_metrics, max(1, min(hours, 24 * 30)))
     stats = calculate_stats(metrics)
     return stats
 
 @app.get("/api/sessions")
 async def get_sessions():
     """Получить список всех сессий"""
-    sessions = load_sessions()
+    sessions = await asyncio.to_thread(load_sessions)
     return {
         'count': len(sessions),
         'sessions': sessions[:50]  # Последние 50 сессий
@@ -196,7 +201,7 @@ async def get_sessions():
 @app.get("/api/session/{session_id}")
 async def get_session(session_id: str):
     """Получить детали сессии"""
-    sessions = load_sessions()
+    sessions = await asyncio.to_thread(load_sessions)
     session = next((s for s in sessions if s.get('id') == session_id), None)
     if not session:
         raise HTTPException(404, "Сессия не найдена")
@@ -205,7 +210,7 @@ async def get_session(session_id: str):
 @app.get("/api/metrics/export")
 async def export_metrics():
     """Экспортировать метрики в CSV"""
-    metrics = load_metrics(hours=24*30)  # За месяц
+    metrics = await asyncio.to_thread(load_metrics, 24*30)  # За месяц
     
     if not metrics:
         return {"error": "Нет данных"}

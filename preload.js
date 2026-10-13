@@ -131,6 +131,7 @@ contextBridge.exposeInMainWorld('electron', {
   settingsReset: () => ipcRenderer.invoke('settings:reset'),
 
   // ===== ONBOARDING / FILES =====
+  parseFileBuffer: (buffer, type) => ipcRenderer.invoke('file:parse-buffer', buffer, type),
   saveContextFile: (type, content) => ipcRenderer.invoke('file:save-context', type, content),
   finishOnboarding: (settings) => ipcRenderer.invoke('onboarding:finish', settings),
 

@@ -6,7 +6,7 @@
 const { app } = require('electron');
 
 // Single-instance guard: предотвращает запуск нескольких копий приложения одновременно
-if (!app.requestSingleInstanceLock()) {
+if (process.env.NODE_ENV !== 'test' && !app.requestSingleInstanceLock()) {
   console.log('[Main] Другой экземпляр уже запущен, выходим.');
   app.quit();
   process.exit(0);
@@ -23,14 +23,25 @@ let store;
 function onStealthToggle() {
   if (stealthManager.isStealthMode()) {
     stealthManager.deactivateStealth();
+    try {
+      store?.set('stealthMode', false);
+    } catch {}
   } else {
     stealthManager.activateStealth();
+    try {
+      store?.set('stealthMode', true);
+    } catch {}
   }
 }
 
 function onFinishOnboarding() {
   const mainWin = windowManager.getMainWindow();
   stealthManager.setMainWindow(mainWin);
+  try {
+    if (store?.get('stealthMode') === true) {
+      stealthManager.activateStealth();
+    }
+  } catch {}
   windowManager.setupLocalShortcuts({
     onAskHint: () => mainWin?.webContents?.send('shortcut:ask'),
     onScreenshot: () => mainWin?.webContents?.send('shortcut:screenshot'),
@@ -50,10 +61,8 @@ app.whenReady().then(() => {
   store = new Store();
 
   const forceOnboarding =
-    process.argv.includes('--onboarding') ||
-    process.env.FORCE_ONBOARDING === '1';
-  const onboardingCompleted =
-    !forceOnboarding && Boolean(store.get('onboardingCompleted'));
+    process.argv.includes('--onboarding') || process.env.FORCE_ONBOARDING === '1';
+  const onboardingCompleted = !forceOnboarding && Boolean(store.get('onboardingCompleted'));
   const isTest = process.env.NODE_ENV === 'test' && !forceOnboarding;
   console.log('[Main] NODE_ENV:', process.env.NODE_ENV);
   console.log('[Main] Onboarding completed:', onboardingCompleted);

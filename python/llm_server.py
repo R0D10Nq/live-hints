@@ -104,13 +104,14 @@ def load_vacancy_context() -> str:
 
 
 def preload_model(model: str = DEFAULT_MODEL):
-    """Предзагрузка модели в память Ollama"""
+    """Предзагрузка модели в память Ollama и прогрев локальных эмбеддингов"""
     try:
         logger.info(f'[PRELOAD] Загрузка модели {model}...')
         resp = requests.post(
             f'{OLLAMA_URL}/api/generate',
             json={'model': model, 'prompt': '', 'keep_alive': -1},
-            timeout=120
+            timeout=120,
+            proxies={'http': None, 'https': None},
         )
         if resp.status_code == 200:
             logger.info(f'[PRELOAD] Модель {model} загружена')
@@ -118,6 +119,16 @@ def preload_model(model: str = DEFAULT_MODEL):
             logger.warning(f'[PRELOAD] Ошибка загрузки: {resp.status_code}')
     except Exception as e:
         logger.warning(f'[PRELOAD] Не удалось загрузить модель: {e}')
+
+    try:
+        from semantic_cache import get_semantic_cache
+        from advanced_rag import get_advanced_rag
+
+        get_semantic_cache()
+        get_advanced_rag()
+        logger.info('[PRELOAD] SemanticCache и AdvancedRAG прогреты')
+    except Exception as e:
+        logger.warning(f'[PRELOAD] Не удалось прогреть эмбеддинги: {e}')
 
 
 # ========== PYDANTIC MODELS ==========
@@ -253,7 +264,7 @@ async def health():
     }
 
 
-_ollama_lock = threading.Lock()
+_ollama_lock = asyncio.Lock()
 
 
 @app.post('/hint')
@@ -263,15 +274,15 @@ async def generate_hint(hint_request: HintRequest):
     if not request.text or len(request.text.strip()) < 5:
         raise HTTPException(400, 'Текст слишком короткий')
 
-    def _generate_sync():
-        with _ollama_lock:
-            original_model = ollama.model
-            original_profile = ollama.profile
-            if request.model:
-                ollama.model = request.model
-            if request.profile and request.profile != ollama.profile:
-                ollama.profile = request.profile
-            try:
+    async with _ollama_lock:
+        original_model = ollama.model
+        original_profile = ollama.profile
+        if request.model:
+            ollama.model = request.model
+        if request.profile and request.profile != ollama.profile:
+            ollama.profile = request.profile
+        try:
+            def _generate_sync():
                 hint = ollama.generate(
                     text=request.text,
                     context=request.context,
@@ -280,11 +291,11 @@ async def generate_hint(hint_request: HintRequest):
                 )
                 stats = ollama.metrics.get_stats()
                 return {'hint': hint, 'latency_ms': stats['total_ms'], 'ttft_ms': stats['ttft_ms']}
-            finally:
-                ollama.model = original_model
-                ollama.profile = original_profile
 
-    return await asyncio.to_thread(_generate_sync)
+            return await asyncio.to_thread(_generate_sync)
+        finally:
+            ollama.model = original_model
+            ollama.profile = original_profile
 
 
 @app.post('/hint/stream')
@@ -296,11 +307,11 @@ async def generate_hint_stream(hint_request: HintRequest):
     
     vector_db = get_vector_db()
     instant_answer = vector_db.get_instant_answer(request.text)
-    cached = instant_answer or hint_cache.get(request.text, request.context or [])
+    cached = instant_answer or hint_cache.get(request.text, request.context or [], request.profile)
     question_type = classify_question(request.text)
     
     async def stream():
-        with _ollama_lock:
+        async with _ollama_lock:
             original_model = ollama.model
             original_profile = ollama.profile
             if request.model:
@@ -315,9 +326,13 @@ async def generate_hint_stream(hint_request: HintRequest):
                     yield f"data: {json.dumps({'done': True, 'cached': True, 'question_type': question_type, 'latency_ms': 0, 'ttft_ms': 0}, ensure_ascii=False)}\n\n"
                 else:
                     async for chunk in ollama.generate_stream(
-                        request.text, request.context,
-                        request.max_tokens, request.temperature,
-                        request.system_prompt, request.user_context
+                        text=request.text,
+                        context=request.context,
+                        profile=request.profile,
+                        max_tokens=request.max_tokens,
+                        temperature=request.temperature,
+                        custom_system_prompt=request.system_prompt,
+                        custom_user_context=request.user_context,
                     ):
                         yield f"data: {json.dumps({'chunk': chunk}, ensure_ascii=False)}\n\n"
                     
@@ -341,7 +356,7 @@ async def clear_cache():
         return {'status': 'ok'}
     except Exception as e:
         logger.error(f'[CACHE] Ошибка очистки: {e}')
-        return {'status': 'error', 'message': str(e)}
+        return {'status': 'error', 'message': 'Ошибка при очистке кэша'}
 
 
 @app.get('/models')
@@ -351,7 +366,8 @@ async def get_models():
         models = ollama.list_models()
         return {'models': models, 'current': ollama.model}
     except Exception as e:
-        return {'models': [], 'current': ollama.model, 'error': str(e)}
+        logger.error(f'[MODELS] Ошибка получения списка моделей: {e}')
+        return {'models': [], 'current': ollama.model, 'error': 'Не удалось получить список моделей'}
 
 
 @app.post('/model/{model_name}')
@@ -361,7 +377,8 @@ async def switch_model(model_name: str):
         ollama.model = model_name
         return {'model': model_name, 'status': 'switched'}
     except Exception as e:
-        raise HTTPException(500, str(e))
+        logger.error(f'[MODELS] Ошибка переключения модели: {e}')
+        raise HTTPException(500, 'Не удалось переключить модель')
 
 
 # Модельные профили для тестов
@@ -442,6 +459,6 @@ async def vision_analyze(vision_request: VisionRequest):
 
 
 if __name__ == '__main__':
-    preload_model()
+    threading.Thread(target=preload_model, daemon=True).start()
     logger.info(f'[START] LLM Server on http://{HTTP_HOST}:{HTTP_PORT}')
     uvicorn.run(app, host=HTTP_HOST, port=HTTP_PORT, log_level='warning')

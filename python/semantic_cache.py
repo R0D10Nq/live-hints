@@ -27,6 +27,33 @@ class CacheEntry:
     context_hash: str
 
 
+import threading
+
+_SHARED_EMBEDDING_MODEL = None
+_EMBEDDING_LOCK = threading.Lock()
+
+
+def _get_shared_embedding_model():
+    """Загрузка и переиспользование модели embeddings на CPU."""
+    global _SHARED_EMBEDDING_MODEL
+    if _SHARED_EMBEDDING_MODEL is not None:
+        return _SHARED_EMBEDDING_MODEL
+    with _EMBEDDING_LOCK:
+        if _SHARED_EMBEDDING_MODEL is not None:
+            return _SHARED_EMBEDDING_MODEL
+        from sentence_transformers import SentenceTransformer
+
+        model_name = 'paraphrase-multilingual-MiniLM-L12-v2'
+        logger.info(f'[SemanticCache] Загрузка модели {model_name}...')
+        try:
+            _SHARED_EMBEDDING_MODEL = SentenceTransformer(
+                model_name, device='cpu', local_files_only=True
+            )
+        except Exception:
+            _SHARED_EMBEDDING_MODEL = SentenceTransformer(model_name, device='cpu')
+        return _SHARED_EMBEDDING_MODEL
+
+
 class SemanticCache:
     """
     Semantic кэш с поиском по схожести embeddings.
@@ -44,11 +71,7 @@ class SemanticCache:
     def _load_model(self):
         """Ленивая загрузка модели embeddings"""
         try:
-            from sentence_transformers import SentenceTransformer
-            # Используем компактную многоязычную модель
-            model_name = 'paraphrase-multilingual-MiniLM-L12-v2'
-            logger.info(f'[SemanticCache] Загрузка модели {model_name}...')
-            self.model = SentenceTransformer(model_name)
+            self.model = _get_shared_embedding_model()
             self._model_loaded = True
             logger.info('[SemanticCache] Модель загружена')
         except ImportError:
