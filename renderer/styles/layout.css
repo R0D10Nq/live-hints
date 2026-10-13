@@ -23,8 +23,13 @@
   padding: 0 var(--space-5);
   background: linear-gradient(180deg, var(--bg-depth) 0%, var(--bg-void) 100%);
   border-bottom: 1px solid var(--border-subtle);
-  -webkit-app-region: drag;
   user-select: none;
+}
+
+.app-header,
+.header-left,
+.header-center {
+  -webkit-app-region: drag;
 }
 
 .app-header button,

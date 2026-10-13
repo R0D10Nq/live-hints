@@ -6,7 +6,7 @@
 const { app } = require('electron');
 
 // Single-instance guard: предотвращает запуск нескольких копий приложения одновременно
-if (!app.requestSingleInstanceLock()) {
+if (process.env.NODE_ENV !== 'test' && !app.requestSingleInstanceLock()) {
   console.log('[Main] Другой экземпляр уже запущен, выходим.');
   app.quit();
   process.exit(0);
