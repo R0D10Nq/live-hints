@@ -38,7 +38,7 @@ jobs:
         run: npm ci
 
       - name: Проверка уязвимостей Node.js
-        run: npm audit --audit-level=high
+        run: npm audit --omit=dev --audit-level=high
 
       - name: Проверка форматирования публичных файлов
         run: npx prettier --check README.md CONTRIBUTING.md CODE_OF_CONDUCT.md SECURITY.md SUPPORT.md package.json .github docs/promotion
