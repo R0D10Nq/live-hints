@@ -356,7 +356,7 @@ async def clear_cache():
         return {'status': 'ok'}
     except Exception as e:
         logger.error(f'[CACHE] Ошибка очистки: {e}')
-        return {'status': 'error', 'message': str(e)}
+        return {'status': 'error', 'message': 'Ошибка при очистке кэша'}
 
 
 @app.get('/models')
@@ -366,7 +366,8 @@ async def get_models():
         models = ollama.list_models()
         return {'models': models, 'current': ollama.model}
     except Exception as e:
-        return {'models': [], 'current': ollama.model, 'error': str(e)}
+        logger.error(f'[MODELS] Ошибка получения списка моделей: {e}')
+        return {'models': [], 'current': ollama.model, 'error': 'Не удалось получить список моделей'}
 
 
 @app.post('/model/{model_name}')
@@ -376,7 +377,8 @@ async def switch_model(model_name: str):
         ollama.model = model_name
         return {'model': model_name, 'status': 'switched'}
     except Exception as e:
-        raise HTTPException(500, str(e))
+        logger.error(f'[MODELS] Ошибка переключения модели: {e}')
+        raise HTTPException(500, 'Не удалось переключить модель')
 
 
 # Модельные профили для тестов
