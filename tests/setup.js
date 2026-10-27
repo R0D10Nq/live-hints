@@ -109,10 +109,10 @@ class MockURL {
   constructor(url) {
     this.url = url;
   }
-  static createObjectURL(blob) {
+  static createObjectURL(_blob) {
     return 'blob:mock-url';
   }
-  static revokeObjectURL(url) {}
+  static revokeObjectURL(_url) {}
 }
 
 global.URL = MockURL;
@@ -139,7 +139,7 @@ global.FileReader = class FileReader {
       if (this.onload) this.onload({ target: this });
     }, 0);
   }
-  readAsArrayBuffer(blob) {
+  readAsArrayBuffer(_blob) {
     setTimeout(() => {
       this.result = new ArrayBuffer(0);
       if (this.onload) this.onload({ target: this });
@@ -154,6 +154,6 @@ afterEach(() => {
 });
 
 // Глобальный обработчик необработанных промисов
-process.on('unhandledRejection', (reason, promise) => {
+process.on('unhandledRejection', (_reason, _promise) => {
   // Игнорируем в тестах
 });

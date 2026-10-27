@@ -3,7 +3,11 @@ Launcher — запускает STT + LLM сервера и открывает E
 Запускается напрямую через Python или в составе скомпилированного exe.
 """
 
-import sys, os, subprocess, time, signal
+import sys
+import os
+import subprocess
+import time
+import signal
 
 base_dir = getattr(sys, "_MEIPASS", os.path.dirname(os.path.abspath(__file__)))
 

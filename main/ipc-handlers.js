@@ -188,6 +188,16 @@ function setupIPC(handlers) {
       if (win) {
         // Аудио отправляется напрямую через WebSocket в STT-сервер.
         // IPC-шину для потоковых бинарных данных использовать не следует.
+        audioCaptureProcess?.once?.('exit', (code) => {
+          if (code && code !== 0) {
+            win.webContents?.send('audio:error', { source: 'system', code });
+          }
+        });
+        micCaptureProcess?.once?.('exit', (code) => {
+          if (code && code !== 0) {
+            win.webContents?.send('audio:error', { source: 'microphone', code });
+          }
+        });
       }
       return { success: true, dualAudio: options.dualAudio };
     } catch (error) {
@@ -361,4 +371,4 @@ function setupIPC(handlers) {
   });
 }
 
-module.exports = { setupIPC };
+module.exports = { setupIPC, validateSetting };

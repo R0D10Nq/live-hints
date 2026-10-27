@@ -8,6 +8,9 @@ AI-агентов для разработки проекта live-hints. Исп�
 
 ## Быстрый старт для нового агента
 
+Текущее состояние и журнал: [docs/PROJECT_STATE.md](docs/PROJECT_STATE.md).
+План продолжения: [implementation_plan.md](implementation_plan.md).
+
 1. Определи свою роль: AudioPipelineAgent | TranscriptionAgent | LLMAgent | UIAgent | DevOpsAgent
 2. Изучи входные/выходные интерфейсы в разделе 7.2
 3. Проверь глобальный контекст в 7.3.1 — целевая latency 500ms критична

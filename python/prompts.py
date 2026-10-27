@@ -218,11 +218,12 @@ def get_profile_config(profile: str) -> dict:
 def get_system_prompt(profile: str, user_context: str) -> str:
     """Возвращает system prompt с подстановкой контекста"""
     config = PROFILE_PROMPTS.get(profile, _INTERVIEW_RU)
-    template = config['system']
+    template = str(config['system'])
     return template.format(user_context=user_context)
 
 
 def get_few_shot_examples(profile: str) -> list:
     """Возвращает few-shot примеры"""
     config = PROFILE_PROMPTS.get(profile, _INTERVIEW_RU)
-    return config.get('few_shot_examples', [])
+    examples = config.get('few_shot_examples', [])
+    return list(examples) if isinstance(examples, list) else []

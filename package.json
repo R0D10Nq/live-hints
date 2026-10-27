@@ -1,6 +1,6 @@
 {
   "name": "live-hints",
-  "version": "1.0.3",
+  "version": "1.5.6",
   "description": "Локальный Windows-overlay для транскрипции русской речи и подсказок через Ollama",
   "author": "Rodion Shevtsov",
   "homepage": "https://github.com/R0D10Nq/live-hints#readme",
@@ -73,6 +73,7 @@
   "build": {
     "appId": "com.livehints.app",
     "productName": "Live Hints",
+    "electronDist": "node_modules/electron/dist",
     "copyright": "Copyright © 2024",
     "directories": {
       "output": "dist"

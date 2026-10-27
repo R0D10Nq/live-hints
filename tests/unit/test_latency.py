@@ -1,9 +1,7 @@
 """
 Тесты для python/stt/latency.py
 """
-import pytest
 import time
-from unittest.mock import patch
 
 
 class TestLatencyMetrics:

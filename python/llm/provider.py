@@ -347,13 +347,15 @@ def create_hybrid_provider(
     """Фабричная функция создания настроенного HybridProvider из конфигурации."""
     active_mode = mode or os.getenv("LLM_PROVIDER", "hybrid").lower()
     active_api_key = api_key or os.getenv("CLOUD_LLM_API_KEY", "")
-    active_cloud_url = (
+    active_cloud_url = str(
         cloud_base_url
         or os.getenv("CLOUD_LLM_BASE_URL", "https://api.groq.com/openai/v1")
+        or "https://api.groq.com/openai/v1"
     )
-    active_cloud_model = (
+    active_cloud_model = str(
         cloud_model
         or os.getenv("CLOUD_LLM_MODEL", "llama-3.3-70b-versatile")
+        or "llama-3.3-70b-versatile"
     )
 
     ollama_prov = OllamaProvider(base_url=ollama_url, model=ollama_model)

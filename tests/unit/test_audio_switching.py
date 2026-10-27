@@ -10,7 +10,6 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'python'))
 import asyncio
 import websockets
 import json
-import time
 import pytest
 
 

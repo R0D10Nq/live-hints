@@ -4,7 +4,6 @@ LLM Server Routes - FastAPI endpoints
 
 import json
 import logging
-from typing import Optional
 
 from fastapi import HTTPException
 from fastapi.responses import StreamingResponse
@@ -144,7 +143,7 @@ class LLMRouter:
             return {'status': 'ok'}
         except Exception as e:
             logger.error(f'[API] Ошибка очистки кэша: {e}')
-            return {'status': 'error', 'message': str(e)}
+            return {'status': 'error', 'message': 'Внутренняя ошибка очистки кэша'}
 
     async def get_models(self):
         """Список доступных моделей"""
@@ -152,7 +151,8 @@ class LLMRouter:
             models = self.ollama.list_models()
             return {'models': models, 'current': self.ollama.model}
         except Exception as e:
-            return {'models': [], 'current': self.ollama.model, 'error': str(e)}
+            logger.error(f'[API] Ошибка получения списка моделей: {e}')
+            return {'models': [], 'current': self.ollama.model, 'error': 'Не удалось получить список моделей'}
 
     async def switch_model(self, model_name: str):
         """Переключение модели"""
@@ -162,7 +162,7 @@ class LLMRouter:
             return {'model': model_name, 'status': 'switched'}
         except Exception as e:
             logger.error(f'[API] Ошибка переключения модели: {e}')
-            raise HTTPException(500, str(e))
+            raise HTTPException(500, 'Внутренняя ошибка переключения модели')
 
     async def analyze_vision(self, request):
         """Анализ изображения через Vision AI"""
@@ -184,6 +184,8 @@ class LLMRouter:
                 model: str
 
             return VisionResponse(analysis=result, model=vision_model)
+        except HTTPException:
+            raise
         except Exception as e:
             logger.error(f'[Vision] Ошибка анализа: {e}')
-            raise HTTPException(500, str(e))
+            raise HTTPException(500, 'Внутренняя ошибка анализа изображения')

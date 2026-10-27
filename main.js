@@ -4,6 +4,16 @@
  */
 
 const { app } = require('electron');
+const os = require('os');
+const path = require('path');
+
+// Изоляция профиля данных при тестовых и проверочных запусках
+if (process.env.NODE_ENV === 'test' || process.env.LIVE_HINTS_USER_DATA_DIR) {
+  const testUserDataDir =
+    process.env.LIVE_HINTS_USER_DATA_DIR ||
+    path.join(os.tmpdir(), `live-hints-test-profile-${process.pid}`);
+  app.setPath('userData', testUserDataDir);
+}
 
 // Single-instance guard: предотвращает запуск нескольких копий приложения одновременно
 if (process.env.NODE_ENV !== 'test' && !app.requestSingleInstanceLock()) {
@@ -58,7 +68,7 @@ function onFinishOnboarding() {
 
 app.whenReady().then(() => {
   Store = require('electron-store');
-  store = new Store();
+  store = new Store({ cwd: app.getPath('userData') });
 
   const forceOnboarding =
     process.argv.includes('--onboarding') || process.env.FORCE_ONBOARDING === '1';

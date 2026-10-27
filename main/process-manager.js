@@ -14,7 +14,7 @@ let audioCaptureProcess = null;
 let micCaptureProcess = null;
 
 function getRuntimeRoot() {
-  if (app.isPackaged) {
+  if (app?.isPackaged) {
     return path.join(process.resourcesPath, 'app.asar.unpacked');
   }
   return path.resolve(__dirname, '..');
@@ -23,14 +23,14 @@ function getRuntimeRoot() {
 function getRuntimeEnv() {
   return {
     ...process.env,
-    LIVE_HINTS_DATA_DIR: app.getPath('userData'),
+    LIVE_HINTS_DATA_DIR: app?.getPath ? app.getPath('userData') : process.cwd(),
     PYTHONIOENCODING: 'utf-8',
     PYTHONUTF8: '1',
   };
 }
 
-function isRunning(process) {
-  return Boolean(process && process.exitCode === null && !process.killed);
+function isRunning(proc) {
+  return Boolean(proc && proc.exitCode === null && !proc.killed);
 }
 
 function stopProcess(proc) {
@@ -39,10 +39,7 @@ function stopProcess(proc) {
     // Используем taskkill /t /f для рекурсивного завершения дерева процессов.
     if (process.platform === 'win32') {
       try {
-        require('child_process').execSync(
-          `taskkill /pid ${proc.pid} /t /f`,
-          { stdio: 'ignore' }
-        );
+        require('child_process').execSync(`taskkill /pid ${proc.pid} /t /f`, { stdio: 'ignore' });
       } catch {
         proc.kill('SIGKILL');
       }
@@ -56,15 +53,15 @@ function waitForPort(
   port,
   host = '127.0.0.1',
   timeoutMs = 60000,
-  process = null,
+  proc = null,
   serviceName = 'Сервис'
 ) {
   return new Promise((resolve, reject) => {
     const startedAt = Date.now();
 
     const tryConnect = () => {
-      if (process && !isRunning(process)) {
-        reject(new Error(`${serviceName} завершился до готовности с кодом ${process.exitCode}`));
+      if (proc && !isRunning(proc)) {
+        reject(new Error(`${serviceName} завершился до готовности с кодом ${proc.exitCode}`));
         return;
       }
 
@@ -165,48 +162,48 @@ async function startSTTProcess(mode = 'auto', port = 8765) {
   const pythonPath = require('fs').existsSync(venvPython) ? venvPython : 'python';
   const scriptPath = path.join(rootDir, 'python', 'stt_server.py');
 
-  const process = spawn(pythonPath, [scriptPath, '--mode', mode, '--port', String(port)], {
+  const proc = spawn(pythonPath, [scriptPath, '--mode', mode, '--port', String(port)], {
     cwd: rootDir,
     env: getRuntimeEnv(),
     stdio: ['pipe', 'pipe', 'pipe'],
   });
-  if (isMicrophone) micSttProcess = process;
-  else sttProcess = process;
+  if (isMicrophone) micSttProcess = proc;
+  else sttProcess = proc;
 
-  process.stdout.on('data', (data) => {
+  proc.stdout.on('data', (data) => {
     console.log(`STT-Dynamic (${mode}): ${data}`);
   });
 
-  process.stderr.on('data', (data) => {
+  proc.stderr.on('data', (data) => {
     console.error(`STT-Dynamic Error (${mode}): ${data}`);
   });
 
-  process.once('error', (error) => {
+  proc.once('error', (error) => {
     console.error(`Не удалось запустить STT (${mode}):`, error);
     if (isMicrophone) {
-      if (micSttProcess === process) micSttProcess = null;
-    } else if (sttProcess === process) {
+      if (micSttProcess === proc) micSttProcess = null;
+    } else if (sttProcess === proc) {
       sttProcess = null;
     }
   });
 
-  process.once('exit', (code, signal) => {
+  proc.once('exit', (code, signal) => {
     console.log(`STT завершён: код=${code}, сигнал=${signal || 'нет'}`);
     if (isMicrophone) {
-      if (micSttProcess === process) micSttProcess = null;
-    } else if (sttProcess === process) {
+      if (micSttProcess === proc) micSttProcess = null;
+    } else if (sttProcess === proc) {
       sttProcess = null;
     }
   });
 
   try {
-    await waitForPort(port, '127.0.0.1', 60000, process, isMicrophone ? 'Микрофонный STT' : 'STT');
-    return process;
+    await waitForPort(port, '127.0.0.1', 60000, proc, isMicrophone ? 'Микрофонный STT' : 'STT');
+    return proc;
   } catch (error) {
-    stopProcess(process);
+    stopProcess(proc);
     if (isMicrophone) {
-      if (micSttProcess === process) micSttProcess = null;
-    } else if (sttProcess === process) {
+      if (micSttProcess === proc) micSttProcess = null;
+    } else if (sttProcess === proc) {
       sttProcess = null;
     }
     throw error;
@@ -225,36 +222,43 @@ async function startLLMProcess(port = 8766) {
   const pythonPath = require('fs').existsSync(venvPython) ? venvPython : 'python';
   const scriptPath = path.join(rootDir, 'python', 'llm_server.py');
 
-  const process = spawn(pythonPath, [scriptPath], {
+  const proc = spawn(pythonPath, [scriptPath], {
     cwd: rootDir,
     env: getRuntimeEnv(),
     stdio: ['ignore', 'pipe', 'pipe'],
   });
-  llmProcess = process;
+  llmProcess = proc;
 
-  process.stdout.on('data', (data) => console.log(`LLM: ${data}`));
-  process.stderr.on('data', (data) => console.error(`LLM Error: ${data}`));
-  process.once('error', (error) => {
+  proc.stdout.on('data', (data) => console.log(`LLM: ${data}`));
+  proc.stderr.on('data', (data) => console.error(`LLM Error: ${data}`));
+  proc.once('error', (error) => {
     console.error('Не удалось запустить LLM:', error);
-    if (llmProcess === process) llmProcess = null;
+    if (llmProcess === proc) llmProcess = null;
   });
-  process.once('exit', (code, signal) => {
+  proc.once('exit', (code, signal) => {
     console.log(`LLM завершён: код=${code}, сигнал=${signal || 'нет'}`);
-    if (llmProcess === process) llmProcess = null;
+    if (llmProcess === proc) llmProcess = null;
   });
 
   try {
-    await waitForPort(port, '127.0.0.1', 60000, process, 'LLM');
-    return process;
+    await waitForPort(port, '127.0.0.1', 60000, proc, 'LLM');
+    return proc;
   } catch (error) {
-    stopProcess(process);
-    if (llmProcess === process) llmProcess = null;
+    stopProcess(proc);
+    if (llmProcess === proc) llmProcess = null;
     throw error;
   }
 }
 
 function startAudioCaptureProcess(options = {}) {
   stopAudioCaptureProcesses();
+
+  if (
+    process.env.LIVE_HINTS_SYNTHETIC_AUDIO === '1' ||
+    (process.env.NODE_ENV === 'test' && process.env.LIVE_HINTS_REAL_AUDIO !== '1')
+  ) {
+    return { audioCaptureProcess: null, micCaptureProcess: null };
+  }
 
   const rootDir = getRuntimeRoot();
   const venvPython = path.join(rootDir, 'venv', 'Scripts', 'python.exe');
@@ -293,6 +297,12 @@ function startAudioCaptureProcess(options = {}) {
 }
 
 module.exports = {
+  getRuntimeRoot,
+  getRuntimeEnv,
+  isRunning,
+  stopProcess,
+  waitForPort,
+  assertPortAvailable,
   stopAllProcesses,
   stopSTTProcess,
   stopLLMProcess,
@@ -310,6 +320,9 @@ module.exports = {
   },
   setMicSttProcess: (p) => {
     micSttProcess = p;
+  },
+  setLLMProcess: (p) => {
+    llmProcess = p;
   },
   setAudioCaptureProcess: (p) => {
     audioCaptureProcess = p;

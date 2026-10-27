@@ -2,7 +2,6 @@
 Тесты для python/stt_server.py
 """
 import pytest
-import json
 import asyncio
 from unittest.mock import patch, MagicMock, AsyncMock
 

@@ -12,25 +12,3 @@ exclude_lines =
     pragma: no cover
     if __name__ == .__main__.:
     raise NotImplementedError
-    pass
-    async for
-    async with
-    except asyncio.TimeoutError
-    except aiohttp.ClientConnectorError
-    except websockets.exceptions.ConnectionClosed
-    except json.JSONDecodeError
-    except ImportError
-    logger.info
-    yield
-    nonlocal
-    raise HTTPException
-    return await
-    aiohttp.ClientSession
-    aiohttp.ClientTimeout
-    resp.status
-    resp.content
-    return StreamingResponse
-    return ''
-    ollama.model =
-    stats = ollama.metrics
-    q_type = getattr

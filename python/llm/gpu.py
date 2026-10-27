@@ -4,23 +4,32 @@ GPU Utils - проверка статуса GPU
 
 import logging
 import subprocess
+from typing import Any
 
 logger = logging.getLogger('LLM')
 
 
-def check_gpu_status() -> dict:
+def check_gpu_status() -> dict[str, Any]:
     """Проверка доступности GPU через nvidia-smi"""
-    result = {
-        'available': False, 
-        'name': None, 
-        'memory_total': None, 
-        'memory_used': None
+    result: dict[str, Any] = {
+        'available': False,
+        'name': None,
+        'memory_total': None,
+        'memory_used': None,
     }
     try:
-        output = subprocess.check_output(
-            ['nvidia-smi', '--query-gpu=name,memory.total,memory.used', '--format=csv,noheader,nounits'],
-            timeout=5
-        ).decode('utf-8').strip()
+        output = (
+            subprocess.check_output(
+                [
+                    'nvidia-smi',
+                    '--query-gpu=name,memory.total,memory.used',
+                    '--format=csv,noheader,nounits',
+                ],
+                timeout=5,
+            )
+            .decode('utf-8')
+            .strip()
+        )
         if output:
             parts = output.split(',')
             result['available'] = True
@@ -32,7 +41,7 @@ def check_gpu_status() -> dict:
     return result
 
 
-def get_gpu_info() -> dict:
+def get_gpu_info() -> dict[str, Any]:
     """Информация о GPU для API"""
     info = check_gpu_status()
     if info['available']:
@@ -41,9 +50,6 @@ def get_gpu_info() -> dict:
             'available': True,
             'name': info['name'],
             'memory_free_mb': free,
-            'memory_total_mb': info['memory_total']
+            'memory_total_mb': info['memory_total'],
         }
-    return {
-        'available': False, 
-        'message': 'GPU не обнаружен'
-    }
+    return {'available': False, 'message': 'GPU не обнаружен'}

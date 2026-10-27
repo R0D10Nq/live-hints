@@ -3,8 +3,8 @@ Semantic Cache - кэширование по семантической схож
 Использует sentence-transformers для embeddings и cosine similarity
 """
 
-import os
 import logging
+import threading
 from typing import Optional, Tuple, List
 from dataclasses import dataclass
 import numpy as np
@@ -26,8 +26,6 @@ class CacheEntry:
     embedding: np.ndarray
     context_hash: str
 
-
-import threading
 
 _SHARED_EMBEDDING_MODEL = None
 _EMBEDDING_LOCK = threading.Lock()
@@ -103,7 +101,7 @@ class SemanticCache:
         """Хэш контекста для учёта при поиске"""
         return str(hash(tuple(context[-3:])))  # Последние 3 элемента контекста
     
-    def get(self, question: str, context: list = None) -> Tuple[Optional[str], float]:
+    def get(self, question: str, context: Optional[list] = None) -> Tuple[Optional[str], float]:
         """
         Поиск в кэше по семантической схожести.
         

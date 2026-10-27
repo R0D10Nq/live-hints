@@ -5,35 +5,12 @@
 
 const WebSocket = require('ws');
 const http = require('http');
-const fs = require('fs');
-const path = require('path');
 
 // Конфигурация
 const STT_URL = 'ws://localhost:8765';
 const LLM_URL = 'http://localhost:8766';
 const MAX_STT_LATENCY_MS = 2000; // Максимальная задержка STT
 const MAX_LLM_LATENCY_MS = 5000; // Максимальная задержка LLM
-const SAMPLE_RATE = 16000;
-
-// Генерация тестового аудио (синусоида с речевым паттерном)
-function generateTestAudio(durationSec = 2) {
-  const samples = durationSec * SAMPLE_RATE;
-  const audio = new Float32Array(samples);
-
-  // Генерируем речеподобный сигнал
-  for (let i = 0; i < samples; i++) {
-    const t = i / SAMPLE_RATE;
-    // Основная частота (200Hz) + гармоники
-    audio[i] =
-      0.3 * Math.sin(2 * Math.PI * 200 * t) +
-      0.2 * Math.sin(2 * Math.PI * 400 * t) +
-      0.1 * Math.sin(2 * Math.PI * 800 * t);
-    // Добавляем огибающую
-    audio[i] *= 0.5 + 0.5 * Math.sin(2 * Math.PI * 3 * t);
-  }
-
-  return Buffer.from(audio.buffer);
-}
 
 // Тест STT сервера (проверка connectivity)
 async function testSTT() {
@@ -108,7 +85,7 @@ async function testLLM(text = 'Привет, как дела? Что новог�
           } else {
             resolve({ latency, hint: result.hint });
           }
-        } catch (e) {
+        } catch {
           reject(new Error(`LLM ответ невалидный: ${body}`));
         }
       });

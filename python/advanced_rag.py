@@ -154,7 +154,7 @@ class AdvancedRAG:
         """Умная разбивка текста на чанки с сохранением смысла"""
         chunks = []
         lines = text.split('\n')
-        current_chunk = []
+        current_chunk: List[str] = []
         current_size = 0
         
         for line in lines:
@@ -261,8 +261,8 @@ class AdvancedRAG:
                 
                 if search_results['documents'] and search_results['documents'][0]:
                     for i, doc in enumerate(search_results['documents'][0]):
-                        distance = search_results['distances'][0][i] if search_results['distances'] else 0
-                        score = 1 - distance  # Конвертируем distance в similarity
+                        distance = float(search_results['distances'][0][i]) if search_results['distances'] else 0.0
+                        score: float = 1.0 - distance  # Конвертируем distance в similarity
                         metadata = search_results['metadatas'][0][i] if search_results['metadatas'] else {}
                         
                         results.append(RetrievedChunk(

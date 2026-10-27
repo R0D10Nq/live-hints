@@ -2,7 +2,6 @@
 Тесты для python/llm_server.py
 """
 import pytest
-import json
 from unittest.mock import patch, MagicMock
 from fastapi.testclient import TestClient
 
@@ -58,21 +57,17 @@ class TestLoadUserContext:
     
     def test_load_user_context_with_file(self, tmp_path):
         """Загружает контекст из файла"""
-        import os
-        import sys
         
         # Создаём временный файл
         context_file = tmp_path / 'user_context.txt'
         context_file.write_text('Test resume content')
         
         # Тестируем функцию напрямую
-        from llm_server import load_user_context
         # Функция уже вызвана при импорте модуля
         assert True  # Проверяем что импорт успешен
     
     def test_load_user_context_error_handling(self):
         """Обработка ошибок при загрузке"""
-        from llm_server import load_user_context
         # Функция уже вызвана при импорте
         assert True
 

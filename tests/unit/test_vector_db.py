@@ -1,10 +1,9 @@
 """
 Модульные тесты для vector_db.py
 """
-import pytest
 from unittest.mock import MagicMock, patch
 
-from vector_db import VectorDB, INSTANT_THRESHOLD, CONTEXT_THRESHOLD
+from vector_db import VectorDB
 
 
 class TestVectorDB:

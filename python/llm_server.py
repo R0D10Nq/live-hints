@@ -15,13 +15,21 @@ from typing import Annotated, Optional
 
 import requests
 from functools import wraps
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints
 import uvicorn
 
-from llm import OllamaClient
 from cache import HintCache
+from classification import classify_question
+from llm import OllamaClient, analyze_image, get_available_vision_model, get_gpu_info
+from llm.provider import create_hybrid_provider
+from llm.routes import LLMRouter
+from metrics import log_cache_hit, log_llm_response
+from semantic_cache import get_semantic_cache
+from vector_db import get_vector_db
 
 # Настройка логирования
 logging.basicConfig(
@@ -111,7 +119,7 @@ def preload_model(model: str = DEFAULT_MODEL):
             f'{OLLAMA_URL}/api/generate',
             json={'model': model, 'prompt': '', 'keep_alive': -1},
             timeout=120,
-            proxies={'http': None, 'https': None},
+            proxies={'http': '', 'https': ''},
         )
         if resp.status_code == 200:
             logger.info(f'[PRELOAD] Модель {model} загружена')
@@ -193,8 +201,6 @@ def load_llm_settings() -> dict:
     return settings
 
 
-from llm.provider import create_hybrid_provider
-
 llm_settings = load_llm_settings()
 hybrid_provider = create_hybrid_provider(
     ollama_url=OLLAMA_URL,
@@ -226,26 +232,14 @@ app.add_middleware(
 )
 
 # Обработчик ошибок валидации - возвращаем 400 вместо 422
-from fastapi.exceptions import RequestValidationError
-from fastapi.responses import JSONResponse
-
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request, exc):
     return JSONResponse(
         status_code=400,
         content={'detail': 'Ошибка проверки входных данных', 'errors': exc.errors()}
     )
-from llm.routes import LLMRouter
-router = LLMRouter(app, ollama, hint_cache)
 
-# Для обратной совместимости с тестами
-from fastapi import HTTPException
-from fastapi.responses import StreamingResponse
-from classification import classify_question
-from metrics import log_cache_hit, log_llm_response
-from semantic_cache import get_semantic_cache
-from vector_db import get_vector_db
-from llm import get_available_vision_model, analyze_image, get_gpu_info
+router = LLMRouter(app, ollama, hint_cache)
 
 
 @app.get('/health')
@@ -420,7 +414,7 @@ async def set_model_profile(profile_name: str):
     if profile_name not in MODEL_PROFILES:
         raise HTTPException(404, f'Профиль {profile_name} не найден')
     profile = MODEL_PROFILES[profile_name]
-    ollama.model = profile['model']
+    ollama.model = str(profile['model'])
     return {'profile': profile_name, 'settings': profile}
 
 

@@ -3,14 +3,12 @@ STT Server с динамическим захватом аудио
 Автоматически подхватывает изменения устройства по умолчанию
 """
 
-import os
 import sys
 import asyncio
 import json
 import logging
 import time
 import threading
-import queue
 from typing import Optional
 
 import numpy as np

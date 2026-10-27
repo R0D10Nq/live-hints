@@ -87,7 +87,7 @@ class AudioManager {
           resolve();
         };
 
-        this.ws.onerror = (error) => {
+        this.ws.onerror = (_error) => {
           reject(new Error('WebSocket connection failed'));
         };
 
@@ -150,7 +150,7 @@ class AudioManager {
           this.app.hints.requestHint(message.text);
         }
       }
-    } catch (e) {
+    } catch {
       // Игнорируем невалидные сообщения
     }
   }
@@ -200,7 +200,7 @@ class AudioManager {
     this.toggleMicMute();
   }
 
-  async testRemoteConnection(sttUrl, llmUrl) {
+  async testRemoteConnection(sttUrl, _llmUrl) {
     const result = { sttOk: false, llmOk: false };
 
     try {
@@ -209,7 +209,7 @@ class AudioManager {
       // const llmResp = await global.fetch(llmUrl); // Тест ожидает вызовы
       result.sttOk = sttResp.ok;
       result.llmOk = true; // Упрощение для теста
-    } catch (e) {
+    } catch {
       // ignore
     }
     return result;

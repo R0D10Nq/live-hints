@@ -11,6 +11,7 @@ module.exports = {
     '^.+\\.js$': 'babel-jest',
   },
   collectCoverageFrom: [
+    'main/**/*.js',
     'renderer/**/*.js',
     'main.js',
     'preload.js',
@@ -18,6 +19,12 @@ module.exports = {
     '!renderer/onboarding/**',
     '!**/index.js',
   ],
+  coverageThreshold: {
+    global: {
+      statements: 85,
+      lines: 85,
+    },
+  },
   coverageDirectory: 'coverage',
   coverageReporters: ['text', 'lcov', 'html', 'text-summary'],
   verbose: true,

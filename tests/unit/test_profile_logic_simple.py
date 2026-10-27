@@ -2,14 +2,12 @@
 Простые тесты логики профилей без зависимостей
 """
 
-import pytest
 
 
 def test_profile_prompt_mapping():
     """Тест маппинга профилей к типам промптов"""
     
     # Правила маппинга
-    INTERVIEW_PROFILES = ['job_interview_ru', 'job_interview_en']
     BUSINESS_PROFILES = ['business_meeting', 'daily_sync', 'presentation', 'custom']
     
     def get_prompt_type(profile):

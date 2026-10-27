@@ -1,7 +1,6 @@
 """
 Тесты для python/prompts.py
 """
-import pytest
 
 
 class TestGetProfileConfig:

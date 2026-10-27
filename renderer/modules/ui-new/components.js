@@ -194,7 +194,7 @@ export class TranscriptComponent {
   /**
    * Add transcript entry
    */
-  addEntry(text, options = {}) {
+  addEntry(text, _options = {}) {
     const entry = document.createElement('div');
     entry.className = 'transcript-entry';
 
