@@ -4,54 +4,51 @@
  */
 
 const { test, expect, _electron: electron } = require('@playwright/test');
+const fs = require('fs');
+const os = require('os');
 const path = require('path');
 
 let electronApp;
 let window;
+let tempUserDataDir;
 
 async function launchElectron() {
-  try {
-    return await electron.launch({
-      args: [path.join(__dirname, '../../main.js')],
-      env: {
-        ...process.env,
-        ELECTRON_RUN_AS_NODE: undefined, // Force disable Node mode
-        NODE_ENV: 'test',
-        ELECTRON_ENABLE_LOGGING: '1',
-      },
-      timeout: 30000,
-    });
-  } catch (error) {
-    console.error('Ошибка запуска Electron:', error.message);
-    throw error;
-  }
+  tempUserDataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'live-hints-e2e-'));
+  return await electron.launch({
+    args: [path.join(__dirname, '../../main.js')],
+    env: {
+      ...process.env,
+      ELECTRON_RUN_AS_NODE: undefined,
+      NODE_ENV: 'test',
+      LIVE_HINTS_USER_DATA_DIR: tempUserDataDir,
+      LIVE_HINTS_SYNTHETIC_AUDIO: '1',
+      ELECTRON_ENABLE_LOGGING: '1',
+    },
+    timeout: 30000,
+  });
 }
 
 test.describe('Live Hints E2E', () => {
   test.beforeAll(async () => {
-    try {
-      electronApp = await launchElectron();
+    electronApp = await launchElectron();
 
-      // Pipe logs
-      electronApp.process().stdout.on('data', (data) => console.log(`[Electron]: ${data}`));
-      electronApp.process().stderr.on('data', (data) => console.error(`[Electron Err]: ${data}`));
+    electronApp.process().stdout.on('data', (data) => console.log(`[Electron]: ${data}`));
+    electronApp.process().stderr.on('data', (data) => console.error(`[Electron Err]: ${data}`));
 
-      window = await electronApp.firstWindow();
+    window = await electronApp.firstWindow();
 
-      // Capture renderer logs
-      window.on('console', (msg) => console.log(`[Renderer]: ${msg.text()}`));
-      window.on('pageerror', (err) => console.error(`[Renderer Err]: ${err.message}`));
-      await window.waitForLoadState('domcontentloaded');
-    } catch (error) {
-      console.error('E2E beforeAll failed:', error.message);
-      test.skip();
-    }
+    window.on('console', (msg) => console.log(`[Renderer]: ${msg.text()}`));
+    window.on('pageerror', (err) => console.error(`[Renderer Err]: ${err.message}`));
+    await window.waitForLoadState('domcontentloaded');
   });
 
   test.afterAll(async () => {
     if (electronApp) {
       await electronApp.close().catch(() => {});
       electronApp = null;
+    }
+    if (tempUserDataDir && fs.existsSync(tempUserDataDir)) {
+      fs.rmSync(tempUserDataDir, { recursive: true, force: true });
     }
   });
 
@@ -384,7 +381,6 @@ test.describe('Live Hints Integration', () => {
     const statusIndicator = window.locator('[data-testid="status-indicator"]');
 
     // Запоминаем начальный класс
-    const initialClass = await statusIndicator.getAttribute('class');
 
     // Кликаем старт
     await btnToggle.click();
@@ -512,7 +508,11 @@ test.describe('Горячие клавиши', () => {
   });
 
   test('должен переключать видимость окна', async () => {
-    // ... existing code ...
+    const isVisibleBefore = await electronApp.evaluate(({ BrowserWindow }) => {
+      const win = BrowserWindow.getAllWindows()[0];
+      return win ? win.isVisible() : false;
+    });
+    expect(isVisibleBefore).toBe(true);
   });
 
   test('должен открывать и закрывать модальное окно справки', async () => {

@@ -5,16 +5,6 @@
 // Пропускаем если сервер недоступен
 const LLM_URL = 'http://localhost:8766';
 
-// Хелпер для проверки доступности сервера
-async function isServerAvailable() {
-  try {
-    const response = await fetch(`${LLM_URL}/health`, { timeout: 2000 });
-    return response.ok;
-  } catch {
-    return false;
-  }
-}
-
 // Мок fetch если недоступен
 if (typeof fetch === 'undefined') {
   global.fetch = jest.fn();

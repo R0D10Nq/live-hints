@@ -54,9 +54,7 @@ export class AudioManager {
       dualAudio.addEventListener('change', (e) => {
         this.dualAudioEnabled = e.target.checked;
         this.app.saveSettings({ dualAudioEnabled: e.target.checked });
-        const message = e.target.checked
-          ? 'Два аудиоканала включены'
-          : 'Два аудиоканала выключены';
+        const message = e.target.checked ? 'Два аудиоканала включены' : 'Два аудиоканала выключены';
         this.app.ui.showToast(message, 'success');
       });
     }
@@ -127,7 +125,11 @@ export class AudioManager {
             isLoopback: true,
           }));
         } catch (e) {
-          logger.warn('AudioManager', 'Не удалось получить устройства через navigator.mediaDevices:', e);
+          logger.warn(
+            'AudioManager',
+            'Не удалось получить устройства через navigator.mediaDevices:',
+            e
+          );
         }
       }
 
@@ -493,7 +495,7 @@ export class AudioManager {
     try {
       const resp = await fetch(`${llmUrl}/health`, { timeout: TIMEOUTS.REMOTE_TEST });
       llmOk = resp.ok;
-    } catch (e) {
+    } catch {
       llmOk = false;
     }
 
@@ -514,7 +516,7 @@ export class AudioManager {
           reject();
         }, TIMEOUTS.REMOTE_TEST);
       });
-    } catch (e) {
+    } catch {
       sttOk = false;
     }
 

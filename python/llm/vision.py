@@ -4,7 +4,7 @@ Vision AI - анализ изображений через Ollama Vision мод�
 
 import asyncio
 import logging
-from typing import Optional
+from typing import Any, Optional
 
 import httpx
 import requests
@@ -33,32 +33,28 @@ def get_available_vision_model(ollama_url: str) -> Optional[str]:
     return None
 
 
-async def analyze_image(ollama_url: str, default_model: str, image_base64: str, prompt: str) -> dict:
+async def analyze_image(
+    ollama_url: str, default_model: str, image_base64: str, prompt: str
+) -> dict[str, Any]:
     """Анализ изображения с помощью Vision AI"""
     vision_model = get_available_vision_model(ollama_url)
     if not vision_model:
-        return {
-            'error': 'Vision модель не установлена', 
-            'hint': 'ollama pull llava:7b'
-            }
-    
+        return {'error': 'Vision модель не установлена', 'hint': 'ollama pull llava:7b'}
+
     logger.info(f'[Vision] Анализ с {vision_model}...')
-    
+
     # Выгружаем текстовую модель чтобы освободить GPU память
     try:
         async with httpx.AsyncClient(timeout=5.0) as client:
             await client.post(
-                f'{ollama_url}/api/generate', 
-                json={
-                    'model': default_model, 
-                    'keep_alive': 0
-                    }
-                )
+                f'{ollama_url}/api/generate',
+                json={'model': default_model, 'keep_alive': 0},
+            )
         logger.info(f'[Vision] {default_model} выгружена')
         await asyncio.sleep(1)
-    except:
+    except Exception:
         pass
-    
+
     # Запрос к Vision модели
     try:
         async with httpx.AsyncClient(timeout=90.0) as client:
@@ -67,57 +63,37 @@ async def analyze_image(ollama_url: str, default_model: str, image_base64: str, 
                 json={
                     'model': vision_model,
                     'messages': [
-                        {
-                            'role': 'user', 
-                            'content': prompt, 
-                            'images': [image_base64]
-                            }
-                        ],
+                        {'role': 'user', 'content': prompt, 'images': [image_base64]}
+                    ],
                     'stream': False,
                     'keep_alive': 0,
-                    'options': {
-                        'temperature': 0.3, 
-                        'num_predict': 500
-                        }
-                }
+                    'options': {'temperature': 0.3, 'num_predict': 500},
+                },
             )
-            
+
             if resp.status_code == 200:
                 data = resp.json()
                 analysis = data.get('message', {}).get('content', '')
                 logger.info(f'[Vision] Готово: {len(analysis)} символов')
-                
+
                 # Загружаем обратно текстовую модель
                 try:
                     async with httpx.AsyncClient(timeout=5.0) as c:
                         await c.post(
-                            f'{ollama_url}/api/generate', 
-                            json={
-                                'model': default_model, 
-                                'prompt': '', 
-                                'keep_alive': -1
-                                }
-                            )
-                except:
+                            f'{ollama_url}/api/generate',
+                            json={'model': default_model, 'prompt': '', 'keep_alive': -1},
+                        )
+                except Exception:
                     pass
-                
-                return {
-                    'analysis': analysis, 
-                    'model': vision_model
-                    }
+
+                return {'analysis': analysis, 'model': vision_model}
             else:
                 logger.error(f'[Vision] Ошибка {resp.status_code}')
-                return {
-                    'error': f'Vision ошибка {resp.status_code}'
-                    }
-                
+                return {'error': f'Vision ошибка {resp.status_code}'}
+
     except httpx.TimeoutException:
         logger.error('[Vision] Таймаут')
-        return {
-            'error': 'Таймаут. Попробуйте ещё раз.'
-            }
+        return {'error': 'Таймаут. Попробуйте ещё раз.'}
     except Exception as e:
         logger.error(f'[Vision] {e}')
-        return {
-            'error': str(e)
-            }
+        return {'error': str(e)}

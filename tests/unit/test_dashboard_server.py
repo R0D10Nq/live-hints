@@ -3,8 +3,6 @@
 """
 import pytest
 import json
-import tempfile
-from pathlib import Path
 from datetime import datetime
 from unittest.mock import patch
 from fastapi.testclient import TestClient

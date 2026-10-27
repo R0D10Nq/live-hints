@@ -6,7 +6,7 @@ import asyncio
 import json
 import logging
 import time
-from typing import Optional
+from typing import Any, Optional
 
 import aiohttp
 import requests
@@ -59,7 +59,7 @@ class HintMetrics:
 
 
 def build_messages(
-    system_prompt: str, context: list, question: str, few_shot: list = None
+    system_prompt: str, context: list, question: str, few_shot: Optional[list] = None
 ) -> list:
     """Построение messages для Ollama API"""
     messages = [{"role": "system", "content": system_prompt}]
@@ -125,7 +125,7 @@ class OllamaClient:
             resp = requests.get(
                 f"{self.base_url}/api/tags",
                 timeout=2,
-                proxies={"http": None, "https": None},
+                proxies={"http": "", "https": ""},
             )
             return resp.status_code == 200
         except (requests.RequestException, OSError):
@@ -137,7 +137,7 @@ class OllamaClient:
             resp = requests.get(
                 f"{self.base_url}/api/tags",
                 timeout=5,
-                proxies={"http": None, "https": None},
+                proxies={"http": "", "https": ""},
             )
             if resp.status_code == 200:
                 data = resp.json()
@@ -165,8 +165,8 @@ class OllamaClient:
     def generate(
         self,
         text: str,
-        context: list = None,
-        system_prompt: str = None,
+        context: Optional[list] = None,
+        system_prompt: Optional[str] = None,
         profile: str = "interview",
         max_tokens: int = 500,
         temperature: float = 0.8,
@@ -227,7 +227,7 @@ class OllamaClient:
                     },
                 },
                 timeout=60,
-                proxies={"http": None, "https": None},
+                proxies={"http": "", "https": ""},
             )
 
             self.metrics.first_token()
@@ -286,9 +286,9 @@ class OllamaClient:
         if not hint and "choices" in data:
             choices = data.get("choices", [])
             _choice = (choices or [{}])[0]
-            hint = (_choice or {}).get("message", {}) or {}
+            msg_data: Any = (_choice or {}).get("message", {}) or {}
             hint = (
-                hint.get("content", "") if isinstance(hint, dict) else str(hint or "")
+                str(msg_data.get("content", "")) if isinstance(msg_data, dict) else str(msg_data or "")
             )
 
         return hint
@@ -296,12 +296,12 @@ class OllamaClient:
     async def generate_stream(
         self,
         text: str,
-        context: list = None,
+        context: Optional[list] = None,
         profile: str = "interview",
         max_tokens: int = 500,
         temperature: float = 0.8,
-        custom_system_prompt: str = None,
-        custom_user_context: str = None,
+        custom_system_prompt: Optional[str] = None,
+        custom_user_context: Optional[str] = None,
     ):
         """Async streaming генерация подсказки"""
         self.metrics.reset()

@@ -4,7 +4,6 @@ Microphone Capture - Захват аудио с микрофона
 """
 
 import sys
-import time
 import logging
 import asyncio
 import numpy as np
@@ -58,7 +57,7 @@ class MicrophoneCapture:
                             'channels': dev['max_input_channels'],
                             'sampleRate': int(dev['default_samplerate'])
                         })
-            except:
+            except Exception:
                 pass
         return devices
     

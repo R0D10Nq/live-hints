@@ -46,13 +46,18 @@ jobs:
       - name: Установка Python зависимостей
         run: |
           python -m pip install --upgrade pip
-          pip install -r python/requirements.txt pytest pytest-cov pytest-asyncio pytest-mock
+          pip install -r python/requirements.txt pytest pytest-cov pytest-asyncio pytest-mock ruff mypy types-requests
 
-      - name: Проверка линтера (ESLint)
+      - name: Проверка линтера JavaScript (ESLint)
         run: npm run lint
 
-      - name: Модульные тесты Python (pytest)
-        run: python -m pytest tests/unit -v
+      - name: Проверка линтера и типизации Python (Ruff + Mypy)
+        run: |
+          python -m ruff check python tests
+          python -m mypy python --ignore-missing-imports
 
-      - name: Модульные и интеграционные тесты JavaScript (Jest)
+      - name: Модульные тесты Python с порогом покрытия 85% (pytest)
+        run: python -m pytest tests/unit --cov=python --cov-fail-under=85 -v
+
+      - name: Модульные и интеграционные тесты JavaScript с порогом покрытия 85% (Jest)
         run: npm test

@@ -2,10 +2,7 @@
 Тесты для загрузки контекста в зависимости от профиля
 """
 
-import pytest
-import json
 from unittest.mock import patch, mock_open
-from pathlib import Path
 
 
 class TestContextLoading:

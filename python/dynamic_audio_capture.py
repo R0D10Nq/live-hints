@@ -5,11 +5,11 @@
 import logging
 import threading
 import time
-from typing import Optional, Callable
+from typing import Optional
 import queue
 import numpy as np
 
-from device_monitor import AudioDeviceMonitor, get_device_monitor
+from device_monitor import get_device_monitor
 
 logger = logging.getLogger('DynamicAudioCapture')
 

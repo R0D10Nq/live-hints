@@ -1,8 +1,7 @@
 """
 Тесты для python/llm/gpu.py
 """
-import pytest
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 import subprocess
 
 

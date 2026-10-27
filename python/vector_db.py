@@ -102,7 +102,7 @@ class VectorDB:
         results = self.search(question, n_results=n_results)
         return [r for r in results if CONTEXT_THRESHOLD <= r['similarity'] < INSTANT_THRESHOLD]
     
-    def add(self, question: str, answer: str, category: str = 'general', doc_id: str = None):
+    def add(self, question: str, answer: str, category: str = 'general', doc_id: Optional[str] = None):
         """Добавить Q&A в базу"""
         if not self._initialized or not self.collection:
             return False

@@ -35,7 +35,6 @@ def check_stt_server():
 def check_running_server():
     """Проверяем, что сервер действительно перезапустился"""
     import subprocess
-    import time
     
     # Пробуем подключиться и получить статус
     try:
@@ -47,7 +46,7 @@ def check_running_server():
         if 'curl' not in result.stderr and 'Connection refused' not in result.stderr:
             print("✓ Сервер на порту 8765 отвечает")
             
-    except:
+    except Exception:
         # Альтернатива - проверяем через netstat
         import subprocess
         result = subprocess.run([

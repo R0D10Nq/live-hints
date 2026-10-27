@@ -2,10 +2,8 @@
 Тесты для python/llm/ollama_client.py
 """
 import pytest
-import asyncio
-import json
 import requests
-from unittest.mock import patch, MagicMock, AsyncMock
+from unittest.mock import patch, MagicMock
 
 
 class TestHintMetrics:
@@ -521,7 +519,7 @@ class TestGenerateStreamNoCache:
         try:
             async for _ in client.generate_stream('What is Python?', []):
                 pass
-        except:
+        except Exception:
             pass
         
         # Проверяем что моки были вызваны
@@ -572,7 +570,7 @@ class TestGenerateStreamNoCache:
                 custom_user_context='Custom context'
             ):
                 pass
-        except:
+        except Exception:
             pass
         
         # Проверяем что custom prompt был использован

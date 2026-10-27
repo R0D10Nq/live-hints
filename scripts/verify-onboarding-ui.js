@@ -4,9 +4,10 @@
 
 const { _electron: electron } = require('playwright');
 const path = require('path');
-const fs = require('fs');
 
-const ARTIFACT_DIR = path.resolve('C:/Users/RODION/.gemini/antigravity/brain/4e83fa28-db39-4017-b112-f2a154aaa5c9');
+const ARTIFACT_DIR = path.resolve(
+  'C:/Users/RODION/.gemini/antigravity/brain/4e83fa28-db39-4017-b112-f2a154aaa5c9'
+);
 
 async function run() {
   console.log('[E2E-Verify] Запуск Electron приложения для верификации онбординга...');
@@ -57,7 +58,9 @@ async function run() {
       await window.waitForTimeout(300);
       const textarea = await window.$('#resumeTextarea');
       if (textarea) {
-        await textarea.fill('Опыт работы: 5 лет Senior Full-Stack разработчик (React, Node.js, Python, Electron)');
+        await textarea.fill(
+          'Опыт работы: 5 лет Senior Full-Stack разработчик (React, Node.js, Python, Electron)'
+        );
       }
     }
 

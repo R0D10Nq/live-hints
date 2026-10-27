@@ -2,7 +2,6 @@
 Тесты логики контекста без мокирования Path
 """
 
-import pytest
 
 
 def test_profile_context_logic():

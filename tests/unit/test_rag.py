@@ -1,7 +1,6 @@
 """
 Тесты для python/rag.py
 """
-import pytest
 from pathlib import Path
 from unittest.mock import patch, MagicMock
 

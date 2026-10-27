@@ -6,17 +6,22 @@
 const { test, expect, _electron: electron } = require('@playwright/test');
 const path = require('path');
 const fs = require('fs');
+const os = require('os');
 
 let electronApp;
 let window;
+let tempUserDataDir;
 
 async function launchElectron() {
+  tempUserDataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'live-hints-e2e-audit-'));
   return await electron.launch({
     args: [path.join(__dirname, '../../main.js')],
     env: {
       ...process.env,
       ELECTRON_RUN_AS_NODE: undefined,
       NODE_ENV: 'test',
+      LIVE_HINTS_USER_DATA_DIR: tempUserDataDir,
+      LIVE_HINTS_SYNTHETIC_AUDIO: '1',
       ELECTRON_ENABLE_LOGGING: '1',
     },
     timeout: 30000,
@@ -35,6 +40,9 @@ test.describe('Полный аудит интерфейса Live Hints', () => {
     if (electronApp) {
       await electronApp.close().catch(() => {});
       electronApp = null;
+    }
+    if (tempUserDataDir && fs.existsSync(tempUserDataDir)) {
+      fs.rmSync(tempUserDataDir, { recursive: true, force: true });
     }
   });
 
@@ -68,13 +76,17 @@ test.describe('Полный аудит интерфейса Live Hints', () => {
     const btnQuickCompact = window.locator('#btn-quick-compact');
     await btnQuickCompact.click();
     await window.waitForTimeout(200);
-    const hasCompact = await window.locator('body').evaluate((b) => b.classList.contains('compact-mode'));
+    const hasCompact = await window
+      .locator('body')
+      .evaluate((b) => b.classList.contains('compact-mode'));
     expect(hasCompact).toBe(true);
 
     // Возвращаем исходный режим
     await btnQuickCompact.click();
     await window.waitForTimeout(200);
-    const isNormal = await window.locator('body').evaluate((b) => !b.classList.contains('compact-mode'));
+    const isNormal = await window
+      .locator('body')
+      .evaluate((b) => !b.classList.contains('compact-mode'));
     expect(isNormal).toBe(true);
   });
 

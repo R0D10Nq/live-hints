@@ -63,7 +63,7 @@ export class AudioSetup {
     }
   }
 
-  startVuMeter(deviceId) {
+  startVuMeter(_deviceId) {
     if (this.vuAnimationId) {
       cancelAnimationFrame(this.vuAnimationId);
     }

@@ -124,7 +124,7 @@ export class UITranscript {
     this.addFeedItem(formattedText, timestamp, source);
   }
 
-  addFeedItem(text, timestamp, source) {
+  addFeedItem(text, timestamp, _source) {
     const feed = this.elements.transcriptFeed;
     if (!feed) return;
 

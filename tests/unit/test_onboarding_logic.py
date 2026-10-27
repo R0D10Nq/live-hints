@@ -2,8 +2,6 @@
 Тесты для логики онбординга с разными режимами
 """
 
-import pytest
-import json
 from pathlib import Path
 
 

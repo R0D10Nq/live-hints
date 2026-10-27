@@ -63,7 +63,7 @@ def test_llm_server_logic():
                 with open(settings_path, 'r', encoding='utf-8') as f:
                     settings = json.load(f)
                     return settings.get('profile', 'job_interview_ru')
-        except:
+        except Exception:
             pass
         return 'job_interview_ru'
     

@@ -13,7 +13,7 @@ import sys
 import time
 import logging
 import argparse
-from threading import Thread, Event
+from threading import Event
 
 import numpy as np
 

@@ -1,17 +1,13 @@
 """
 Модульные тесты для stt/transcriber.py
 """
-import pytest
 import numpy as np
 from unittest.mock import MagicMock, patch
 
 from stt.transcriber import (
     StreamingTranscriber,
     SAMPLE_RATE,
-    MIN_CHUNK_SECONDS,
     MAX_BUFFER_SECONDS,
-    SILENCE_THRESHOLD,
-    SILENCE_TRIGGER_SEC,
 )
 
 

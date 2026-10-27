@@ -3,13 +3,9 @@
 """
 import pytest
 import numpy as np
-from unittest.mock import MagicMock, patch
 
 from semantic_cache import (
     SemanticCache,
-    CacheEntry,
-    SIMILARITY_THRESHOLD,
-    MAX_CACHE_SIZE,
     get_semantic_cache,
 )
 
