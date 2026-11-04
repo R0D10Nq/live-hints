@@ -177,11 +177,12 @@ export class StateManager {
   /**
    * Transcript actions
    */
-  addTranscript(text) {
+  addTranscript(text, source = 'interviewer') {
     const transcripts = [
       ...this.get('ui.transcripts'),
       {
         text,
+        source,
         timestamp: Date.now(),
         id: `t_${Date.now()}`,
       },

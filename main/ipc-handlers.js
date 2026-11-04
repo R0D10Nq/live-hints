@@ -2,7 +2,7 @@
  * IPC Handlers - Обработчики IPC сообщений
  */
 
-const { ipcMain, screen } = require('electron');
+const { BrowserWindow, ipcMain, screen } = require('electron');
 
 const MAX_IMPORTED_FILE_BYTES = 10 * 1024 * 1024;
 const MAX_CONTEXT_CHARS = 1_000_000;
@@ -37,7 +37,10 @@ function setupIPC(handlers) {
 
   // Window controls
   ipcMain.handle('window:minimize', () => {
-    const win = windowManager.getMainWindow();
+    const win =
+      windowManager.getMainWindow() ||
+      windowManager.getOnboardingWindow() ||
+      BrowserWindow.getFocusedWindow();
     if (win) win.minimize();
   });
 
@@ -279,6 +282,9 @@ function setupIPC(handlers) {
     try {
       store.set('onboardingCompleted', true);
       store.set('onboardingSettings', settings);
+      if (settings?.mode) {
+        store.set('profile', settings.mode);
+      }
 
       const mainWin = windowManager.createWindow();
       if (!mainWin) {
@@ -363,6 +369,25 @@ function setupIPC(handlers) {
       const filePath = path.join(contextDir, filename);
       fs.writeFileSync(filePath, content, 'utf-8');
       console.log(`[File] ${type} сохранено: ${filePath} (${content.length} символов)`);
+
+      try {
+        const http = require('http');
+        const req = http.request(
+          {
+            hostname: '127.0.0.1',
+            port: 8766,
+            path: '/context/reload',
+            method: 'POST',
+            timeout: 1000,
+          },
+          () => {}
+        );
+        req.on('error', () => {});
+        req.end();
+      } catch {
+        // Фоновое оповещение бэкенда
+      }
+
       return { success: true };
     } catch (err) {
       console.error('[File] Save error:', err);

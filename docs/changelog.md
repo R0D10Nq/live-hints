@@ -2,6 +2,25 @@
 
 Все заметные изменения в проекте `live-hints` документируются в этом файле.
 
+## [1.5.7] — 2026-11-04T22:30:00+07:00
+
+### Устранение рассинхронизации рантайм-контрактов, доработка аудиоустройств и горячих клавиш
+
+- **Исправление контракта и сетевой изоляции Vision AI (`python/llm/vision.py`, `python/llm_server.py`, `renderer/app.js`):** Ликвидировано двойное оборачивание ответа анализа (`{'analysis': {'analysis': ...}}`), возвращается плоский валидный объект `{'analysis': str, 'model': str}` или HTTP 400 с детализацией ошибки. В клиенты `httpx` и `requests` добавлен обход системного прокси (`trust_env=False`, пустые прокси). В `renderer/app.js` добавлена безопасная распаковка и отображение текста ошибок Vision API.
+- **Динамическое перечисление аудиоустройств через loopback WASAPI (`python/llm_server.py`):** Эндпоинт `/audio/devices` переведен на динамическое сканирование устройств через `pyaudiowpatch` с безопасным резервным списком при недоступности библиотеки.
+- **Горячая перезагрузка контекста интервью (`python/llm_server.py`, `main/ipc-handlers.js`):** Реализован HTTP-эндпоинт `POST /context/reload`, синхронизирующий обновленные файлы контекста и вакансии с экземпляром `ollama.user_context`. В IPC-обработчике `file:save-context` добавлена автоматическая отправка уведомления серверу.
+- **Синхронизация профиля в кэше подсказок (`python/llm/ollama_client.py`):** Устранено выпадение аргумента `profile` при вызовах `hint_cache.set()` в синхронном и стриминговом режимах, гарантируя изоляцию кэша по типам встреч.
+- **Исправление аргументов стриминга Ollama (`python/llm/routes.py`):** Устранен сдвиг позиционных параметров вызова `ollama.generate_stream()` переводом на явные именованные аргументы (`text=...`, `context=...`, `profile=...`).
+- **Предотвращение зависания тестов и офлайн-старта на семантическом кэше (`python/semantic_cache.py`):** Добавлена проверка `PYTEST_CURRENT_TEST` и `LIVE_HINTS_OFFLINE`, предотвращающая блокирующую загрузку весов Hugging Face из интернета и плавно переключающаяся на строковое сравнение.
+- **Управление окном онбординга и сохранение профиля (`main/ipc-handlers.js`):** Обработчик `window:minimize` научился находить окно онбординга через `getOnboardingWindow()`, а в `onboarding:finish` добавлено сохранение выбранного профиля в `store.set('profile', settings.mode)`.
+- **Корректное сохранение настроек аудиоменеджера (`renderer/modules/audio-manager.js`):** Исправлен вызов несуществующего метода `this.app.saveSettings`, настройки надежно сохраняются в `localStorage['live-hints-settings']` и опционально передаются приложению.
+- **Разделение источников стенограммы (`renderer/modules/ui-new/state-manager.js`, `renderer/app.js`):** Метод `addTranscript` сохраняет атрибут `source` (`candidate` vs `interviewer`), а генерация подсказок форматирует историю реплик по ролям («Кандидат» / «Интервьюер»).
+- **Регистрация глобальных горячих клавиш и сохранение выделения (`renderer/modules/ui-new/index.js`, `renderer/app.js`):** Горячая клавиша `Ctrl+C` больше не перехватывает системное копирование при наличии выделенного текста. Зарегистрированы IPC-обработчики системных шорткатов (`shortcut:ask`, `shortcut:screenshot`, `shortcut:prev-hint`, `shortcut:next-hint`, `shortcut:settings`, `shortcut:help`, `shortcut:toggle-session`) и `Ctrl+/`.
+- **История сессий и пользовательские инструкции (`renderer/modules/ui-new/index.js`, `renderer/app.js`):** Реализованы методы `renderSessionsList()`, `getTranscriptText()`, `getHintsText()`, подключена привязка ввода `#custom-instructions` и автоматический запуск `SessionManager` (`create()` и `save()`).
+- **Автоматический запуск LLM при ручном запросе (`renderer/app.js`):** В метод `requestHint` добавлен вызов `await this.ensureLLM()`, исключающий сетевые ошибки при прямом вводе вопроса без предварительного запуска сессии.
+- **Исключение кэшей mypy из линтинга Prettier (`.prettierignore`):** Добавлен путь `.mypy_cache/`.
+- **Модульные тесты для новых эндпоинтов (`tests/unit/test_llm_server_endpoints.py`):** Добавлены модульные тесты для `POST /context/reload` и `POST /vision/analyze`.
+
 ## [1.5.6] — 2026-10-28T00:52:00+07:00
 
 ### Доведение до публичного выпуска, изоляция тестовой среды и честное покрытие >= 85%

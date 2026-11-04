@@ -111,6 +111,7 @@ export class NewUIController {
 
     // Modals
     document.getElementById('btn-history')?.addEventListener('click', () => {
+      this.renderSessionsList();
       this.modals.open('history-modal');
     });
 
@@ -160,6 +161,16 @@ export class NewUIController {
     document.getElementById('ai-profile')?.addEventListener('change', (e) => {
       state.updateSetting('profile', e.target.value);
     });
+
+    const customInstEl = document.getElementById('custom-instructions');
+    if (customInstEl) {
+      if (state.get('settings.customInstructions')) {
+        customInstEl.value = state.get('settings.customInstructions');
+      }
+      customInstEl.addEventListener('input', (e) => {
+        state.updateSetting('customInstructions', e.target.value);
+      });
+    }
 
     document.getElementById('dual-audio')?.addEventListener('change', (e) => {
       state.updateSetting('dualAudio', e.target.checked);
@@ -388,9 +399,12 @@ export class NewUIController {
         e.preventDefault();
         this.settings.toggle();
       }
-      if (e.ctrlKey && e.key === 'c') {
-        e.preventDefault();
-        this.copyCurrentHint();
+      if (e.ctrlKey && e.key.toLowerCase() === 'c') {
+        const selection = window.getSelection()?.toString();
+        if (!selection) {
+          e.preventDefault();
+          this.copyCurrentHint();
+        }
       }
     });
   }
@@ -569,8 +583,86 @@ export class NewUIController {
   }
 
   // Transcript
-  addTranscript(text) {
-    state.addTranscript(text);
+  addTranscript(text, source = 'interviewer') {
+    state.addTranscript(text, source);
+  }
+
+  getTranscriptText() {
+    const transcripts = state.get('ui.transcripts') || [];
+    return transcripts
+      .map((t) => {
+        const time = t.timestamp ? new Date(t.timestamp).toLocaleTimeString('ru-RU') : '';
+        const role = t.source === 'candidate' ? 'Кандидат' : 'Собеседник';
+        return `[${time}] ${role}: ${t.text}`;
+      })
+      .join('\n');
+  }
+
+  getHintsText() {
+    const hints = state.get('ui.hints') || [];
+    return hints
+      .map((h, i) => {
+        const time = h.timestamp ? new Date(h.timestamp).toLocaleTimeString('ru-RU') : '';
+        return `### Подсказка #${i + 1} (${time})\n${h.text}\n`;
+      })
+      .join('\n\n');
+  }
+
+  renderSessionsList() {
+    const container = document.getElementById('sessions-list');
+    if (!container) return;
+    const sessions = this.app?.sessions?.getAll?.() || [];
+
+    if (sessions.length === 0) {
+      container.innerHTML = '<p class="placeholder">Нет сохранённых сессий</p>';
+      return;
+    }
+
+    container.innerHTML = sessions
+      .map((session) => {
+        const transcriptLines = (session.transcript || '').split('\n').filter((l) => l.trim());
+        const hintLines = (session.hints || '').split('\n').filter((l) => l.trim());
+        const duration = this.app?.sessions?.calculateDuration?.(session) || '—';
+        const dateStr = this.app?.sessions?.formatDateFull?.(session.date) || session.date || '';
+
+        return `
+          <div class="session-card" data-session-id="${session.id}">
+            <div class="session-card-header">
+              <span class="session-card-title">${session.name || 'Сессия'}</span>
+              <span class="session-card-date">${dateStr}</span>
+            </div>
+            <div class="session-card-stats">
+              <span class="session-stat">
+                <span class="stat-value">${transcriptLines.length} реплик</span>
+              </span>
+              <span class="session-stat">
+                <span class="stat-value">${hintLines.length} подсказок</span>
+              </span>
+              <span class="session-stat">
+                <span class="stat-value">${duration}</span>
+              </span>
+            </div>
+            <div class="session-card-preview">${(session.transcript || '').substring(0, 120)}...</div>
+            <div class="session-card-actions">
+              <button class="btn-session-export btn btn-ghost btn-sm" data-action="export">Экспорт</button>
+              <button class="btn-session-delete btn btn-ghost btn-sm" data-action="delete">Удалить</button>
+            </div>
+          </div>
+        `;
+      })
+      .join('');
+
+    container.querySelectorAll('.session-card').forEach((card) => {
+      const sessionId = card.dataset.sessionId;
+      card.querySelector('[data-action="export"]')?.addEventListener('click', () => {
+        this.app?.sessions?.exportSession?.(sessionId);
+      });
+      card.querySelector('[data-action="delete"]')?.addEventListener('click', () => {
+        if (this.app?.sessions?.delete?.(sessionId)) {
+          this.renderSessionsList();
+        }
+      });
+    });
   }
 
   // Settings modes

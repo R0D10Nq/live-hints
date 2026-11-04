@@ -115,9 +115,13 @@ class LLMRouter:
                     yield f"data: {json.dumps({'done': True, 'cached': True, 'question_type': question_type, 'latency_ms': 0, 'ttft_ms': 0}, ensure_ascii=False)}\n\n"
                 else:
                     async for chunk in self.ollama.generate_stream(
-                        request.text, request.context,
-                        request.max_tokens, request.temperature,
-                        request.system_prompt, request.user_context
+                        text=request.text,
+                        context=request.context,
+                        profile=request.profile or self.ollama.profile,
+                        max_tokens=request.max_tokens,
+                        temperature=request.temperature,
+                        custom_system_prompt=request.system_prompt,
+                        custom_user_context=request.user_context,
                     ):
                         yield f"data: {json.dumps({'chunk': chunk}, ensure_ascii=False)}\n\n"
 

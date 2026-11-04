@@ -4,6 +4,7 @@ Semantic Cache - кэширование по семантической схож
 """
 
 import logging
+import os
 import threading
 from typing import Optional, Tuple, List
 from dataclasses import dataclass
@@ -39,16 +40,19 @@ def _get_shared_embedding_model():
     with _EMBEDDING_LOCK:
         if _SHARED_EMBEDDING_MODEL is not None:
             return _SHARED_EMBEDDING_MODEL
-        from sentence_transformers import SentenceTransformer
-
-        model_name = 'paraphrase-multilingual-MiniLM-L12-v2'
-        logger.info(f'[SemanticCache] Загрузка модели {model_name}...')
+        if os.getenv('PYTEST_CURRENT_TEST') or os.getenv('LIVE_HINTS_OFFLINE', '0') == '1':
+            return None
         try:
+            from sentence_transformers import SentenceTransformer
+
+            model_name = 'paraphrase-multilingual-MiniLM-L12-v2'
+            logger.info(f'[SemanticCache] Загрузка модели {model_name}...')
             _SHARED_EMBEDDING_MODEL = SentenceTransformer(
                 model_name, device='cpu', local_files_only=True
             )
-        except Exception:
-            _SHARED_EMBEDDING_MODEL = SentenceTransformer(model_name, device='cpu')
+        except Exception as e:
+            logger.warning(f'[SemanticCache] Локальная модель недоступна: {e}')
+            return None
         return _SHARED_EMBEDDING_MODEL
 
 

@@ -9,6 +9,7 @@ import { state } from './modules/ui-new/state-manager.js';
 import { SERVERS } from './modules/constants.js';
 import { AudioManager } from './modules/audio-manager.js';
 import { AppModels } from './modules/app/app-models.js';
+import { SessionManager } from './modules/session-manager.js';
 
 function normalizeStoredBoolean(value) {
   return value === true || value === 1 || value === 'true';
@@ -20,6 +21,7 @@ class LiveHintsApp {
     this.ui = null;
     this.audioManager = null;
     this.models = null;
+    this.sessions = null;
     this.ws = null;
     this.wsMicrophone = null;
     this.reconnectAttempts = 0;
@@ -45,6 +47,10 @@ class LiveHintsApp {
     // Initialize LLM models manager
     this.models = new AppModels(this);
     this.models.setup();
+
+    // Initialize session manager
+    this.sessions = new SessionManager(this);
+    this.sessions.setup();
 
     // Setup IPC listeners
     this.setupIPCListeners();
@@ -100,6 +106,34 @@ class LiveHintsApp {
 
     window.electron.onShortcutToggleTranscript?.(() => {
       this.ui?.sidebar?.toggle();
+    });
+
+    window.electron.onShortcutAsk?.(() => {
+      this.ui?.askHint?.();
+    });
+
+    window.electron.onShortcutScreenshot?.(() => {
+      this.ui?.takeScreenshot?.();
+    });
+
+    window.electron.onShortcutPrevHint?.(() => {
+      state.prevHint();
+    });
+
+    window.electron.onShortcutNextHint?.(() => {
+      state.nextHint();
+    });
+
+    window.electron.onShortcutSettings?.(() => {
+      this.ui?.settings?.toggle();
+    });
+
+    window.electron.onShortcutHelp?.(() => {
+      this.ui?.modals?.open('help-modal');
+    });
+
+    window.electron.onShortcutToggleSession?.(() => {
+      this.toggleSession();
     });
   }
 
@@ -172,7 +206,7 @@ class LiveHintsApp {
             !state.get('session.isPaused') &&
             !this.audioManager?.micMuted
           ) {
-            state.addTranscript(data.text);
+            state.addTranscript(data.text, 'candidate');
             if (state.get('settings.autoHints')) this.scheduleAutoHint(data.text);
           }
         } catch (error) {
@@ -228,7 +262,7 @@ class LiveHintsApp {
     switch (data.type) {
       case 'transcript':
         if (!state.get('session.isActive') || state.get('session.isPaused')) break;
-        state.addTranscript(data.text);
+        state.addTranscript(data.text, 'interviewer');
         if (state.get('settings.autoHints')) {
           this.scheduleAutoHint(data.text);
         }
@@ -292,6 +326,17 @@ class LiveHintsApp {
         document.getElementById('btn-ask')?.click();
       }
 
+      // Ctrl/Cmd + / - Toggle help
+      if ((e.ctrlKey || e.metaKey) && (e.code === 'Slash' || e.key === '/')) {
+        e.preventDefault();
+        const helpModal = document.getElementById('help-modal');
+        if (helpModal?.classList.contains('hidden')) {
+          this.ui?.modals?.open('help-modal');
+        } else {
+          this.ui?.modals?.close('help-modal');
+        }
+      }
+
       // Escape - Close modals/panels
       if (e.code === 'Escape') {
         const settingsPanel = document.getElementById('settings-panel');
@@ -300,6 +345,16 @@ class LiveHintsApp {
         }
       }
     });
+  }
+
+  saveSettings(patch) {
+    try {
+      const settings = JSON.parse(localStorage.getItem('live-hints-settings')) || {};
+      Object.assign(settings, patch);
+      localStorage.setItem('live-hints-settings', JSON.stringify(settings));
+    } catch {
+      // Ignore
+    }
   }
 
   async loadSettings() {
@@ -400,6 +455,8 @@ class LiveHintsApp {
     try {
       this.sessionEpoch++;
       state.startSession();
+      this.sessions?.create?.();
+      document.getElementById('btn-ask')?.removeAttribute('disabled');
       this.ui.updateToggleButton(true);
       this.ui.updatePauseButton(false);
       const result = await window.electron.startRuntime({
@@ -413,6 +470,7 @@ class LiveHintsApp {
     } catch (error) {
       await window.electron?.stopRuntime?.();
       state.stopSession();
+      document.getElementById('btn-ask')?.setAttribute('disabled', 'true');
       this.audioManager?.stopVUMeter();
       this.ui.updateToggleButton(false);
       this.ui.updatePauseButton(true);
@@ -429,6 +487,8 @@ class LiveHintsApp {
     }
     this.sessionEpoch++;
     state.stopSession();
+    this.sessions?.save?.();
+    document.getElementById('btn-ask')?.setAttribute('disabled', 'true');
     this.audioManager?.stopVUMeter();
     try {
       await window.electron?.stopRuntime?.();
@@ -497,7 +557,7 @@ class LiveHintsApp {
 
     // Игнорируем изолированные междометия и короткий разговорный шум
     const noisePatterns =
-      /^(да|нет|ага|угу|ок|окей|хорошо|ясно|понятно|ну|вот|так|например|слушаю|спасибо|алло|съявните)[.!?]?$/i;
+      /^(да|нет|ага|угу|ок|окей|хорошо|ясно|понятно|ну|вот|так|например|слушаю|спасибо|алло|извините)[.!?]?$/i;
     if (noisePatterns.test(cleanText)) return;
 
     if (this.autoHintTimeout) {
@@ -535,11 +595,15 @@ class LiveHintsApp {
     const context = state
       .get('ui.transcripts')
       .slice(-10)
-      .map((item) => `Интервьюер: ${item.text}`);
+      .map((item) => {
+        const prefix = item.source === 'candidate' ? 'Кандидат' : 'Интервьюер';
+        return `${prefix}: ${item.text}`;
+      });
     this.ui.hints.showLoadingState();
     state.set('ui.status', 'processing');
 
     try {
+      await this.ensureLLM();
       const response = await fetch(`${SERVERS.LLM}/hint/stream`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -548,6 +612,7 @@ class LiveHintsApp {
           context,
           model: state.get('settings.model') || 'qwen3:8b',
           profile: state.get('settings.profile'),
+          system_prompt: state.get('settings.customInstructions') || undefined,
           max_tokens: 512,
           temperature: 0.3,
         }),
@@ -639,10 +704,15 @@ class LiveHintsApp {
         }),
         signal: AbortSignal.timeout(60000),
       });
-      if (!response.ok) throw new Error(`Vision HTTP ${response.status}`);
+      if (!response.ok) {
+        const errData = await response.json().catch(() => null);
+        throw new Error(errData?.detail || `Vision HTTP ${response.status}`);
+      }
       const result = await response.json();
-      if (!result.analysis) throw new Error('Vision вернул пустой ответ');
-      this.ui.addHint({ text: result.analysis, type: 'vision', confidence: 'medium' });
+      const analysisText =
+        typeof result.analysis === 'string' ? result.analysis : result.analysis?.analysis;
+      if (!analysisText) throw new Error('Vision вернул пустой ответ');
+      this.ui.addHint({ text: analysisText, type: 'vision', confidence: 'medium' });
       this.ui.showToast('Скриншот проанализирован', 'success');
     } catch (error) {
       this.ui.showToast(error.message || 'Ошибка анализа скриншота', 'error');
