@@ -205,7 +205,7 @@ class OllamaClient:
                     f"[LLM] Подсказка от провайдера за {stats['total_ms']}ms, len={len(hint)}"
                 )
                 if hint.strip():
-                    self.hint_cache.set(text, context or [], hint)
+                    self.hint_cache.set(text, context or [], hint, profile or self.profile)
                 return hint
             except Exception as e:
                 logger.error(f"[LLM] Ошибка провайдера: {e}")
@@ -384,7 +384,7 @@ class OllamaClient:
                         await asyncio.sleep(0)
                 self.metrics.done()
                 if accumulated_hint.strip():
-                    self.hint_cache.set(text, context or [], accumulated_hint)
+                    self.hint_cache.set(text, context or [], accumulated_hint, self.profile)
                     semantic_cache.set(text, context or [], accumulated_hint)
                     rag.consolidate_memory(text, accumulated_hint, question_type)
                 stats = self.metrics.get_stats()

@@ -11,7 +11,7 @@ import os
 import sys
 import time
 import threading
-from typing import Annotated, Optional
+from typing import Annotated, Any, Optional
 
 import requests
 from functools import wraps
@@ -427,7 +427,42 @@ async def gpu_status():
 @app.get('/audio/devices')
 async def get_audio_devices():
     """Получить список аудио устройств"""
-    return {'input': [], 'output': []}
+    devices: dict[str, list[dict[str, Any]]] = {'input': [], 'output': []}
+    try:
+        import pyaudiowpatch as pyaudio
+
+        p = pyaudio.PyAudio()
+        try:
+            device_count = p.get_device_count()
+            for i in range(device_count):
+                info = p.get_device_info_by_index(i)
+                max_in = info.get('maxInputChannels', 0)
+                max_out = info.get('maxOutputChannels', 0)
+                is_loopback = bool(info.get('isLoopbackDevice', False))
+                name = str(info.get('name', f'Device {i}'))
+                if max_in > 0:
+                    devices['input'].append({'index': i, 'name': name})
+                if max_out > 0 or is_loopback:
+                    devices['output'].append({'index': i, 'name': name, 'isLoopback': is_loopback})
+        finally:
+            p.terminate()
+    except Exception as e:
+        logger.debug(f'Device enumeration fallback: {e}')
+    return devices
+
+
+@app.post('/context/reload')
+async def reload_context():
+    """Перезагрузить контекстные файлы (user_context.txt, vacancy.txt)"""
+    global USER_CONTEXT, VACANCY_CONTEXT, FULL_CONTEXT
+    USER_CONTEXT = load_user_context()
+    VACANCY_CONTEXT = load_vacancy_context()
+    FULL_CONTEXT = USER_CONTEXT
+    if VACANCY_CONTEXT:
+        FULL_CONTEXT += f'\n\n## Вакансия:\n{VACANCY_CONTEXT}'
+    ollama.user_context = FULL_CONTEXT
+    logger.info(f'[CONTEXT] Контекст перезагружен: {len(FULL_CONTEXT)} символов')
+    return {'status': 'ok', 'context_length': len(FULL_CONTEXT)}
 
 
 @app.get('/vision/status')
@@ -447,9 +482,11 @@ async def vision_analyze(vision_request: VisionRequest):
     request = vision_request
     if not request.image_base64:
         raise HTTPException(400, 'Изображение не предоставлено')
-    
+
     result = await analyze_image(OLLAMA_URL, ollama.model, request.image_base64, request.prompt)
-    return {'analysis': result, 'model': ollama.model}
+    if 'error' in result:
+        raise HTTPException(400, result['error'])
+    return {'analysis': result.get('analysis', ''), 'model': result.get('model', ollama.model)}
 
 
 if __name__ == '__main__':

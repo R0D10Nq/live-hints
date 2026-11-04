@@ -2,7 +2,7 @@
 Тесты для python/llm_server.py
 """
 import pytest
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch, MagicMock, AsyncMock
 from fastapi.testclient import TestClient
 
 
@@ -480,3 +480,41 @@ class TestCacheClearEndpointFull:
         
         assert response.status_code == 200
         assert response.json()['status'] == 'error'
+
+
+class TestContextReloadEndpoint:
+    """Тесты для /context/reload"""
+
+    @patch('llm_server.load_user_context', return_value='Обновленное резюме')
+    @patch('llm_server.load_vacancy_context', return_value='Обновленная вакансия')
+    def test_reload_context_success(self, mock_vac, mock_usr):
+        from llm_server import app
+        client = TestClient(app)
+        response = client.post('/context/reload')
+        assert response.status_code == 200
+        data = response.json()
+        assert data['status'] == 'ok'
+        assert data['context_length'] > 0
+
+
+class TestVisionAnalyzeEndpoint:
+    """Тесты для /vision/analyze"""
+
+    @patch('llm_server.analyze_image', new_callable=AsyncMock)
+    def test_vision_analyze_success(self, mock_analyze):
+        mock_analyze.return_value = {'analysis': 'Код функции', 'model': 'llava:7b'}
+        from llm_server import app
+        client = TestClient(app)
+        response = client.post('/vision/analyze', json={'image_base64': 'aGVsbG8=', 'prompt': 'Что это?'})
+        assert response.status_code == 200
+        assert response.json()['analysis'] == 'Код функции'
+        assert response.json()['model'] == 'llava:7b'
+
+    @patch('llm_server.analyze_image', new_callable=AsyncMock)
+    def test_vision_analyze_model_error(self, mock_analyze):
+        mock_analyze.return_value = {'error': 'Vision модель не установлена'}
+        from llm_server import app
+        client = TestClient(app)
+        response = client.post('/vision/analyze', json={'image_base64': 'aGVsbG8=', 'prompt': 'Что это?'})
+        assert response.status_code == 400
+        assert 'Vision модель не установлена' in response.json()['detail']

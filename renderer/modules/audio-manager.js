@@ -39,21 +39,21 @@ export class AudioManager {
     if (inputDevice) {
       inputDevice.addEventListener('change', (e) => {
         this.inputDeviceIndex = e.target.value;
-        this.app.saveSettings({ inputDeviceIndex: e.target.value });
+        this.saveSettings({ inputDeviceIndex: e.target.value });
       });
     }
 
     if (loopbackDevice) {
       loopbackDevice.addEventListener('change', (e) => {
         this.loopbackDeviceIndex = e.target.value;
-        this.app.saveSettings({ loopbackDeviceIndex: e.target.value });
+        this.saveSettings({ loopbackDeviceIndex: e.target.value });
       });
     }
 
     if (dualAudio) {
       dualAudio.addEventListener('change', (e) => {
         this.dualAudioEnabled = e.target.checked;
-        this.app.saveSettings({ dualAudioEnabled: e.target.checked });
+        this.saveSettings({ dualAudioEnabled: e.target.checked });
         const message = e.target.checked ? 'Два аудиоканала включены' : 'Два аудиоканала выключены';
         this.app.ui.showToast(message, 'success');
       });
@@ -61,6 +61,19 @@ export class AudioManager {
 
     if (micMuteBtn) {
       micMuteBtn.addEventListener('click', () => this.toggleMicMute());
+    }
+  }
+
+  saveSettings(patch) {
+    try {
+      const settings = JSON.parse(localStorage.getItem('live-hints-settings')) || {};
+      Object.assign(settings, patch);
+      localStorage.setItem('live-hints-settings', JSON.stringify(settings));
+      if (typeof this.app?.saveSettings === 'function') {
+        this.app.saveSettings(patch);
+      }
+    } catch (e) {
+      logger.error('AudioManager', 'Ошибка сохранения настроек:', e);
     }
   }
 
